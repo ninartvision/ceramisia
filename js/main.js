@@ -383,6 +383,33 @@
     window.addEventListener('resize', updateArrows);
   }
 
+  /* ── PRODUCTS GRID SLIDER (mobile) ───────────── */
+  function initProductsSlider() {
+    var grid = document.querySelector('.products-grid');
+    var prevBtn = document.getElementById('productsPrev');
+    var nextBtn = document.getElementById('productsNext');
+    if (!grid || !prevBtn || !nextBtn) return;
+
+    function updateArrows() {
+      prevBtn.disabled = grid.scrollLeft <= 4;
+      nextBtn.disabled = grid.scrollLeft + grid.offsetWidth >= grid.scrollWidth - 4;
+    }
+
+    function scrollByCard(dir) {
+      var card = grid.querySelector('.product-card');
+      if (!card) return;
+      var dist = card.offsetWidth + parseInt(getComputedStyle(grid).gap || '16', 10);
+      grid.scrollBy({ left: dir * dist, behavior: 'smooth' });
+    }
+
+    prevBtn.addEventListener('click', function () { scrollByCard(-1); });
+    nextBtn.addEventListener('click', function () { scrollByCard(1); });
+    grid.addEventListener('scroll', updateArrows, { passive: true });
+
+    updateArrows();
+    window.addEventListener('resize', updateArrows);
+  }
+
   /* ── INIT ALL ────────────────────────────────── */
   document.addEventListener('DOMContentLoaded', function () {
     initLanguage();
@@ -397,6 +424,7 @@
     initSmoothScroll();
     initURLFilter();
     initPopularSlider();
+    initProductsSlider();
   });
 
 })();
