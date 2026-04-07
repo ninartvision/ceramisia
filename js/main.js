@@ -354,19 +354,29 @@
     if (btn) btn.click();
   }
 
-  /* ── POPULAR PRODUCTS SLIDER (mobile) ──────── */
+  /* ── POPULAR PRODUCTS SLIDER (desktop only) ── */
   function initPopularSlider() {
     var grid = document.querySelector('.popular-grid');
     var prevBtn = document.getElementById('popularPrev');
     var nextBtn = document.getElementById('popularNext');
     if (!grid || !prevBtn || !nextBtn) return;
 
+    function isMobile() { return window.innerWidth <= 768; }
+
     function updateArrows() {
+      if (isMobile()) {
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+        return;
+      }
+      prevBtn.style.display = '';
+      nextBtn.style.display = '';
       prevBtn.disabled = grid.scrollLeft <= 4;
       nextBtn.disabled = grid.scrollLeft + grid.offsetWidth >= grid.scrollWidth - 4;
     }
 
     function scrollByCard(dir) {
+      if (isMobile()) return;
       var card = grid.querySelector('.product-card');
       if (!card) return;
       var dist = card.offsetWidth + parseInt(getComputedStyle(grid).gap || '16', 10);
@@ -383,19 +393,29 @@
     window.addEventListener('resize', updateArrows);
   }
 
-  /* ── PRODUCTS GRID SLIDER (mobile) ───────────── */
+  /* ── PRODUCTS GRID SLIDER (desktop only) ─────── */
   function initProductsSlider() {
     var grid = document.querySelector('.products-grid');
     var prevBtn = document.getElementById('productsPrev');
     var nextBtn = document.getElementById('productsNext');
     if (!grid || !prevBtn || !nextBtn) return;
 
+    function isMobile() { return window.innerWidth <= 768; }
+
     function updateArrows() {
+      if (isMobile()) {
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+        return;
+      }
+      prevBtn.style.display = '';
+      nextBtn.style.display = '';
       prevBtn.disabled = grid.scrollLeft <= 4;
       nextBtn.disabled = grid.scrollLeft + grid.offsetWidth >= grid.scrollWidth - 4;
     }
 
     function scrollByCard(dir) {
+      if (isMobile()) return;
       var card = grid.querySelector('.product-card');
       if (!card) return;
       var dist = card.offsetWidth + parseInt(getComputedStyle(grid).gap || '16', 10);
