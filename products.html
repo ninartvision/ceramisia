@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Ceramisia – ხელნაკეთი კერამიკული ნაწარმი. ღვინის კულტურა, კერამიკული ჭურჭელი, დეკორი & ინტერიერი და სიმბოლური კოლექცია.">
+  <meta property="og:title" content="პროდუქტები – Ceramisia">
+  <meta property="og:description" content="Handmade ceramic products from Georgia — vases, tableware, decor.">
+  <meta property="og:image" content="https://yourusername.github.io/ceramisia/images/og-image-v2.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://yourusername.github.io/ceramisia/images/og-image-v2.png">
+  <meta property="og:locale" content="ka_GE">
+  <meta property="og:locale:alternate" content="en_US">
+  <title>პროდუქტები – Ceramisia</title>
+  <link rel="icon" href="images/logo.webp" type="image/webp">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Noto+Serif+Georgian:wght@300;400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/fab-social.css">
+</head>
+<body class="lang-ge has-banner">
+
+  <!-- ═══════════════ HEADER ═══════════════ -->
+  <header class="site-header" id="siteHeader">
+    <div class="container header-inner">
+      <a href="index.html" class="logo-link">
+        <img src="images/logo.webp" alt="Ceramisia" class="logo-img">
+      </a>
+      <button class="menu-toggle" id="menuToggle" aria-label="Menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <nav class="main-nav" id="mainNav">
+        <button class="nav-close" id="navClose" aria-label="Close menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <ul>
+          <li><a href="index.html"    data-ge="მთავარი"      data-en="Home">მთავარი</a></li>
+          <li><a href="products.html" data-ge="პროდუქტები"   data-en="Products">პროდუქტები</a></li>
+
+          <li><a href="about.html"    data-ge="ჩვენ შესახებ" data-en="About Us">ჩვენ შესახებ</a></li>
+          <li><a href="contact.html"  data-ge="კონტაქტი"     data-en="Contact">კონტაქტი</a></li>
+        </ul>
+        <div class="nav-footer">
+          <div class="lang-switcher">
+            <button class="lang-btn" data-lang="ge">GE</button>
+            <span class="lang-divider">|</span>
+            <button class="lang-btn" data-lang="en">EN</button>
+          </div>
+        </div>
+      </nav>
+      <div class="header-actions">
+        <div class="lang-switcher">
+          <button class="lang-btn active" data-lang="ge">GE</button>
+          <span class="lang-divider">|</span>
+          <button class="lang-btn" data-lang="en">EN</button>
+        </div>
+        <a href="#" class="cart-btn" aria-label="Cart">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <path d="M16 10a4 4 0 0 1-8 0"/>
+          </svg>
+          <span class="cart-count" id="cartCount">0</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════ PAGE BANNER ═══════════════ -->
+  <div class="page-banner" style="background-image: url('images/ceramsia-15.webp')">
+    <div class="page-banner-content">
+      <span class="section-label" data-ge="Ceramisia" data-en="Ceramisia">Ceramisia</span>
+      <h1 data-ge="პროდუქტები" data-en="Products">პროდუქტები</h1>
+    </div>
+  </div>
+
+  <!-- ═══════════════ BREADCRUMB ═══════════════ -->
+  <div class="breadcrumb">
+    <div class="container">
+      <a href="index.html" data-ge="მთავარი" data-en="Home">მთავარი</a>
+      <span>›</span>
+      <span data-ge="პროდუქტები" data-en="Products">პროდუქტები</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════ PRODUCTS SECTION ═══════════════ -->
+  <section class="section">
+    <div class="container">
+
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <button class="filter-btn active" data-filter="all" data-ge="ყველა" data-en="All">ყველა</button>
+        <button class="filter-btn" data-filter="vases"      data-ge="ღვინის კულტურა"          data-en="Vases">ღვინის კულტურა</button>
+        <button class="filter-btn" data-filter="decorative" data-ge="კერამიკული ჭურჭელი"      data-en="Decorative Items">კერამიკული ჭურჭელი</button>
+        <button class="filter-btn" data-filter="tableware"  data-ge="დეკორი &amp; ინტერიერი"  data-en="Tableware">დეკორი &amp; ინტერიერი</button>
+        <button class="filter-btn" data-filter="bathroom"   data-ge="სანათები &amp; ატმოსფერო" data-en="Bathroom Accessories">სანათები &amp; ატმოსფერო</button>
+        <button class="filter-btn" data-filter="georgian"   data-ge="სიმბოლური კოლექცია"      data-en="Georgian Collection">სიმბოლური კოლექცია</button>
+        <button class="filter-btn" data-filter="misc"       data-ge="სხვადასხვა"            data-en="Misc">სხვადასხვა</button>
+      </div>
+
+      <!-- Products Grid -->
+      <div class="products-grid">
+
+        <div class="product-card revealed" data-category="vases"
+             data-desc-ge="ხელნაკეთი კერამიკული ვაზი, უნიკალური დიზაინით. იდეალურია ინტერიერის გასალამაზებლად."
+             data-desc-en="Handmade ceramic vase with a unique design. Perfect for interior decoration."
+             data-gallery="images/ceramsia-01.webp,images/ceramsia-05.webp,images/ceramsia-22.webp"
+             data-status="new">
+          <div class="product-img-wrap">
+            <img src="images/ceramsia-01.webp" alt="Vase No.1" loading="lazy">
+            <span class="product-badge new" data-ge="ახალი" data-en="New">ახალი</span>
+            <div class="product-actions">
+              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
+            </div>
+          </div>
+          <div class="product-info">
+            <p class="product-category" data-ge="ღვინის კულტურა" data-en="Vases">ღვინის კულტურა</p>
+            <h3 class="product-name" data-ge="კერამიკული ლარნაკი" data-en="Ceramic Larnak">კერამიკული ლარნაკი</h3>
+            <p class="product-price">₾ 85</p>
+          </div>
+        </div>
+
+        <div class="product-card revealed" data-category="decorative"
+             data-desc-ge="ხელნაკეთი კერამიკული თასი, მინიმალისტური სტილით. შესანიშნავია დეკორისთვის."
+             data-desc-en="Handmade ceramic bowl with minimalist style. Excellent for decor."
+             data-gallery="images/ceramsia-05.webp,images/ceramsia-01.webp,images/ceramsia-48.webp">
+          <div class="product-img-wrap">
+            <img src="images/ceramsia-05.webp" alt="Decorative Bowl" loading="lazy">
+            <div class="product-actions">
+              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
+            </div>
+          </div>
+          <div class="product-info">
+            <p class="product-category" data-ge="კერამიკული ჭურჭელი" data-en="Decorative Items">კერამიკული ჭურჭელი</p>
+            <h3 class="product-name" data-ge="დეკორატიული თასი" data-en="Decorative Bowl">დეკორატიული თასი</h3>
+            <p class="product-price">₾ 65</p>
+          </div>
+        </div>
+
+        <div class="product-card revealed" data-category="tableware"
+             data-desc-ge="კერამიკული სუფრის სერვიზი, ელეგანტური დიზაინით. მოიცავს თეფშებს და თასებს."
+             data-desc-en="Ceramic tableware set with elegant design. Includes plates and bowls."
+             data-gallery="images/ceramsia-15.webp,images/ceramsia-16.webp,images/ceramsia-48.webp"
+             data-status="sale">
+          <div class="product-img-wrap">
+            <img src="images/ceramsia-15.webp" alt="Tableware Set" loading="lazy">
+            <span class="product-badge sale" data-ge="ფასდაკლება" data-en="Sale">ფასდაკლება</span>
+            <div class="product-actions">
+              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
+            </div>
+          </div>
+          <div class="product-info">
+            <p class="product-category" data-ge="დეკორი &amp; ინტერიერი" data-en="Tableware">დეკორი &amp; ინტერიერი</p>
+            <h3 class="product-name" data-ge="ბროწეულები" data-en="Tableware Set">ბროწეულები</h3>
+            <p class="product-price">
+              <span class="original">₾ 220</span>₾ 175
+            </p>
+          </div>
+        </div>
+
+        <div class="product-card revealed" data-category="bathroom"
+             data-desc-ge="კერამიკული სააბაზანო ნაკრები, ნატურალური ტექსტურით. მოიცავს საპნის ჭურჭელს და ჭიქას."
+             data-desc-en="Ceramic bathroom set with natural texture. Includes soap dish and tumbler."
+             data-gallery="images/ceramsia-16.webp,images/ceramsia-15.webp">
+          <div class="product-img-wrap">
+            <img src="images/ceramsia-16.webp" alt="Bathroom Set" loading="lazy">
+            <div class="product-actions">
+              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
+            </div>
+          </div>
+          <div class="product-info">
+            <p class="product-category" data-ge="სანათები &amp; ატმოსფერო" data-en="Bathroom Accessories">სანათები &amp; ატმოსფერო</p>
+            <h3 class="product-name" data-ge="ლარნაკი" data-en="Bathroom Set">ლარნაკი</h3>
+            <p class="product-price">₾ 120</p>
+          </div>
+        </div>
+
+        <div class="product-card revealed" data-category="georgian"
+             data-desc-ge="ავთენტური ქართული ქვევრი, ხელნაკეთი. ტრადიციული ფორმა თანამედროვე ინტერპრეტაციით."
+             data-desc-en="Authentic Georgian Qvevri, handmade. Traditional form with modern interpretation."
+             data-gallery="images/ceramsia-22.webp,images/ceramsia-01.webp,images/ceramsia-53.webp"
+             data-status="new">
+          <div class="product-img-wrap">
+            <img src="images/ceramsia-22.webp" alt="Georgian Qvevri" loading="lazy">
+            <span class="product-badge new" data-ge="ახალი" data-en="New">ახალი</span>
+            <div class="product-actions">
+              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
+            </div>
+          </div>
+          <div class="product-info">
+            <p class="product-category" data-ge="სიმბოლური კოლექცია" data-en="Georgian Collection">სიმბოლური კოლექცია</p>
+            <h3 class="product-name" data-ge="საკოლექციო" data-en="Georgian Qvevri">საკოლექციო</h3>
+            <p class="product-price">₾ 195</p>
+          </div>
+        </div>
+
+        <div class="product-card revealed" data-category="misc"
+             data-desc-ge="ხელნაკეთი კერამიკული თეფში, უნიკალური ფერებით და ტექსტურით."
+             data-desc-en="Handmade ceramic plate with unique colors and texture."
+             data-gallery="images/ceramsia-48.webp,images/ceramsia-54.webp">
+          <div class="product-img-wrap">
+            <img src="images/ceramsia-48.webp" alt="Ceramic vase" loading="lazy">
+            <div class="product-actions">
+              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
+            </div>
+          </div>
+          <div class="product-info">
+            <p class="product-category" data-ge="სხვადასხვა" data-en="Misc">სხვადასხვა</p>
+            <h3 class="product-name" data-ge="კერამიკული ლარნაკი" data-en="Ceramic Larnak">კერამიკული ლარნაკი</h3>
+            <p class="product-price">₾ 45</p>
+          </div>
+        </div>
+
+        <div class="product-card revealed" data-category="vases"
+             data-desc-ge="ვაზების კოლექცია, სხვადასხვა ზომისა და ფორმის. იდეალური საჩუქარი."
+             data-desc-en="Vase collection with various sizes and forms. Ideal as a gift."
+             data-gallery="images/ceramsia-53.webp,images/ceramsia-01.webp,images/ceramsia-22.webp">
+          <div class="product-img-wrap">
+            <img src="images/ceramsia-53.webp" alt="Vase Collection" loading="lazy">
+            <div class="product-actions">
+              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
+            </div>
+          </div>
+          <div class="product-info">
+            <p class="product-category" data-ge="ღვინის კულტურა" data-en="Vases">ღვინის კულტურა</p>
+            <h3 class="product-name" data-ge="ბროწეულები" data-en="Vase Collection">ბროწეულები</h3>
+            <p class="product-price">₾ 145</p>
+          </div>
+        </div>
+
+        <div class="product-card revealed" data-category="decorative"
+             data-desc-ge="დეკორატიული ფიგურა, ხელნაკეთი კერამიკა. სხვადასხვა დამუშავება შესაძლებელია."
+             data-desc-en="Decorative sculpture, handmade ceramic. Various finishing options available."
+             data-gallery="images/ceramsia-54.webp,images/ceramsia-53.webp,images/ceramsia-05.webp"
+             data-status="new">
+          <div class="product-img-wrap">
+            <img src="images/ceramsia-54.webp" alt="Decorative Piece" loading="lazy">
+            <span class="product-badge new" data-ge="ახალი" data-en="New">ახალი</span>
+            <div class="product-actions">
+              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
+            </div>
+          </div>
+          <div class="product-info">
+            <p class="product-category" data-ge="კერამიკული ჭურჭელი" data-en="Decorative Items">კერამიკული ჭურჭელი</p>
+            <h3 class="product-name" data-ge="ქართული" data-en="Decorative Sculpture">ქართული</h3>
+            <p class="product-price">₾ 95</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ FOOTER ═══════════════ -->
+  <footer class="site-footer">
+    <div class="container footer-grid">
+
+      <div class="footer-col footer-about">
+        <img src="images/logo.webp" alt="Ceramisia" class="footer-logo">
+        <p data-ge="ხელნაკეთი კერამიკა, ქართული სულით." data-en="Handmade ceramics with Georgian soul.">ხელნაკეთი კერამიკა, ქართული სულით.</p>
+      </div>
+
+      <div class="footer-col">
+        <h4 data-ge="სწრაფი ბმულები" data-en="Quick Links">სწრაფი ბმულები</h4>
+        <ul>
+          <li><a href="index.html"    data-ge="მთავარი"      data-en="Home">მთავარი</a></li>
+          <li><a href="products.html" data-ge="პროდუქტები"   data-en="Products">პროდუქტები</a></li>
+          <li><a href="about.html"    data-ge="ჩვენ შესახებ" data-en="About Us">ჩვენ შესახებ</a></li>
+          <li><a href="contact.html"  data-ge="კონტაქტი"     data-en="Contact">კონტაქტი</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 data-ge="კატეგორიები" data-en="Categories">კატეგორიები</h4>
+        <ul>
+          <li><a href="products.html?cat=vases"      data-ge="ღვინის კულტურა"          data-en="Vases">ღვინის კულტურა</a></li>
+          <li><a href="products.html?cat=decorative" data-ge="კერამიკული ჭურჭელი"      data-en="Decorative Items">კერამიკული ჭურჭელი</a></li>
+          <li><a href="products.html?cat=tableware"  data-ge="დეკორი &amp; ინტერიერი"  data-en="Tableware">დეკორი &amp; ინტერიერი</a></li>
+          <li><a href="products.html?cat=bathroom"   data-ge="სანათები &amp; ატმოსფერო" data-en="Bathroom Accessories">სანათები &amp; ატმოსფერო</a></li>
+          <li><a href="products.html?cat=georgian"   data-ge="სიმბოლური კოლექცია"      data-en="Georgian Collection">სიმბოლური კოლექცია</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col footer-contact">
+        <h4 data-ge="კონტაქტი" data-en="Contact">კონტაქტი</h4>
+        <ul>
+          <li>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <a href="https://maps.app.goo.gl/WjR2Zk5AZNQmeP536?g_st=ic" target="_blank" rel="noopener noreferrer" data-ge="თბილისი, საქართველო" data-en="Tbilisi, Georgia">თბილისი, საქართველო</a>
+          </li>
+          <li>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <span class="footer-phones">
+              <a href="tel:+995597224407">+995 597 22 44 07</a>
+              <a href="tel:+995550501575">+995 550 50 15 75</a>
+            </span>
+          </li>
+          <li>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <a href="mailto:ceramisiageorgia@gmail.com">ceramisiageorgia@gmail.com</a>
+          </li>
+        </ul>
+        <div class="social-links">
+          <a href="https://www.facebook.com/share/14aaj9ykeAv/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer" aria-label="Facebook" class="social-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+          </a>
+          <a href="https://www.instagram.com/ceramisia_?igsh=MWs0YnBqdnI5emM4eA==" target="_blank" rel="noopener noreferrer" aria-label="Instagram" class="social-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+          </a>
+        </div>
+      </div>
+
+    </div>
+    <div class="footer-bottom">
+      <div class="container">
+        <p data-ge="© 2026 Ceramisia. ყველა უფლება დაცულია." data-en="© 2026 Ceramisia. All rights reserved.">© 2026 Ceramisia. ყველა უფლება დაცულია.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ═══════════════ FLOATING SOCIAL MENU ═══════════════ -->
+  <div class="fab-social" aria-label="Contact us">
+    <button class="fab-social__toggle" aria-expanded="false" aria-label="Open contact menu">
+      <svg class="fab-icon-chat" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <svg class="fab-icon-close" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="fab-social__menu">
+      <a class="fab-social__item fab-social__item--whatsapp" href="https://wa.me/995597224407?text=%E1%83%92%E1%83%90%E1%83%9B%E1%83%90%E1%83%A0%E1%83%AF%E1%83%9D%E1%83%91%E1%83%90" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+        <span class="fab-social__label">WhatsApp</span>
+      </a>
+      <a class="fab-social__item fab-social__item--facebook" href="https://www.facebook.com/share/14aaj9ykeAv/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073c0 6.019 4.388 11.007 10.125 11.927v-8.437H7.078v-3.49h3.047V9.413c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.49 0-1.955.925-1.955 1.874v2.249h3.328l-.532 3.49h-2.796V24C19.612 23.08 24 18.092 24 12.073z"/></svg>
+        <span class="fab-social__label">Facebook</span>
+      </a>
+      <a class="fab-social__item fab-social__item--instagram" href="https://www.instagram.com/ceramisia_?igsh=MWs0YnBqdnI5emM4eA==" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none"/></svg>
+        <span class="fab-social__label">Instagram</span>
+      </a>
+    </div>
+  </div>
+  <div class="fab-social__backdrop"></div>
+
+  <!-- ═══════════════ PRODUCT MODAL ═══════════════ -->
+  <div class="product-modal-overlay" id="productModal">
+    <div class="product-modal" role="dialog" aria-modal="true" aria-label="Product details">
+      <button class="product-modal__close" id="modalClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <!-- Gallery -->
+      <div class="modal-gallery">
+        <div class="modal-gallery__main" id="modalZoomWrap">
+          <img id="modalMainImg" src="" alt="">
+          <button class="modal-gallery__nav modal-gallery__nav--prev" id="modalPrev" aria-label="Previous image" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button class="modal-gallery__nav modal-gallery__nav--next" id="modalNext" aria-label="Next image" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <span class="modal-gallery__counter" id="modalCounter"></span>
+        </div>
+        <div class="modal-gallery__thumbs" id="modalThumbs"></div>
+      </div>
+      <!-- Details -->
+      <div class="modal-details">
+        <div class="modal-details__badge" id="modalBadge"></div>
+        <p class="modal-details__category" id="modalCategory"></p>
+        <h2 class="modal-details__title" id="modalTitle"></h2>
+        <div class="modal-details__price-row" id="modalPriceRow">
+          <span class="modal-details__price--old" id="modalOldPrice"></span>
+          <span class="modal-details__price" id="modalPrice"></span>
+        </div>
+        <div class="modal-details__divider"></div>
+        <p class="modal-details__desc" id="modalDesc"></p>
+        <div class="modal-qty" id="modalQty">
+          <button class="modal-qty__btn" id="qtyMinus" type="button">&minus;</button>
+          <span class="modal-qty__val" id="qtyVal">1</span>
+          <button class="modal-qty__btn" id="qtyPlus" type="button">+</button>
+        </div>
+        <label class="modal-gift" id="modalGift">
+          <input type="checkbox" id="giftCheckbox" class="modal-gift__input">
+          <span class="modal-gift__box">
+            <svg class="modal-gift__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+            <span class="modal-gift__text">
+              <span class="modal-gift__label" data-ge="სასაჩუქრე შეფუთვა" data-en="Gift Packaging">სასაჩუქრე შეფუთვა</span>
+              <span class="modal-gift__price" data-ge="+ ₾ 5" data-en="+ ₾ 5">+ ₾ 5</span>
+            </span>
+            <span class="modal-gift__toggle"><span class="modal-gift__knob"></span></span>
+          </span>
+        </label>
+        <button class="modal-add-cart" id="modalAddCart" type="button">
+          <svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          <span data-ge="კალათაში დამატება" data-en="Add to Cart">კალათაში დამატება</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/product-modal.js"></script>
+  <script src="js/fab-social.js"></script>
+</body>
+</html>

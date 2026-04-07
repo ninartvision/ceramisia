@@ -1,0 +1,201 @@
+/* ================================================
+   Floating Social Contact Menu
+   ================================================ */
+
+/* ── Config: easy color override via CSS variables ── */
+.fab-social {
+  --fab-primary: #8C1C13;
+  --fab-primary-hover: #6B1510;
+  --fab-whatsapp: #25D366;
+  --fab-messenger: #0084FF;
+  --fab-instagram: #E4405F;
+  --fab-size: 56px;
+  --fab-item-size: 46px;
+  --fab-gap: 14px;
+  --fab-offset: 24px;
+  --fab-radius: 50%;
+  --fab-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.08);
+  --fab-shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.22), 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ── Container ── */
+.fab-social {
+  position: fixed;
+  bottom: var(--fab-offset);
+  right: var(--fab-offset);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 0;
+}
+
+/* ── Main toggle button ── */
+.fab-social__toggle {
+  width: var(--fab-size);
+  height: var(--fab-size);
+  border-radius: var(--fab-radius);
+  background: var(--fab-primary);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--fab-shadow);
+  transition: background 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+.fab-social__toggle:hover {
+  background: var(--fab-primary-hover);
+  box-shadow: var(--fab-shadow-hover);
+  transform: scale(1.06);
+}
+
+/* Icon swap: chat ↔ close */
+.fab-social__toggle svg {
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+  position: absolute;
+}
+.fab-social__toggle .fab-icon-chat  { opacity: 1; transform: rotate(0deg) scale(1); }
+.fab-social__toggle .fab-icon-close { opacity: 0; transform: rotate(-90deg) scale(0.5); }
+
+.fab-social.open .fab-social__toggle .fab-icon-chat  { opacity: 0; transform: rotate(90deg) scale(0.5); }
+.fab-social.open .fab-social__toggle .fab-icon-close { opacity: 1; transform: rotate(0deg) scale(1); }
+
+/* Pulse ring on idle */
+.fab-social__toggle::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid var(--fab-primary);
+  opacity: 0;
+  animation: fabPulse 3s ease-in-out infinite 2s;
+}
+.fab-social.open .fab-social__toggle::before { animation: none; opacity: 0; }
+
+@keyframes fabPulse {
+  0%, 100% { transform: scale(1); opacity: 0; }
+  50%      { transform: scale(1.25); opacity: 0.35; }
+}
+
+/* ── Menu items container ── */
+.fab-social__menu {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: var(--fab-gap);
+  padding-bottom: var(--fab-gap);
+  pointer-events: none;
+}
+.fab-social.open .fab-social__menu { pointer-events: auto; }
+
+/* ── Individual menu item ── */
+.fab-social__item {
+  width: var(--fab-item-size);
+  height: var(--fab-item-size);
+  border-radius: var(--fab-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  text-decoration: none;
+  box-shadow: var(--fab-shadow);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 0.3s ease,
+              box-shadow 0.3s ease;
+  opacity: 0;
+  transform: scale(0.3) translateY(20px);
+  position: relative;
+}
+
+.fab-social__item:hover {
+  box-shadow: var(--fab-shadow-hover);
+  transform: scale(1.12) !important;
+}
+
+/* Staggered open animation */
+.fab-social.open .fab-social__item {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+.fab-social.open .fab-social__item:nth-child(1) { transition-delay: 0.05s; }
+.fab-social.open .fab-social__item:nth-child(2) { transition-delay: 0.12s; }
+.fab-social.open .fab-social__item:nth-child(3) { transition-delay: 0.19s; }
+
+/* Staggered close */
+.fab-social:not(.open) .fab-social__item:nth-child(3) { transition-delay: 0.02s; }
+.fab-social:not(.open) .fab-social__item:nth-child(2) { transition-delay: 0.07s; }
+.fab-social:not(.open) .fab-social__item:nth-child(1) { transition-delay: 0.12s; }
+
+/* Platform colors */
+.fab-social__item--whatsapp  { background: var(--fab-whatsapp); }
+.fab-social__item--messenger { background: var(--fab-messenger); }
+.fab-social__item--instagram { background: var(--fab-instagram); }
+
+/* ── Tooltip labels ── */
+.fab-social__label {
+  position: absolute;
+  right: calc(100% + 12px);
+  white-space: nowrap;
+  background: rgba(30, 23, 18, 0.88);
+  color: #fff;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  padding: 5px 12px;
+  border-radius: 6px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.fab-social__label::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -4px;
+  transform: translateY(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background: rgba(30, 23, 18, 0.88);
+}
+
+.fab-social__item:hover .fab-social__label {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ── Backdrop overlay (click-away-to-close) ── */
+.fab-social__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: transparent;
+  display: none;
+}
+.fab-social.open ~ .fab-social__backdrop { display: block; }
+
+/* ── Mobile adjustments ── */
+@media (max-width: 480px) {
+  .fab-social {
+    --fab-offset: 16px;
+    --fab-size: 50px;
+    --fab-item-size: 42px;
+    --fab-gap: 12px;
+  }
+  .fab-social__label { display: none; } /* hide tooltips on small touch screens */
+}
+.fab-social__item--facebook {
+  background: #1877F2; /* Facebook ლურჯი */
+  color: #fff;
+}
+
+.fab-social__item--facebook svg {
+  fill: #fff;
+}
