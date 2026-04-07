@@ -2141,6 +2141,9 @@ body.modal-open {
 
 /* ─ 768px: Tablet portrait — hamburger nav starts here ─ */
 @media (max-width: 768px) {
+  /* Prevent horizontal overflow */
+  html, body { overflow-x: hidden; }
+
   /* Group cart + hamburger together on the right */
   .header-actions {
     order: 98;
@@ -2151,6 +2154,13 @@ body.modal-open {
     display: flex;
     order: 99;
     margin-left: 0.75rem;
+  }
+
+  /* Hide hamburger when menu is open — only the panel × button remains */
+  .menu-toggle.open {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
   }
 
   /* Instead of order, remove space-between centering on mobile */
@@ -2253,6 +2263,7 @@ body.modal-open {
   .products-grid     { grid-template-columns: repeat(2, 1fr); }
   .popular-grid      { grid-template-columns: repeat(2, 1fr); }
 
+  .about-strip-inner { grid-template-columns: 1fr; gap: var(--sp-md); }
   .about-values   { grid-template-columns: 1fr 1fr; }
   .team-grid      { grid-template-columns: 1fr 1fr; }
   .contact-layout { grid-template-columns: 1fr; }
@@ -2261,14 +2272,23 @@ body.modal-open {
   .about-hero-image       { height: 340px; }
   .about-hero-text        { padding: var(--sp-lg) var(--sp-md); }
 
-  /* Buttons: touch-friendly tap targets */
+  /* Buttons: touch-friendly tap targets (44px min per WCAG) */
   .btn { min-height: 44px; padding: 0.7rem 1.75rem; }
-  .btn-add-cart { min-height: 44px; }
-  .filter-btn { min-height: 40px; padding: 0.5rem 1.1rem; }
+  .btn-add-cart { min-height: 44px; padding: 0.65rem 1rem; }
+  .filter-btn { min-height: 44px; padding: 0.5rem 1.1rem; }
+  .cart-btn { min-width: 44px; min-height: 44px; }
+  .nav-close { min-width: 44px; min-height: 44px; }
+  .menu-toggle { min-width: 44px; min-height: 44px; padding: 10px; }
 
   /* Section spacing */
   .section { padding: 2.5rem 0; }
   .section-header { margin-bottom: 1.5rem; }
+
+  /* Hero adjustments */
+  .hero-slider { height: 60vh; min-height: 400px; }
+  .slider-arrow { width: 40px; height: 40px; }
+  .slider-arrow.prev { left: 0.75rem; }
+  .slider-arrow.next { right: 0.75rem; }
 
   /* Product cards */
   .product-info { padding: 1rem 1.1rem 1.25rem; }
@@ -2278,8 +2298,10 @@ body.modal-open {
   .about-strip-text p { line-height: 1.7; }
 
   /* Footer */
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: var(--sp-md); }
   .footer-about p { max-width: 100%; }
   .footer-col ul li a { font-size: 0.9rem; line-height: 1.6; }
+  .footer-col ul li { min-height: 36px; display: flex; align-items: center; }
 
   /* Page banner */
   .page-banner { height: 240px; }
@@ -2303,18 +2325,23 @@ body.modal-open {
   body { overflow-x: hidden; }
 
   /* ── Hero ── */
-  .hero-slider      { height: 85vh; min-height: 520px; }
+  .hero-slider      { height: 75vh; min-height: 420px; max-height: 600px; }
   .hero-scroll-hint { display: none; }
-  .slide            { align-items: flex-start; justify-content: flex-start; }
-  .slide-content    { padding: calc(var(--header-h) + 1.5rem) 1.5rem 0; text-align: left; max-width: min(90%, 340px); }
-  .slide-subtitle   { font-size: 0.7rem; letter-spacing: 0.15em; line-height: 1.6; margin-bottom: 12px; }
-  .slide-title      { font-size: clamp(1.4rem, 7vw, 1.9rem); line-height: 1.3; margin-bottom: 1.5rem; }
-  .slide-content .btn { margin-top: 20px; }
+  .slide            { align-items: flex-end; justify-content: center; }
+  .slide-content    { padding: 0 1.25rem 3.5rem; text-align: center; max-width: 100%; }
+  .slide-subtitle   { font-size: 0.68rem; letter-spacing: 0.15em; line-height: 1.6; margin-bottom: 0.75rem; }
+  .slide-title      { font-size: clamp(1.35rem, 6.5vw, 1.85rem); line-height: 1.3; margin-bottom: 1.25rem; }
+  .slide-content .btn { padding: 0.7rem 1.5rem; font-size: 0.72rem; }
   .slider-arrow     { width: 36px; height: 36px; }
+  .slider-dots      { bottom: 1rem; }
 
   /* ── Header ── */
-  .logo-img       { height: 48px; }
-  .header-actions { gap: 0.75rem; }
+  .logo-img       { height: 44px; }
+  .header-actions { gap: 0.5rem; }
+
+  /* ── Mobile nav panel: tighter on small screens ── */
+  .main-nav { width: 88vw; max-width: 320px; padding: 4.5rem 1.75rem 2rem; }
+  .main-nav ul a { font-size: 1.05rem; padding: 0.9rem 0; }
 
   /* ── Buttons: full-width CTA on mobile ── */
   .section-cta .btn { width: 100%; text-align: center; }
@@ -2408,7 +2435,11 @@ body.modal-open {
   .form-group.full   { grid-column: 1; }
   .form-group input,
   .form-group textarea,
-  .form-group select { font-size: 16px; } /* prevent iOS zoom */
+  .form-group select { font-size: 16px; min-height: 48px; } /* 16px prevents iOS zoom, min-height for touch */
+  .form-group textarea { min-height: 120px; }
+
+  /* ── Cart drawer mobile ── */
+  .cart-drawer { width: 100vw; max-width: 100vw; }
 
   /* ── Footer ── */
   .footer-grid     { grid-template-columns: 1fr; gap: 1.5rem; }
