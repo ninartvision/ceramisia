@@ -713,6 +713,8 @@ p { color: var(--clr-text-mid); }
   background: var(--clr-bg);
 }
 
+.popular-slider-arrow { display: none; }
+
 .popular-products .section-subtitle {
   font-family: var(--font-body);
   font-size: 0.95rem;
@@ -2156,11 +2158,10 @@ body.modal-open {
     margin-left: 0.75rem;
   }
 
-  /* Hide hamburger when menu is open — only the panel × button remains */
+  /* Hamburger transforms into × when menu is open — stays visible as close button */
   .menu-toggle.open {
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
+    opacity: 1;
+    pointer-events: auto;
   }
 
   /* Instead of order, remove space-between centering on mobile */
@@ -2194,23 +2195,9 @@ body.modal-open {
 
   .main-nav.open { transform: translateX(0); }
 
-  /* × close button */
+  /* Hide separate × close button on mobile — hamburger toggle serves as close */
   .nav-close {
-    display: flex;
-    position: absolute;
-    top: 1.25rem;
-    right: 1.25rem;
-    width: 38px;
-    height: 38px;
-    align-items: center;
-    justify-content: center;
-    color: var(--clr-text-mid);
-    border-radius: 50%;
-    transition: color var(--transition), background var(--transition);
-  }
-  .nav-close:hover {
-    color: var(--clr-red);
-    background: var(--clr-surface);
+    display: none;
   }
 
   /* Nav list */
@@ -2257,11 +2244,64 @@ body.modal-open {
   }
 
   /* Layout breakpoints */
-  .brand-strip-inner { grid-template-columns: repeat(2, 1fr); }
+  .brand-strip-inner {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .brand-strip-inner::-webkit-scrollbar { display: none; }
+  .brand-feature {
+    flex: 0 0 25%;
+    min-width: 6.5rem;
+    scroll-snap-align: start;
+  }
 
   .categories-grid   { grid-template-columns: repeat(2, 1fr); }
   .products-grid     { grid-template-columns: repeat(2, 1fr); }
-  .popular-grid      { grid-template-columns: repeat(2, 1fr); }
+
+  /* ── Popular products: horizontal slider ── */
+  .popular-slider-wrap { position: relative; }
+  .popular-grid {
+    grid-template-columns: none;
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 1rem;
+    padding-bottom: 0.5rem;
+  }
+  .popular-grid::-webkit-scrollbar { display: none; }
+  .popular-grid .product-card {
+    flex: 0 0 78%;
+    max-width: 78%;
+    scroll-snap-align: start;
+  }
+  .popular-slider-arrow {
+    display: flex;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.92);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+    color: var(--clr-text);
+    cursor: pointer;
+    border: 1px solid var(--clr-border);
+    transition: opacity 0.2s, background 0.2s;
+  }
+  .popular-slider-arrow:hover { background: var(--clr-white); }
+  .popular-slider-arrow:disabled { opacity: 0; pointer-events: none; }
+  .popular-slider-arrow.prev { left: 0.25rem; }
+  .popular-slider-arrow.next { right: 0.25rem; }
 
   .about-strip-inner { grid-template-columns: 1fr; gap: var(--sp-md); }
   .about-values   { grid-template-columns: 1fr 1fr; }
@@ -2327,8 +2367,8 @@ body.modal-open {
   /* ── Hero ── */
   .hero-slider      { height: 75vh; min-height: 420px; max-height: 600px; }
   .hero-scroll-hint { display: none; }
-  .slide            { align-items: flex-end; justify-content: center; }
-  .slide-content    { padding: 0 1.25rem 3.5rem; text-align: center; max-width: 100%; }
+  .slide            { align-items: center; justify-content: center; }
+  .slide-content    { padding: 0 1.25rem; text-align: center; max-width: 100%; }
   .slide-subtitle   { font-size: 0.68rem; letter-spacing: 0.15em; line-height: 1.6; margin-bottom: 0.75rem; }
   .slide-title      { font-size: clamp(1.35rem, 6.5vw, 1.85rem); line-height: 1.3; margin-bottom: 1.25rem; }
   .slide-content .btn { padding: 0.7rem 1.5rem; font-size: 0.72rem; }
@@ -2348,7 +2388,7 @@ body.modal-open {
 
   /* ── Brand strip ── */
   .brand-strip-inner  { gap: 0; }
-  .brand-feature      { padding: 0.75rem 0.5rem; }
+  .brand-feature      { padding: 0.75rem 0.5rem; flex: 0 0 25%; min-width: 5.5rem; }
   .brand-feature span { font-size: 0.67rem; }
 
   /* ── Categories ── */
@@ -2364,22 +2404,10 @@ body.modal-open {
   .about-strip-text p  { font-size: 0.92rem; line-height: 1.7; }
   .about-strip-image { aspect-ratio: 16 / 9; border-radius: var(--radius-lg); }
 
-  /* ── Popular products: horizontal scroll ── */
-  .popular-grid {
-    grid-template-columns: none;
-    display: flex;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    gap: 1rem;
-    padding-bottom: 0.5rem;
-  }
-  .popular-grid::-webkit-scrollbar { display: none; }
+  /* ── Popular products: narrower cards on small screens ── */
   .popular-grid .product-card {
     flex: 0 0 70%;
     max-width: 70%;
-    scroll-snap-align: start;
   }
 
   /* ── Products ── */
@@ -2463,7 +2491,7 @@ body.modal-open {
   .container          { padding: 0 0.75rem; }
   .categories-grid    { grid-template-columns: 1fr; }
   .products-grid      { grid-template-columns: 1fr; }
-  .brand-strip-inner  { grid-template-columns: 1fr 1fr; }
+  .brand-feature      { flex: 0 0 25%; min-width: 5rem; }
   .brand-feature span { font-size: 0.62rem; }
   .slide-title        { font-size: 1.35rem; }
   .slide-content      { max-width: 95%; }
