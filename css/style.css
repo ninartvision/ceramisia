@@ -1531,6 +1531,9 @@ p { color: var(--clr-text-mid); }
   width: 100%;
   text-align: center;
   text-decoration: none;
+  cursor: pointer;
+  border: none;
+  font-size: 0.85rem;
 }
 
 /* Cart item row */
