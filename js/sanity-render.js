@@ -16,6 +16,10 @@ import {
   getBlogPosts,
 } from './sanity.js';
 
+import { renderHeroSlider, renderAboutStrip, renderFooter } from './render-home.js';
+import { renderAboutPage } from './render-about.js';
+import { renderContactPage } from './render-contact.js';
+
 const LANG_KEY = 'ceramisia_lang';
 
 function getLang() {
@@ -310,7 +314,18 @@ document.addEventListener('DOMContentLoaded', function () {
   renderProductsGrid();
 
   // Homepage
+  renderHeroSlider();
   renderCategoriesGrid();
   renderFeaturedProducts();
+  renderAboutStrip();
   renderBlogCards();
+
+  // About page
+  renderAboutPage();
+
+  // Contact page
+  renderContactPage();
+
+  // Global (footer, logo, social links — runs on every page)
+  renderFooter();
 });

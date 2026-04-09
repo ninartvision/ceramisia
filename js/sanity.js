@@ -101,6 +101,11 @@ export async function getPage(slug) {
       _id, title, titleEn, "slug": slug.current,
       heroImage, heroHeading, heroHeadingEn,
       heroSubtext, heroSubtextEn,
+      heroSlides[] {
+        _key, image, subtitle, subtitleEn,
+        heading, headingEn,
+        buttonText, buttonTextEn, buttonLink
+      },
       sections[] {
         _key, heading, headingEn, text, textEn, image
       },
@@ -116,8 +121,10 @@ export async function getSiteSettings() {
     siteTitle, logo, logoDark, favicon,
     homepageTitle, homepageTitleEn,
     homepageDescription, homepageDescriptionEn,
-    heroImage, contactEmail, phoneNumber,
+    heroImage, contactEmail, phoneNumber, phoneNumber2,
     address, addressEn, mapEmbedUrl,
+    workingHours, workingHoursEn,
+    footerText, footerTextEn,
     socialLinks, seo
   }`);
 }

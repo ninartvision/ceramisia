@@ -126,6 +126,17 @@ export const PAGE_BY_SLUG = `
     heroHeadingEn,
     heroSubtext,
     heroSubtextEn,
+    heroSlides[] {
+      _key,
+      image,
+      subtitle,
+      subtitleEn,
+      heading,
+      headingEn,
+      buttonText,
+      buttonTextEn,
+      buttonLink
+    },
     sections[] {
       _key,
       heading,
@@ -149,6 +160,17 @@ export const HOMEPAGE = `
     heroHeadingEn,
     heroSubtext,
     heroSubtextEn,
+    heroSlides[] {
+      _key,
+      image,
+      subtitle,
+      subtitleEn,
+      heading,
+      headingEn,
+      buttonText,
+      buttonTextEn,
+      buttonLink
+    },
     sections[] {
       _key,
       heading,
@@ -178,9 +200,14 @@ export const SITE_SETTINGS = `
     heroImage,
     contactEmail,
     phoneNumber,
+    phoneNumber2,
     address,
     addressEn,
     mapEmbedUrl,
+    workingHours,
+    workingHoursEn,
+    footerText,
+    footerTextEn,
     socialLinks,
     seo
   }

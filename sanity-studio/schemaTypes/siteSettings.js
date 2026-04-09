@@ -86,7 +86,13 @@ export default {
     },
     {
       name: 'phoneNumber',
-      title: 'Phone Number',
+      title: 'Phone Number (Primary)',
+      type: 'string',
+      group: 'contact',
+    },
+    {
+      name: 'phoneNumber2',
+      title: 'Phone Number (Secondary)',
       type: 'string',
       group: 'contact',
     },
@@ -106,10 +112,34 @@ export default {
     },
     {
       name: 'mapEmbedUrl',
-      title: 'Google Maps Embed URL',
+      title: 'Google Maps Link URL',
       type: 'url',
       group: 'contact',
-      description: 'Paste the Google Maps embed src URL',
+      description: 'Link to Google Maps location',
+    },
+    {
+      name: 'workingHours',
+      title: 'Working Hours (GE)',
+      type: 'string',
+      group: 'contact',
+    },
+    {
+      name: 'workingHoursEn',
+      title: 'Working Hours (EN)',
+      type: 'string',
+      group: 'contact',
+    },
+    {
+      name: 'footerText',
+      title: 'Footer Tagline (GE)',
+      type: 'string',
+      group: 'general',
+    },
+    {
+      name: 'footerTextEn',
+      title: 'Footer Tagline (EN)',
+      type: 'string',
+      group: 'general',
     },
 
     // ── Social Links ───────────────────────────────────

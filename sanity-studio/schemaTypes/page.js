@@ -70,6 +70,33 @@ export default {
       group: 'content',
     },
     {
+      name: 'heroSlides',
+      title: 'Hero Slides (Homepage)',
+      type: 'array',
+      group: 'content',
+      description: 'For homepage hero slider only. Leave empty on other pages.',
+      of: [
+        {
+          type: 'object',
+          name: 'heroSlide',
+          title: 'Slide',
+          fields: [
+            { name: 'image', title: 'Background Image', type: 'image', options: { hotspot: true }, validation: (Rule) => Rule.required() },
+            { name: 'subtitle', title: 'Subtitle (GE)', type: 'string' },
+            { name: 'subtitleEn', title: 'Subtitle (EN)', type: 'string' },
+            { name: 'heading', title: 'Heading (GE)', type: 'string', validation: (Rule) => Rule.required() },
+            { name: 'headingEn', title: 'Heading (EN)', type: 'string' },
+            { name: 'buttonText', title: 'Button Text (GE)', type: 'string' },
+            { name: 'buttonTextEn', title: 'Button Text (EN)', type: 'string' },
+            { name: 'buttonLink', title: 'Button Link', type: 'string', initialValue: 'products.html' },
+          ],
+          preview: {
+            select: { title: 'heading', media: 'image' },
+          },
+        },
+      ],
+    },
+    {
       name: 'sections',
       title: 'Content Sections',
       type: 'array',
