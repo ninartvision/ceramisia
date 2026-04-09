@@ -151,7 +151,7 @@ async function renderFilterBar() {
 
 // ── Render Products Grid ─────────────────────────────
 async function renderProductsGrid(categorySlug) {
-  const grid = document.querySelector('.products-grid');
+  const grid = document.querySelector('#products') || document.querySelector('.products-grid');
   if (!grid) return;
 
   // Show loading state
