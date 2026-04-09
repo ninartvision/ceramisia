@@ -2492,3 +2492,42 @@ body.modal-open {
   .footer-bottom p    { font-size: 0.72rem; }
 }
 
+/* ═══════════════════════════════════════════════════════
+   DYNAMIC PAGE (page.html)
+   ═══════════════════════════════════════════════════════ */
+.page-hero {
+  position: relative;
+  padding: 6rem 1rem 4rem;
+  text-align: center;
+  background-color: var(--clr-bg, #FDFAF6);
+  background-size: cover;
+  background-position: center;
+}
+.page-hero .section-label { margin-bottom: 0.75rem; display: inline-block; }
+.page-hero h1 { font-family: var(--font-heading); font-size: clamp(1.8rem, 5vw, 3rem); color: var(--clr-red, #8C1C13); }
+.page-header { padding: 5rem 1rem 3rem; text-align: center; }
+.page-header h1 { font-family: var(--font-heading); font-size: clamp(1.8rem, 5vw, 3rem); color: var(--clr-red, #8C1C13); }
+
+.page-sections { padding-bottom: 3rem; }
+.page-section { padding: 2rem 0; }
+.page-section h2 { font-family: var(--font-heading); font-size: clamp(1.3rem, 3vw, 2rem); color: var(--clr-red, #8C1C13); margin-bottom: 1.25rem; }
+.page-section__body { max-width: 780px; line-height: 1.85; font-size: 1rem; color: #444; }
+.page-section__body p { margin-bottom: 1rem; }
+.page-section__body h1,
+.page-section__body h2,
+.page-section__body h3,
+.page-section__body h4 { font-family: var(--font-heading); color: var(--clr-red, #8C1C13); margin: 1.5rem 0 0.75rem; }
+.page-section__body blockquote { border-left: 3px solid var(--clr-red, #8C1C13); padding-left: 1.25rem; margin: 1.5rem 0; font-style: italic; color: #666; }
+.page-section__body ul,
+.page-section__body ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+.page-section__body li { margin-bottom: 0.4rem; }
+.page-section__body a { color: var(--clr-red, #8C1C13); text-decoration: underline; }
+.page-section__body code { background: #f0ece6; padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.9em; }
+
+.page-figure,
+.page-section__image { margin: 1.5rem 0; }
+.page-figure img,
+.page-section__image img { max-width: 100%; height: auto; border-radius: 8px; }
+
+.page-loading { color: #999; font-size: 0.95rem; }
+

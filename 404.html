@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ceramisia</title>
+  <script>
+    // ═══════════════════════════════════════════════════════
+    // GitHub Pages 404 → Dynamic Page Redirect
+    // ═══════════════════════════════════════════════════════
+    //
+    // HOW IT WORKS:
+    // 1. User visits ceramisia.com/privacy (or username.github.io/ceramisia/privacy)
+    // 2. No such file exists, so GitHub Pages serves this 404.html
+    // 3. This script extracts "privacy" from the URL
+    // 4. Redirects to page.html?slug=privacy
+    // 5. page.html fetches the page content from Sanity CMS
+    //
+    // SUPPORTS:
+    // - Custom domain:  ceramisia.com/privacy        → ceramisia.com/page.html?slug=privacy
+    // - GitHub subfolder: user.github.io/ceramisia/privacy → user.github.io/ceramisia/page.html?slug=privacy
+    //
+    (function () {
+      // ── Step 1: Get the full pathname ──
+      // Example: "/ceramisia/privacy" or "/privacy"
+      var path = window.location.pathname;
+
+      // ── Step 2: Remove trailing slash ──
+      // "/privacy/" → "/privacy"
+      if (path.length > 1 && path.charAt(path.length - 1) === '/') {
+        path = path.slice(0, -1);
+      }
+
+      // ── Step 3: Auto-detect the base path ──
+      // On custom domain (ceramisia.com):      base = ""
+      // On GitHub Pages (user.github.io/ceramisia): base = "/ceramisia"
+      //
+      // Detection: if the hostname contains "github.io", we're on
+      // GitHub Pages and the first path segment is the repo name.
+      var base = '';
+      if (window.location.hostname.indexOf('github.io') !== -1) {
+        // Extract repo name from first segment: "/ceramisia/privacy" → "ceramisia"
+        var segments = path.split('/').filter(Boolean); // remove empty strings
+        if (segments.length > 0) {
+          base = '/' + segments[0];          // "/ceramisia"
+          path = '/' + segments.slice(1).join('/'); // "/privacy"
+        }
+      }
+
+      // ── Step 4: Extract the slug ──
+      // "/privacy" → "privacy"
+      // "/terms"   → "terms"
+      var slug = path.charAt(0) === '/' ? path.slice(1) : path;
+
+      // ── Step 5: Skip known static files ──
+      // These pages have their own .html files, no redirect needed.
+      var staticPages = [
+        '', 'index.html', 'products.html', 'about.html',
+        'contact.html', 'page.html', '404.html'
+      ];
+
+      // Skip anything with a file extension (css, js, png, jpg, etc.)
+      // This prevents redirects for missing assets.
+      var hasExtension = slug.indexOf('.') !== -1;
+
+      // ── Step 6: Redirect or show 404 ──
+      if (slug && staticPages.indexOf(slug) === -1 && !hasExtension) {
+        // Build the redirect URL:  /ceramisia/page.html?slug=privacy
+        var target = base + '/page.html?slug=' + encodeURIComponent(slug);
+        window.location.replace(target);
+      }
+      // If we reach here, it's a genuinely missing file — the fallback HTML below is shown.
+    })();
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #FDFAF6;
+      color: #333;
+      text-align: center;
+      padding: 2rem;
+    }
+    h1 {
+      font-family: 'Cormorant Garamond', 'Noto Serif Georgian', serif;
+      color: #8C1C13;
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+    p { margin-bottom: 2rem; max-width: 400px; line-height: 1.6; }
+    a {
+      display: inline-block;
+      margin-top: 0.5rem;
+      color: #8C1C13;
+      text-decoration: none;
+      border-bottom: 1px solid currentColor;
+      padding-bottom: 2px;
+    }
+    a:hover { opacity: 0.7; }
+  </style>
+</head>
+<body>
+  <!-- Fallback content: only visible if JS redirect didn't fire -->
+  <!-- (e.g. a missing .css file, or JavaScript is disabled)    -->
+  <h1>404</h1>
+  <p>გვერდი ვერ მოიძებნა.<br>Page not found.</p>
+  <a href="index.html">მთავარზე დაბრუნება / Back to Home</a>
+  <noscript>
+    <p style="margin-top:1rem;font-size:0.85rem;color:#999">
+      JavaScript is required for dynamic pages.
+    </p>
+  </noscript>
+</body>
+</html>
