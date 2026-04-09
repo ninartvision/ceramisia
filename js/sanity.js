@@ -9,7 +9,7 @@
  * 4. Include this file in your HTML: <script src="js/sanity.js"></script>
  */
 
-const SANITY_PROJECT_ID = 'YOUR_PROJECT_ID';   // ← replace
+const SANITY_PROJECT_ID = 'x08ju18x';
 const SANITY_DATASET    = 'production';
 const SANITY_API_VER    = '2024-01-01';
 const CDN_BASE = `https://${SANITY_PROJECT_ID}.cdn.sanity.io`;

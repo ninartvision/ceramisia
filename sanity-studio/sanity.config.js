@@ -53,7 +53,7 @@ export default defineConfig({
   name: 'ceramisia',
   title: 'Ceramisia Studio',
 
-  projectId: 'YOUR_PROJECT_ID',  // ← replace with your Sanity project ID
+  projectId: 'x08ju18x',
   dataset: 'production',
 
   plugins: [

@@ -9,8 +9,8 @@
     "deploy-graphql": "sanity graphql deploy"
   },
   "dependencies": {
+    "@sanity/vision": "^3",
     "sanity": "^3",
-    "@sanity/vision": "^3"
-  },
-  "devDependencies": {}
+    "styled-components": "^6.3.12"
+  }
 }

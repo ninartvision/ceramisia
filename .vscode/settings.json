@@ -1,0 +1,12 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^npm install 2>&1$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^Push-Location \"N:\\\\site\\\\ceramisia\\\\sanity-studio\"; node -e \"import\\('\\./sanity\\.cli\\.js'\\)\\.then\\(m => console\\.log\\(JSON\\.stringify\\(m\\.default\\)\\)\\)\\.catch\\(e => console\\.error\\(e\\.message\\)\\)\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
