@@ -53,7 +53,7 @@ export default defineConfig({
   name: 'ceramisia',
   title: 'Ceramisia Studio',
 
-  projectId: 'x08ju18x',
+  projectId: 'uemjhi9v',
   dataset: 'production',
 
   plugins: [

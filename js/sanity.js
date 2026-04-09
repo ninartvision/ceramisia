@@ -1,23 +1,21 @@
 /**
- * Ceramisia – Sanity CMS Client
- * Drop-in fetch layer for your vanilla JS site.
+ * Ceramisia – Sanity CMS Client (ES Module)
+ * Fetch layer for your vanilla JS site.
  *
  * SETUP:
- * 1. Create a project at sanity.io/manage
- * 2. Replace PROJECT_ID and DATASET below
- * 3. Add your domain to CORS origins in the Sanity dashboard
- * 4. Include this file in your HTML: <script src="js/sanity.js"></script>
+ * 1. Add your domain to CORS origins at sanity.io/manage
+ * 2. Load via: <script type="module" src="js/sanity-render.js"></script>
+ *    (sanity-render.js imports this file automatically)
  */
 
-const SANITY_PROJECT_ID = 'x08ju18x';
+const SANITY_PROJECT_ID = 'uemjhi9v';
 const SANITY_DATASET    = 'production';
-const SANITY_API_VER    = '2024-01-01';
+const SANITY_API_VER    = '2025-01-01';
 const CDN_BASE = `https://${SANITY_PROJECT_ID}.cdn.sanity.io`;
 
 // ── Image URL builder (no extra dependencies) ─────────
-function sanityImageUrl(ref, width) {
+export function sanityImageUrl(ref, width) {
   if (!ref || !ref.asset || !ref.asset._ref) return '';
-  // ref.asset._ref looks like: image-abc123-1200x800-webp
   const parts = ref.asset._ref.replace('image-', '').split('-');
   const id    = parts[0];
   const dims  = parts[1];
@@ -28,7 +26,7 @@ function sanityImageUrl(ref, width) {
 }
 
 // ── GROQ query runner ─────────────────────────────────
-async function sanityFetch(query, params = {}) {
+export async function sanityFetch(query, params = {}) {
   const searchParams = new URLSearchParams({ query });
   for (const [key, val] of Object.entries(params)) {
     searchParams.set(`$${key}`, JSON.stringify(val));
@@ -43,14 +41,14 @@ async function sanityFetch(query, params = {}) {
 // ── Ready-made queries ────────────────────────────────
 
 /** Fetch all categories ordered by display order */
-async function getCategories() {
+export async function getCategories() {
   return sanityFetch(`*[_type == "category"] | order(order asc) {
     _id, title, titleEn, "slug": slug.current, description, descriptionEn, image
   }`);
 }
 
 /** Fetch products, optionally filtered by category slug */
-async function getProducts(categorySlug) {
+export async function getProducts(categorySlug) {
   const base = `
     _id, name, nameEn, "slug": slug.current, sku, mainImage,
     price, salePrice, badge, isFeatured, inStock,
@@ -71,7 +69,7 @@ async function getProducts(categorySlug) {
 }
 
 /** Fetch featured products for homepage */
-async function getFeaturedProducts() {
+export async function getFeaturedProducts() {
   return sanityFetch(`*[_type == "product" && isFeatured == true && inStock == true] | order(order asc) {
     _id, name, nameEn, "slug": slug.current, mainImage,
     price, salePrice, badge,
@@ -82,7 +80,7 @@ async function getFeaturedProducts() {
 }
 
 /** Fetch single product by slug (full detail) */
-async function getProduct(slug) {
+export async function getProduct(slug) {
   return sanityFetch(
     `*[_type == "product" && slug.current == $slug][0] {
       _id, name, nameEn, "slug": slug.current, sku,
@@ -97,7 +95,7 @@ async function getProduct(slug) {
 }
 
 /** Fetch page content by slug (home, about, contact) */
-async function getPage(slug) {
+export async function getPage(slug) {
   return sanityFetch(
     `*[_type == "page" && slug.current == $slug][0] {
       _id, title, titleEn, "slug": slug.current,
@@ -113,7 +111,7 @@ async function getPage(slug) {
 }
 
 /** Fetch global site settings */
-async function getSiteSettings() {
+export async function getSiteSettings() {
   return sanityFetch(`*[_type == "siteSettings"][0] {
     siteTitle, logo, logoDark, favicon,
     homepageTitle, homepageTitleEn,
@@ -125,7 +123,7 @@ async function getSiteSettings() {
 }
 
 /** Fetch navigation menus */
-async function getNavigation() {
+export async function getNavigation() {
   return sanityFetch(`*[_type == "navigation"][0] {
     mainMenu[] { _key, title, titleEn, link, openInNewTab },
     footerLinks[] { _key, title, titleEn, link, openInNewTab },
@@ -134,7 +132,7 @@ async function getNavigation() {
 }
 
 /** Fetch latest N blog posts (for homepage cards) */
-async function getBlogPosts(limit = 3) {
+export async function getBlogPosts(limit = 3) {
   return sanityFetch(
     `*[_type == "blogPost"] | order(publishedAt desc) [0...$limit] {
       _id, title, titleEn, "slug": slug.current,
@@ -145,8 +143,8 @@ async function getBlogPosts(limit = 3) {
 }
 
 /** Fetch a single blog post by slug */
-async function getBlogPost(slug) {
-  const posts = await sanityFetch(
+export async function getBlogPost(slug) {
+  return sanityFetch(
     `*[_type == "blogPost" && slug.current == $slug][0] {
       _id, title, titleEn, "slug": slug.current,
       publishedAt, image, excerpt, excerptEn,
@@ -154,10 +152,9 @@ async function getBlogPost(slug) {
     }`,
     { slug }
   );
-  return posts;
 }
 
-// ── Expose globally for vanilla JS usage ──────────────
+// ── Backward-compatible global for non-module scripts ─
 window.CeramisiaCMS = {
   sanityFetch,
   sanityImageUrl,
