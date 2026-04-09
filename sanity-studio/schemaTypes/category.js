@@ -1,5 +1,5 @@
 // sanity-studio/schemaTypes/category.js
-// Category schema for product/blog classification
+// Category schema for product classification
 
 export default {
   name: 'category',
@@ -24,6 +24,18 @@ export default {
       type: 'slug',
       options: { source: 'titleEn', maxLength: 60 },
       validation: (Rule) => Rule.required(),
+    },
+    {
+      name: 'description',
+      title: 'Description (GE)',
+      type: 'text',
+      rows: 3,
+    },
+    {
+      name: 'descriptionEn',
+      title: 'Description (EN)',
+      type: 'text',
+      rows: 3,
     },
     {
       name: 'image',

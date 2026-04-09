@@ -45,33 +45,92 @@ async function sanityFetch(query, params = {}) {
 /** Fetch all categories ordered by display order */
 async function getCategories() {
   return sanityFetch(`*[_type == "category"] | order(order asc) {
-    _id, title, titleEn, "slug": slug.current, image
+    _id, title, titleEn, "slug": slug.current, description, descriptionEn, image
   }`);
 }
 
 /** Fetch products, optionally filtered by category slug */
 async function getProducts(categorySlug) {
+  const base = `
+    _id, name, nameEn, "slug": slug.current, sku, mainImage,
+    price, salePrice, badge, isFeatured, inStock,
+    additionalPackaging, packagingPrice, variants,
+    "categoryTitle": category->title,
+    "categoryTitleEn": category->titleEn,
+    "categorySlug": category->slug.current
+  `;
   if (categorySlug && categorySlug !== 'all') {
     return sanityFetch(
-      `*[_type == "product" && category->slug.current == $cat && inStock == true] | order(order asc) {
-        _id, name, nameEn, "slug": slug.current, image,
-        price, originalPrice, badge,
-        "categoryTitle": category->title,
-        "categoryTitleEn": category->titleEn,
-        "categorySlug": category->slug.current
-      }`,
+      `*[_type == "product" && category->slug.current == $cat && inStock == true] | order(order asc) { ${base} }`,
       { cat: categorySlug }
     );
   }
   return sanityFetch(
-    `*[_type == "product" && inStock == true] | order(order asc) {
-      _id, name, nameEn, "slug": slug.current, image,
-      price, originalPrice, badge,
-      "categoryTitle": category->title,
-      "categoryTitleEn": category->titleEn,
-      "categorySlug": category->slug.current
-    }`
+    `*[_type == "product" && inStock == true] | order(order asc) { ${base} }`
   );
+}
+
+/** Fetch featured products for homepage */
+async function getFeaturedProducts() {
+  return sanityFetch(`*[_type == "product" && isFeatured == true && inStock == true] | order(order asc) {
+    _id, name, nameEn, "slug": slug.current, mainImage,
+    price, salePrice, badge,
+    "categoryTitle": category->title,
+    "categoryTitleEn": category->titleEn,
+    "categorySlug": category->slug.current
+  }`);
+}
+
+/** Fetch single product by slug (full detail) */
+async function getProduct(slug) {
+  return sanityFetch(
+    `*[_type == "product" && slug.current == $slug][0] {
+      _id, name, nameEn, "slug": slug.current, sku,
+      description, descriptionEn, mainImage, gallery,
+      price, salePrice, badge, inStock, isFeatured,
+      variants, additionalPackaging, packagingPrice,
+      category->{ _id, title, titleEn, "slug": slug.current },
+      seo
+    }`,
+    { slug }
+  );
+}
+
+/** Fetch page content by slug (home, about, contact) */
+async function getPage(slug) {
+  return sanityFetch(
+    `*[_type == "page" && slug.current == $slug][0] {
+      _id, title, titleEn, "slug": slug.current,
+      heroImage, heroHeading, heroHeadingEn,
+      heroSubtext, heroSubtextEn,
+      sections[] {
+        _key, heading, headingEn, text, textEn, image
+      },
+      seo
+    }`,
+    { slug }
+  );
+}
+
+/** Fetch global site settings */
+async function getSiteSettings() {
+  return sanityFetch(`*[_type == "siteSettings"][0] {
+    siteTitle, logo, logoDark, favicon,
+    homepageTitle, homepageTitleEn,
+    homepageDescription, homepageDescriptionEn,
+    heroImage, contactEmail, phoneNumber,
+    address, addressEn, mapEmbedUrl,
+    socialLinks, seo
+  }`);
+}
+
+/** Fetch navigation menus */
+async function getNavigation() {
+  return sanityFetch(`*[_type == "navigation"][0] {
+    mainMenu[] { _key, title, titleEn, link, openInNewTab },
+    footerLinks[] { _key, title, titleEn, link, openInNewTab },
+    footerText, footerTextEn
+  }`);
 }
 
 /** Fetch latest N blog posts (for homepage cards) */
@@ -104,6 +163,11 @@ window.CeramisiaCMS = {
   sanityImageUrl,
   getCategories,
   getProducts,
+  getFeaturedProducts,
+  getProduct,
   getBlogPosts,
   getBlogPost,
+  getPage,
+  getSiteSettings,
+  getNavigation,
 };
