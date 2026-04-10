@@ -36,6 +36,17 @@ function esc(str) {
   return el.innerHTML;
 }
 
+/** Build a row of N skeleton placeholder cards in a grid */
+function showSkeletons(grid, count) {
+  grid.innerHTML = '';
+  for (var i = 0; i < count; i++) {
+    var sk = document.createElement('div');
+    sk.className = 'skel-card';
+    sk.innerHTML = '<div class="skel-img"></div><div class="skel-line"></div><div class="skel-line short"></div>';
+    grid.appendChild(sk);
+  }
+}
+
 /** Build price HTML from product data */
 function buildPriceHtml(p) {
   if (p.salePrice) {
@@ -226,6 +237,9 @@ async function renderFeaturedProducts() {
   const grid = document.querySelector('.popular-grid');
   if (!grid) return;
 
+  // Show skeletons immediately (no flash of static content)
+  showSkeletons(grid, 4);
+
   try {
     // Get count from siteSettings (default 4)
     const settings = await getSiteSettings().catch(function () { return null; });
@@ -239,11 +253,17 @@ async function renderFeaturedProducts() {
     } else {
       products = products.slice(0, count);
     }
-    if (!products || !products.length) return; // keep static cards
 
-    const lang = getLang();
     grid.innerHTML = '';
 
+    if (!products || !products.length) {
+      // No products at all — hide the whole section cleanly
+      var section = grid.closest('.popular-products');
+      if (section) section.style.display = 'none';
+      return;
+    }
+
+    const lang = getLang();
     products.forEach(function (p) {
       grid.appendChild(createProductCard(p, lang));
     });
@@ -253,7 +273,10 @@ async function renderFeaturedProducts() {
     reinitPopularSlider();
 
   } catch (err) {
-    console.warn('Featured products fetch failed, keeping static HTML:', err);
+    // Fetch failed — hide section rather than showing broken skeletons
+    console.warn('Featured products fetch failed:', err);
+    var section = grid.closest('.popular-products');
+    if (section) section.style.display = 'none';
   }
 }
 
@@ -262,35 +285,42 @@ async function renderCategoriesGrid() {
   const grid = document.querySelector('.categories-grid');
   if (!grid) return;
 
+  // Show skeletons immediately (no flash of empty or stale content)
+  showSkeletons(grid, 6);
+
   try {
     let categories = await getCategories();
 
     // Fallback: if no Category documents exist, extract unique categories from products
     if (!categories || !categories.length) {
       const products = await getProducts('all');
-      if (!products || !products.length) return; // keep static HTML
-
-      const seen = new Set();
-      categories = [];
-      products.forEach(function (p) {
-        if (p.categorySlug && !seen.has(p.categorySlug)) {
-          seen.add(p.categorySlug);
-          // Use first product in this category as the cover image
-          categories.push({
-            title:    p.categoryTitle    || p.categorySlug || '',
-            titleEn:  p.categoryTitleEn  || p.categorySlug || '',
-            slug:     p.categorySlug,
-            image:    p.mainImage || null,
-          });
-        }
-      });
+      if (products && products.length) {
+        const seen = new Set();
+        categories = [];
+        products.forEach(function (p) {
+          if (p.categorySlug && !seen.has(p.categorySlug)) {
+            seen.add(p.categorySlug);
+            categories.push({
+              title:   p.categoryTitle    || p.categorySlug || '',
+              titleEn: p.categoryTitleEn  || p.categorySlug || '',
+              slug:    p.categorySlug,
+              image:   p.mainImage || null,
+            });
+          }
+        });
+      }
     }
 
-    if (!categories || !categories.length) return;
-
-    const lang = getLang();
     grid.innerHTML = '';
 
+    if (!categories || !categories.length) {
+      // No categories found at all — hide the section
+      var section = grid.closest('.categories-section');
+      if (section) section.style.display = 'none';
+      return;
+    }
+
+    const lang = getLang();
     categories.forEach(function (cat, i) {
       const title  = lang === 'ge' ? (cat.title || '') : (cat.titleEn || cat.title || '');
       const imgUrl = sanityImageUrl(cat.image, 600);
@@ -315,7 +345,9 @@ async function renderCategoriesGrid() {
     reinitScrollReveal();
 
   } catch (err) {
-    console.warn('Categories grid fetch failed, keeping static HTML:', err);
+    console.warn('Categories grid fetch failed:', err);
+    var section = grid.closest('.categories-section');
+    if (section) section.style.display = 'none';
   }
 }
 
