@@ -1,0 +1,26 @@
+{
+  "name": "ceramisia-cms",
+  "version": "1.0.0",
+  "description": "Sanity CMS integration for the Ceramisia website project.",
+  "main": "index.js",
+  "scripts": {
+    "start": "sanity start",
+    "build": "sanity build",
+    "deploy": "sanity deploy"
+  },
+  "dependencies": {
+    "@sanity/client": "^2.0.0",
+    "@sanity/image-url": "^1.0.0",
+    "sanity": "^2.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.0.0"
+  },
+  "keywords": [
+    "sanity",
+    "cms",
+    "website"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

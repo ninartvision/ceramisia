@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynamic Page</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <script src="assets/js/sanity-client.js" defer></script>
+  <script src="assets/js/page-loader.js" defer></script>
+</head>
+<body>
+  <div id="content"></div>
+  <script>
+    // Fetch and render the page content based on the slug
+    const slug = new URLSearchParams(window.location.search).get('slug');
+    if (slug) {
+      loadPageContent(slug);
+    } else {
+      document.getElementById('content').innerHTML = '<h1>Error: No slug provided</h1>';
+    }
+  </script>
+</body>
+</html>
