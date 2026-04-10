@@ -27,14 +27,13 @@
       btn.classList.toggle('active', btn.dataset.lang === lang);
     });
 
-    // Update meta description if present
+    // Update meta description — use data-ge/data-en if set by Sanity renderer,
+    // otherwise fall back to the content already in the tag (initial HTML value).
     var metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) {
-      if (lang === 'en') {
-        metaDesc.content = 'Ceramisia – Premium handmade ceramic studio from Georgia. Wine culture, ceramic tableware, decor & interior, lighting & atmosphere, symbolic collection.';
-      } else {
-        metaDesc.content = 'Ceramisia – ხელნაკეთი კერამიკის სტუდია, საქართველოდან. ღვინის კულტურა, კერამიკული ჭურჭელი, დეკორი & ინტერიერი და სიმბოლური კოლექცია.';
-      }
+    if (metaDesc && metaDesc.dataset.ge) {
+      metaDesc.content = lang === 'ge'
+        ? (metaDesc.dataset.ge || metaDesc.content)
+        : (metaDesc.dataset.en || metaDesc.dataset.ge || metaDesc.content);
     }
   }
 

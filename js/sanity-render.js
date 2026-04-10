@@ -10,6 +10,8 @@
 
 import {
   sanityImageUrl,
+  sanityImageSrcset,
+  sanityImageDimensions,
   getCategories,
   getCategoriesFromProducts,
   getProducts,
@@ -20,7 +22,7 @@ import {
   getBlogPosts,
 } from './sanity.js';
 
-import { renderHeroSlider, renderAboutStrip, renderFooter, renderNavigation } from './render-home.js';
+import { renderHeroSlider, renderAboutStrip, renderFooter, renderNavigation, updatePageSeo, injectBreadcrumbJsonLd } from './render-home.js';
 import { renderAboutPage } from './render-about.js';
 import { renderContactPage } from './render-contact.js';
 
@@ -155,10 +157,11 @@ function buildBadge(badge, lang) {
 }
 
 /** Create a product card DOM element */
-function createProductCard(p, lang, extraClass) {
+function createProductCard(p, lang, extraClass, isFirst) {
   const name     = lang === 'ge' ? (p.name || '') : (p.nameEn || p.name || '');
   const catLabel = lang === 'ge' ? (p.categoryTitle || '') : (p.categoryTitleEn || '');
   const imgUrl   = sanityImageUrl(p.mainImage, 600);
+  const imgSrcset = p.mainImage ? sanityImageSrcset(p.mainImage, [400, 600, 900]) : '';
   const badge    = buildBadge(p.badge, lang);
   const priceHtml = buildPriceHtml(p);
 
@@ -177,14 +180,20 @@ function createProductCard(p, lang, extraClass) {
   }
   card.dataset.gallery = galleryImages.join(',');
 
+  var imgTag = imgUrl
+    ? '<img src="' + esc(imgUrl) + '"' +
+        (imgSrcset ? ' srcset="' + esc(imgSrcset) + '" sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 33vw"' : '') +
+        ' alt="' + esc(name) + '"' +
+        (isFirst ? ' loading="eager" fetchpriority="high"' : ' loading="lazy"') +
+        ' decoding="async">'
+    : '<div style="aspect-ratio:1;background:var(--clr-bg-alt,#f5f0eb)"></div>';
+
   card.innerHTML =
     '<div class="product-img-wrap">' +
-      (imgUrl
-        ? '<img src="' + esc(imgUrl) + '" alt="' + esc(name) + '" loading="lazy">'
-        : '<div style="aspect-ratio:1;background:var(--clr-bg-alt,#f5f0eb)"></div>') +
+      imgTag +
       badge +
       '<div class="product-actions">' +
-        '<button class="btn-add-cart" data-ge="\u10D9\u10D0\u10DA\u10D0\u10D7\u10D0\u10E8\u10D8" data-en="Add to Cart">' +
+        '<button type="button" class="btn-add-cart" data-ge="\u10D9\u10D0\u10DA\u10D0\u10D7\u10D0\u10E8\u10D8" data-en="Add to Cart">' +
           (lang === 'ge' ? '\u10D9\u10D0\u10DA\u10D0\u10D7\u10D0\u10E8\u10D8' : 'Add to Cart') +
         '</button>' +
       '</div>' +
@@ -198,19 +207,72 @@ function createProductCard(p, lang, extraClass) {
   return card;
 }
 
+/**
+ * Inject (or replace) a JSON-LD ItemList script in <head> for the current
+ * products. Called after each successful renderProductsGrid() so the
+ * structured data always reflects the visible product set.
+ * Capped at 50 items to keep the payload reasonable.
+ */
+function injectProductsJsonLd(products, lang) {
+  var items = products.slice(0, 50).map(function (p, i) {
+    var name  = lang === 'ge' ? (p.name || '') : (p.nameEn || p.name || '');
+    var price = p.salePrice || p.price;
+    var imgUrl = sanityImageUrl(p.mainImage, 600);
+    var slug   = p.slug || '';
+    return {
+      '@type':    'ListItem',
+      'position': i + 1,
+      'item': {
+        '@type':  'Product',
+        'name':   name,
+        'image':  imgUrl || undefined,
+        'brand':  { '@type': 'Brand', 'name': 'Ceramisia' },
+        'url':    slug
+          ? 'https://ceramisia.com/products/?id=' + encodeURIComponent(slug)
+          : 'https://ceramisia.com/products/',
+        'offers': price ? {
+          '@type':        'Offer',
+          'price':        String(price),
+          'priceCurrency': 'GEL',
+          'availability': 'https://schema.org/InStock',
+          'seller':       { '@type': 'Organization', 'name': 'Ceramisia' },
+        } : undefined,
+      },
+    };
+  });
+
+  var ld = {
+    '@context':     'https://schema.org',
+    '@type':        'ItemList',
+    'name':         lang === 'ge' ? 'Ceramisia პროდუქტები' : 'Ceramisia Products',
+    'numberOfItems': items.length,
+    'itemListElement': items,
+  };
+
+  var script = document.getElementById('productsJsonLd');
+  if (!script) {
+    script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.id   = 'productsJsonLd';
+    document.head.appendChild(script);
+  }
+  script.textContent = JSON.stringify(ld);
+}
+
 // ── Build & bind filter bar buttons ─────────────────
 function buildFilterBar(bar, categoryList) {
   const lang = getLang();
 
   // Build the entire bar as one HTML string — single DOM write avoids
   // multiple reflows and prevents any intermediate state from being visible.
-  var html = '<button class="filter-btn active" data-filter="all"' +
-    ' data-ge="\u10E7\u10D5\u10D4\u10DA\u10D0" data-en="All">' +
+  var html = '<button type="button" class="filter-btn active" data-filter="all"' +
+    ' aria-pressed="true" data-ge="\u10E7\u10D5\u10D4\u10DA\u10D0" data-en="All">' +
     (lang === 'ge' ? '\u10E7\u10D5\u10D4\u10DA\u10D0' : 'All') + '</button>';
 
   categoryList.forEach(function (cat) {
     var label = lang === 'ge' ? (cat.title || '') : (cat.titleEn || cat.title || '');
-    html += '<button class="filter-btn"' +
+    html += '<button type="button" class="filter-btn"' +
+      ' aria-pressed="false"' +
       ' data-filter="'  + esc(cat.slug)                        + '"' +
       ' data-ge="'      + esc(cat.title   || '')               + '"' +
       ' data-en="'      + esc(cat.titleEn || cat.title || '') + '">' +
@@ -221,8 +283,9 @@ function buildFilterBar(bar, categoryList) {
 
   bar.querySelectorAll('.filter-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      bar.querySelectorAll('.filter-btn').forEach(function (b) { b.classList.remove('active'); });
+      bar.querySelectorAll('.filter-btn').forEach(function (b) { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
       btn.classList.add('active');
+      btn.setAttribute('aria-pressed', 'true');
       const slug = btn.dataset.filter;
       const url = new URL(window.location);
       if (slug === 'all') { url.searchParams.delete('cat'); }
@@ -299,9 +362,12 @@ async function renderProductsGrid(categorySlug) {
       return;
     }
 
-    products.forEach(function (p) {
-      grid.appendChild(createProductCard(p, lang));
+    products.forEach(function (p, i) {
+      grid.appendChild(createProductCard(p, lang, '', i === 0));
     });
+
+    // ── JSON-LD ItemList — inject / update for the current product set ──
+    injectProductsJsonLd(products, lang);
 
     // Re-init cart & modal for dynamically rendered cards
     if (typeof window.initCart === 'function') window.initCart();
@@ -430,8 +496,9 @@ async function renderCategoriesGrid() {
     grid.innerHTML = '';
 
     categories.forEach(function (cat, i) {
-      const title  = lang === 'ge' ? (cat.title || '') : (cat.titleEn || cat.title || '');
-      const imgUrl = sanityImageUrl(cat.image, 600);
+      const title   = lang === 'ge' ? (cat.title || '') : (cat.titleEn || cat.title || '');
+      const imgUrl  = sanityImageUrl(cat.image, 600);
+      const imgSrcset = cat.image ? sanityImageSrcset(cat.image, [360, 600, 900]) : '';
 
       const link = document.createElement('a');
       link.href = '/products/?cat=' + encodeURIComponent(cat.slug);
@@ -441,7 +508,9 @@ async function renderCategoriesGrid() {
       link.innerHTML =
         '<div class="category-img-wrap">' +
           (imgUrl
-            ? '<img src="' + esc(imgUrl) + '" alt="' + esc(title) + '" loading="lazy">'
+            ? '<img src="' + esc(imgUrl) + '"' +
+                (imgSrcset ? ' srcset="' + esc(imgSrcset) + '" sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 33vw"' : '') +
+                ' alt="' + esc(title) + '" loading="lazy" decoding="async">'
             : '<div style="aspect-ratio:1;background:var(--clr-bg-alt,#f5f0eb)"></div>') +
         '</div>' +
         '<div class="category-info">' +
@@ -473,9 +542,10 @@ async function renderBlogCards() {
     grid.innerHTML = '';
 
     posts.forEach(function (post) {
-      const title   = lang === 'ge' ? post.title : (post.titleEn || post.title);
-      const excerpt = lang === 'ge' ? post.excerpt : (post.excerptEn || post.excerpt);
-      const imgUrl  = sanityImageUrl(post.image, 600);
+      const title    = lang === 'ge' ? post.title : (post.titleEn || post.title);
+      const excerpt  = lang === 'ge' ? post.excerpt : (post.excerptEn || post.excerpt);
+      const imgUrl   = sanityImageUrl(post.image, 600);
+      const imgSrcset = post.image ? sanityImageSrcset(post.image, [360, 600, 900]) : '';
       const date    = new Date(post.publishedAt);
       const dateStr = lang === 'ge'
         ? date.getDate() + ' ' + getGeorgianMonth(date.getMonth()) + ', ' + date.getFullYear()
@@ -485,7 +555,11 @@ async function renderBlogCards() {
       card.className = 'blog-card revealed';
       card.innerHTML =
         '<a href="/blog/#' + esc(post.slug) + '" class="blog-card-img-link">' +
-          (imgUrl ? '<img src="' + esc(imgUrl) + '" alt="' + esc(title) + '" loading="lazy">' : '') +
+          (imgUrl
+            ? '<img src="' + esc(imgUrl) + '"' +
+                (imgSrcset ? ' srcset="' + esc(imgSrcset) + '" sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 33vw"' : '') +
+                ' alt="' + esc(title) + '" loading="lazy" decoding="async">'
+            : '') +
         '</a>' +
         '<div class="blog-card-body">' +
           '<span class="blog-date">' + esc(dateStr) + '</span>' +
@@ -530,8 +604,9 @@ function buildSectionCategories(section, categories, lang) {
   var grid = document.createElement('div');
   grid.className = 'categories-grid';
   categories.forEach(function (cat, i) {
-    var title  = lang === 'ge' ? (cat.title || '') : (cat.titleEn || cat.title || '');
-    var imgUrl = sanityImageUrl(cat.image, 600);
+    var title     = lang === 'ge' ? (cat.title || '') : (cat.titleEn || cat.title || '');
+    var imgUrl    = sanityImageUrl(cat.image, 600);
+    var imgSrcset = cat.image ? sanityImageSrcset(cat.image, [360, 600, 900]) : '';
     var link = document.createElement('a');
     link.href = '/products/?cat=' + encodeURIComponent(cat.slug);
     link.className = 'category-card';
@@ -540,7 +615,9 @@ function buildSectionCategories(section, categories, lang) {
     link.innerHTML =
       '<div class="category-img-wrap">' +
         (imgUrl
-          ? '<img src="' + esc(imgUrl) + '" alt="' + esc(title) + '" loading="lazy">'
+          ? '<img src="' + esc(imgUrl) + '"' +
+              (imgSrcset ? ' srcset="' + esc(imgSrcset) + '" sizes="(max-width:600px) 100vw, (max-width:900px) 50vw, 33vw"' : '') +
+              ' alt="' + esc(title) + '" loading="lazy" decoding="async">'
           : '<div style="aspect-ratio:1;background:var(--clr-bg-alt,#f5f0eb)"></div>') +
       '</div>' +
       '<div class="category-info">' +
@@ -874,14 +951,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Products page only
   if (isProducts) {
-    // Set page banner from Sanity "products" page document if a heroImage is defined
+    // Set page banner + per-page SEO from Sanity "products" page document
     renders.push(
-      getPage('products').then(function (page) {
+      Promise.all([getPage('products'), getSiteSettings().catch(function () { return null; })]).then(function (res) {
+        var page     = res[0];
+        var settings = res[1];
+        var lang     = getLang();
         if (page && page.heroImage) {
           var imgUrl = sanityImageUrl(page.heroImage, 1920);
           var banner = document.querySelector('.page-banner');
           if (banner && imgUrl) banner.style.backgroundImage = "url('" + imgUrl + "')";
         }
+        updatePageSeo(page, settings, lang);
+        injectBreadcrumbJsonLd([
+          { name: lang === 'ge' ? 'მთავარი' : 'Home', url: 'https://ceramisia.com/' },
+          { name: lang === 'ge' ? 'პროდუქტები' : 'Products', url: 'https://ceramisia.com/products/' },
+        ]);
       }).catch(function () {})
     );
     var urlCat = new URLSearchParams(window.location.search).get('cat') || 'all';

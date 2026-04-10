@@ -11,12 +11,20 @@
 const SANITY_PROJECT_ID = 'uemjhi9v';
 const SANITY_DATASET    = 'production';
 const SANITY_API_VER    = '2025-01-01';
-// Use api.sanity.io (not cdn) so new content appears immediately without cache delay
-const CDN_BASE   = `https://${SANITY_PROJECT_ID}.api.sanity.io`;
+// Use the Sanity CDN for GROQ queries — globally distributed, fast TTFB.
+// Content is typically fresh within 60 s, which is fine for a ceramics shop.
+// The JS-level _cache prevents duplicate in-flight requests within a session.
+const CDN_BASE   = `https://${SANITY_PROJECT_ID}.apicdn.sanity.io`;
 // Images must always use cdn.sanity.io regardless
 const IMAGE_BASE = `https://cdn.sanity.io`;
 
 // ── Image URL builder (no extra dependencies) ─────────
+/**
+ * Build a Sanity CDN image URL with responsive transforms.
+ * - auto=format: serves WebP/AVIF to browsers that support it
+ * - q=80: 80% quality — imperceptible difference, ~35% smaller files
+ * - fit=max: never upscales, preserves aspect ratio
+ */
 export function sanityImageUrl(ref, width) {
   if (!ref || !ref.asset || !ref.asset._ref) return '';
   const parts = ref.asset._ref.replace('image-', '').split('-');
@@ -24,8 +32,32 @@ export function sanityImageUrl(ref, width) {
   const dims  = parts[parts.length - 2];
   const id    = parts.slice(0, parts.length - 2).join('-');
   let url = `${IMAGE_BASE}/images/${SANITY_PROJECT_ID}/${SANITY_DATASET}/${id}-${dims}.${ext}`;
-  if (width) url += `?w=${width}&fit=max&auto=format`;
-  return url;
+  const params = width ? `w=${width}&fit=max&auto=format&q=80` : 'auto=format&q=80';
+  return url + '?' + params;
+}
+
+/**
+ * Parse the original image dimensions from a Sanity asset ref.
+ * Returns { width, height } or null if unavailable.
+ * Used to set explicit width/height on <img> to prevent CLS.
+ */
+export function sanityImageDimensions(ref) {
+  if (!ref || !ref.asset || !ref.asset._ref) return null;
+  const parts = ref.asset._ref.replace('image-', '').split('-');
+  const dims  = parts[parts.length - 2]; // e.g. "1920x1080"
+  const [w, h] = dims.split('x').map(Number);
+  if (!w || !h) return null;
+  return { width: w, height: h };
+}
+
+/**
+ * Build a srcset string for responsive images.
+ * @param {object} ref     Sanity image reference
+ * @param {number[]} widths Array of pixel widths, e.g. [400, 800, 1200]
+ * @returns {string}        srcset value ready for <img srcset="...">
+ */
+export function sanityImageSrcset(ref, widths) {
+  return widths.map(function (w) { return sanityImageUrl(ref, w) + ' ' + w + 'w'; }).join(', ');
 }
 
 // ── GROQ query runner ─────────────────────────────────
@@ -35,8 +67,7 @@ export async function sanityFetch(query, params = {}) {
     searchParams.set(`$${key}`, JSON.stringify(val));
   }
   const url = `${CDN_BASE}/v${SANITY_API_VER}/data/query/${SANITY_DATASET}?${searchParams}`;
-  // no-store prevents browser from serving stale cached responses
-  const res = await fetch(url, { cache: 'no-store' });
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`Sanity fetch failed: ${res.status}`);
   const json = await res.json();
   return json.result;

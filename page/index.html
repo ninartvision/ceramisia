@@ -7,6 +7,10 @@
   <meta name="description" content="Ceramisia — ხელნაკეთი კერამიკა.">
   <meta name="author" content="Ceramisia">
   <link rel="canonical" href="https://ceramisia.com/page/">
+  <!-- hreflang — both languages on same URL (JS-driven language switch) -->
+  <link rel="alternate" hreflang="ka" href="https://ceramisia.com/page/">
+  <link rel="alternate" hreflang="en" href="https://ceramisia.com/page/">
+  <link rel="alternate" hreflang="x-default" href="https://ceramisia.com/page/">
   <!-- Open Graph -->
   <meta property="og:title" content="Ceramisia">
   <meta property="og:description" content="Ceramisia — ხელნაკეთი კერამიკა.">
@@ -27,10 +31,15 @@
   <!-- Favicon — href updated by renderFooter() from Sanity siteSettings.favicon -->
   <link rel="icon" href="" id="faviconLink">
   <link rel="apple-touch-icon" href="">
-  <!-- Fonts -->
+  <!-- Preconnect to Sanity CDN — eliminates DNS+TLS handshake before first image/query -->
+  <link rel="preconnect" href="https://cdn.sanity.io" crossorigin>
+  <link rel="preconnect" href="https://uemjhi9v.apicdn.sanity.io" crossorigin>
+  <link rel="dns-prefetch" href="https://cdn.sanity.io">
+  <!-- Fonts: preload CSS to avoid render-blocking -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Noto+Serif+Georgian:wght@300;400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Noto+Serif+Georgian:wght@300;400;500;600&family=Inter:wght@300;400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Noto+Serif+Georgian:wght@300;400;500;600&family=Inter:wght@300;400;500;600&display=swap"></noscript>
   <!-- Styles -->
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/fab-social.css">

@@ -2651,3 +2651,38 @@ body.cms-loading > *:not(#cmsLoader) {
 @keyframes cmsLoaderSpin {
   to { transform: rotate(360deg); }
 }
+
+/* ══════════════════════════════════════════════════
+   PERFORMANCE — rendering hints
+   ══════════════════════════════════════════════════ */
+
+/* Hint browser to decode images off the main thread.
+   Applied globally since all images in dynamic sections
+   already have decoding="async" in the JS renderers.  */
+img { decoding: async; }
+
+/* Reserve space for all images regardless of src —
+   prevents CLS while Sanity images are in-flight.
+   Each container already has aspect-ratio set; this
+   ensures the browser respects it before the img loads. */
+.product-img-wrap img,
+.category-img-wrap img,
+.team-card-img img,
+.about-strip-image img,
+.about-hero-image img,
+.blog-card-img-link img {
+  width: 100%;
+  height: 100%;
+}
+
+/* content-visibility: auto — browser skips layout/paint for
+   sections below the fold until they're near the viewport.
+   Gives measurable LCP and TTI improvements on long pages.
+   contain-intrinsic-size prevents layout shift when the
+   section is first scrolled into view.                   */
+@supports (content-visibility: auto) {
+  .section:is(.popular-products, .categories-section, .blog-section, .about-strip) {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 520px;
+  }
+}

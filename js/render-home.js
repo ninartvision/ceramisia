@@ -77,6 +77,19 @@ export async function renderHeroSlider(slidesOverride) {
     // ── Build DOM ────────────────────────────────────
     var lang = getLang();
 
+    // LCP preload: inject <link rel="preload" as="image"> for the first slide.
+    // The hero uses CSS background-image (not <img>), so this is the only way
+    // to tell the browser to fetch it early without waiting for JS to run.
+    var firstImgUrl = sanityImageUrl(slides[0].image, 1920);
+    if (firstImgUrl) {
+      var preloadLink = document.createElement('link');
+      preloadLink.rel  = 'preload';
+      preloadLink.as   = 'image';
+      preloadLink.href = firstImgUrl;
+      preloadLink.setAttribute('fetchpriority', 'high');
+      document.head.appendChild(preloadLink);
+    }
+
     container.innerHTML = '';
     if (dotsWrap) dotsWrap.innerHTML = '';
 
@@ -425,27 +438,15 @@ export async function renderFooter() {
       }
     }
 
-    // ── Default meta description from site settings ─────────
-    if (settings.homepageDescription || settings.homepageDescriptionEn) {
-      var metaDescEl = document.querySelector('meta[name="description"]');
-      if (metaDescEl) {
-        var desc = lang === 'ge'
-          ? (settings.homepageDescription || '')
-          : (settings.homepageDescriptionEn || settings.homepageDescription || '');
-        if (desc) metaDescEl.content = desc;
-      }
-    }
+    // ── Page SEO: title, meta description, OG, Twitter ────
+    // updatePageSeo() handles homepage + any page without its own renderer.
+    // Pass null for 'page' here — updatePageSeo falls back to siteSettings.
+    updatePageSeo(null, settings, lang);
 
-    // OG image from site-level SEO
-    if (settings.seo && settings.seo.openGraphImage) {
-      var ogUrl = sanityImageUrl(settings.seo.openGraphImage, 1200);
-      if (ogUrl) {
-        var ogMeta = document.querySelector('meta[property="og:image"]');
-        if (ogMeta) ogMeta.setAttribute('content', ogUrl);
-        var twMeta = document.querySelector('meta[name="twitter:image"]');
-        if (twMeta) twMeta.setAttribute('content', ogUrl);
-      }
-    }
+    // OG image from site-level SEO (also handled inside updatePageSeo,
+    // but kept here for the favicon + JSON-LD logo that follow)
+    var seoOgImage = (settings.seo && settings.seo.openGraphImage)
+      ? sanityImageUrl(settings.seo.openGraphImage, 1200) : '';
 
     // Favicon from Sanity siteSettings
     if (settings.favicon) {
@@ -458,18 +459,37 @@ export async function renderFooter() {
       }
     }
 
-    // Logo URL from Sanity — update JSON-LD logo field if present
-    if (settings.logo) {
-      var logoJsonUrl = sanityImageUrl(settings.logo, 400);
-      if (logoJsonUrl) {
-        var ldScript = document.querySelector('script[type="application/ld+json"]');
-        if (ldScript) {
-          try {
-            var ld = JSON.parse(ldScript.textContent);
-            if (ld.logo !== undefined) ld.logo = logoJsonUrl;
-            ldScript.textContent = JSON.stringify(ld);
-          } catch (_) {}
-        }
+    // ── JSON-LD: update all fields from Sanity settings ─────────────────
+    {
+      var ldScript = document.querySelector('script[type="application/ld+json"]');
+      if (ldScript) {
+        try {
+          var ld = JSON.parse(ldScript.textContent);
+          // Logo
+          if (settings.logo) {
+            var logoJsonUrl = sanityImageUrl(settings.logo, 400);
+            if (logoJsonUrl && ld.logo !== undefined) ld.logo = logoJsonUrl;
+          }
+          // Organization name
+          if (settings.siteTitle && ld.name !== undefined) ld.name = settings.siteTitle;
+          // sameAs — build from social links
+          if (settings.socialLinks && ld.sameAs !== undefined) {
+            var sl = settings.socialLinks;
+            var sameAs = [sl.facebook, sl.instagram, sl.youtube, sl.tiktok].filter(Boolean);
+            if (sameAs.length) ld.sameAs = sameAs;
+          }
+          // contactPoint.telephone / .email (Organization schema)
+          if (ld.contactPoint) {
+            if (settings.phoneNumber)  ld.contactPoint.telephone = settings.phoneNumber;
+            if (settings.contactEmail) ld.contactPoint.email     = settings.contactEmail;
+          }
+          // telephone / email top-level (LocalBusiness schema)
+          if (ld.telephone !== undefined && settings.phoneNumber)  ld.telephone = settings.phoneNumber;
+          if (ld.email     !== undefined && settings.contactEmail) ld.email     = settings.contactEmail;
+          // address.streetAddress (LocalBusiness schema)
+          if (ld.address && settings.address) ld.address.streetAddress = settings.address;
+          ldScript.textContent = JSON.stringify(ld);
+        } catch (_) {}
       }
     }
 
@@ -487,4 +507,121 @@ function blocksToText(blocks) {
       return (b.children || []).map(function (c) { return c.text || ''; }).join('');
     })
     .join('\n\n');
+}
+
+// ── Per-page SEO updater ─────────────────────────────
+/**
+ * Update <title>, meta description, and Open Graph / Twitter tags from
+ * Sanity page or site-settings data. Safe to call from any page renderer.
+ *
+ * Priority for each field (first truthy value wins):
+ *   page.seo.* → page.title / page.heroHeading → siteSettings.*
+ *
+ * @param {object|null} page     - Sanity page document (may be null)
+ * @param {object|null} settings - Sanity siteSettings document (may be null)
+ * @param {string}      lang     - 'ge' | 'en'
+ */
+export function updatePageSeo(page, settings, lang) {
+  var siteTitle = (settings && settings.siteTitle) ? settings.siteTitle : 'Ceramisia';
+
+  // ── Resolve title ──────────────────────────────────
+  var pageTitle = '';
+  if (page) {
+    if (page.seo && page.seo.title) {
+      pageTitle = page.seo.title;
+    } else {
+      var ge = page.heroHeading || page.title || '';
+      var en = page.heroHeadingEn || page.titleEn || ge;
+      pageTitle = lang === 'ge' ? ge : en;
+    }
+  }
+  var fullTitle = pageTitle ? (pageTitle + ' – ' + siteTitle) : siteTitle;
+  document.title = fullTitle;
+
+  // ── Resolve description ────────────────────────────
+  var desc = '';
+  if (page && page.seo && page.seo.description) {
+    desc = page.seo.description;
+  } else if (settings) {
+    desc = lang === 'ge'
+      ? (settings.homepageDescription || '')
+      : (settings.homepageDescriptionEn || settings.homepageDescription || '');
+  }
+
+  if (desc) {
+    var metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      // Persist ge/en so applyLanguage() can toggle without hardcoded strings
+      if (!metaDesc.dataset.ge && settings) {
+        metaDesc.dataset.ge = settings.homepageDescription || desc;
+        metaDesc.dataset.en = settings.homepageDescriptionEn || desc;
+      }
+      metaDesc.content = desc;
+    }
+  }
+
+  // ── Resolve OG image URL ───────────────────────────
+  var ogImgUrl = '';
+  if (page && page.seo && page.seo.openGraphImage) {
+    ogImgUrl = sanityImageUrl(page.seo.openGraphImage, 1200);
+  } else if (settings && settings.seo && settings.seo.openGraphImage) {
+    ogImgUrl = sanityImageUrl(settings.seo.openGraphImage, 1200);
+  }
+
+  // ── Open Graph ─────────────────────────────────────
+  var og = {
+    'og:title':       fullTitle,
+    'og:description': desc,
+  };
+  if (ogImgUrl) {
+    og['og:image']        = ogImgUrl;
+    og['og:image:width']  = '1200';
+    og['og:image:height'] = '630';
+    og['og:image:type']   = 'image/webp';
+  }
+  Object.keys(og).forEach(function (prop) {
+    if (!og[prop]) return;
+    var el = document.querySelector('meta[property="' + prop + '"]');
+    if (el) el.setAttribute('content', og[prop]);
+  });
+
+  // ── Twitter Card ───────────────────────────────────
+  var tw = {
+    'twitter:title':       fullTitle,
+    'twitter:description': desc,
+  };
+  if (ogImgUrl) tw['twitter:image'] = ogImgUrl;
+  Object.keys(tw).forEach(function (name) {
+    if (!tw[name]) return;
+    var el = document.querySelector('meta[name="' + name + '"]');
+    if (el) el.setAttribute('content', tw[name]);
+  });
+}
+
+/**
+ * Inject (or replace) a BreadcrumbList JSON-LD `<script>` in `<head>`.
+ * Call from any page renderer to add structured breadcrumb data.
+ *
+ * @param {Array<{name: string, url: string}>} crumbs
+ *   Ordered list of breadcrumb items, starting with home.
+ *   Example: [{ name: 'მთავარი', url: 'https://ceramisia.com/' },
+ *             { name: 'პროდუქტები', url: 'https://ceramisia.com/products/' }]
+ */
+export function injectBreadcrumbJsonLd(crumbs) {
+  if (!crumbs || !crumbs.length) return;
+  var ld = {
+    '@context': 'https://schema.org',
+    '@type':    'BreadcrumbList',
+    'itemListElement': crumbs.map(function (c, i) {
+      return { '@type': 'ListItem', 'position': i + 1, 'name': c.name, 'item': c.url };
+    }),
+  };
+  var sc = document.getElementById('breadcrumbJsonLd');
+  if (!sc) {
+    sc = document.createElement('script');
+    sc.type = 'application/ld+json';
+    sc.id   = 'breadcrumbJsonLd';
+    document.head.appendChild(sc);
+  }
+  sc.textContent = JSON.stringify(ld);
 }

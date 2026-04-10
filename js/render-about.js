@@ -4,7 +4,8 @@
  * Static HTML remains as fallback.
  */
 
-import { sanityImageUrl, getPage } from './sanity.js';
+import { sanityImageUrl, getPage, getSiteSettings } from './sanity.js';
+import { updatePageSeo, injectBreadcrumbJsonLd } from './render-home.js';
 
 const LANG_KEY = 'ceramisia_lang';
 function getLang() { return localStorage.getItem(LANG_KEY) || 'ge'; }
@@ -15,10 +16,17 @@ export async function renderAboutPage() {
   if (!document.querySelector('.about-hero')) return;
 
   try {
-    var page = await getPage('about');
+    var [page, settings] = await Promise.all([getPage('about'), getSiteSettings().catch(function () { return null; })]);
     if (!page) return;
 
     var lang = getLang();
+
+    // ── Per-page SEO ─────────────────────────────────
+    updatePageSeo(page, settings, lang);
+    injectBreadcrumbJsonLd([
+      { name: lang === 'ge' ? 'მთავარი' : 'Home', url: 'https://ceramisia.com/' },
+      { name: lang === 'ge' ? 'ჩვენ შესახებ' : 'About', url: 'https://ceramisia.com/about/' },
+    ]);
 
     // ── Hero section ─────────────────────────────
     var heading = lang === 'ge' ? (page.heroHeading || '') : (page.heroHeadingEn || page.heroHeading || '');
