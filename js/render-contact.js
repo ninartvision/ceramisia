@@ -6,6 +6,7 @@
 
 import { sanityImageUrl, getPage, getSiteSettings } from './sanity.js';
 import { updatePageSeo, injectBreadcrumbJsonLd } from './render-home.js';
+import { t } from './ui.js';
 
 const LANG_KEY = 'ceramisia_lang';
 function getLang() { return localStorage.getItem(LANG_KEY) || 'ge'; }
@@ -25,8 +26,8 @@ export async function renderContactPage() {
     // ── Per-page SEO ─────────────────────────────────
     updatePageSeo(page, settings, lang);
     injectBreadcrumbJsonLd([
-      { name: lang === 'ge' ? 'მთავარი' : 'Home', url: 'https://ceramisia.com/' },
-      { name: lang === 'ge' ? 'კონტაქტი' : 'Contact', url: 'https://ceramisia.com/contact/' },
+      { name: t('pageHome'), url: 'https://ceramisia.com/' },
+      { name: t('pageContact'), url: 'https://ceramisia.com/contact/' },
     ]);
 
     // ── Page header ──────────────────────────────

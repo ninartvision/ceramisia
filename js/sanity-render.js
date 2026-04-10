@@ -25,6 +25,7 @@ import {
 import { renderHeroSlider, renderAboutStrip, renderFooter, renderNavigation, updatePageSeo, injectBreadcrumbJsonLd } from './render-home.js';
 import { renderAboutPage } from './render-about.js';
 import { renderContactPage } from './render-contact.js';
+import { t, tge, ten, loadStrings } from './ui.js';
 
 const LANG_KEY = 'ceramisia_lang';
 
@@ -140,18 +141,18 @@ function buildPriceHtml(p) {
 }
 
 /** Build badge HTML */
-function buildBadge(badge, lang) {
+function buildBadge(badge) {
   if (badge === 'new') {
-    return '<span class="product-badge new" data-ge="\u10D0\u10EE\u10D0\u10DA\u10D8" data-en="New">' +
-      (lang === 'ge' ? '\u10D0\u10EE\u10D0\u10DA\u10D8' : 'New') + '</span>';
+    return '<span class="product-badge new" data-ge="' + tge('badgeNew') + '" data-en="' + ten('badgeNew') + '">' +
+      t('badgeNew') + '</span>';
   }
   if (badge === 'sale') {
-    return '<span class="product-badge sale" data-ge="\u10E4\u10D0\u10E1\u10D3\u10D0\u10D9\u10DA\u10D4\u10D1\u10D0" data-en="Sale">' +
-      (lang === 'ge' ? '\u10E4\u10D0\u10E1\u10D3\u10D0\u10D9\u10DA\u10D4\u10D1\u10D0' : 'Sale') + '</span>';
+    return '<span class="product-badge sale" data-ge="' + tge('badgeSale') + '" data-en="' + ten('badgeSale') + '">' +
+      t('badgeSale') + '</span>';
   }
   if (badge === 'bestseller') {
-    return '<span class="product-badge bestseller" data-ge="ბესტსელერი" data-en="Bestseller">' +
-      (lang === 'ge' ? 'ბესტსელერი' : 'Bestseller') + '</span>';
+    return '<span class="product-badge bestseller" data-ge="' + tge('badgeBestseller') + '" data-en="' + ten('badgeBestseller') + '">' +
+      t('badgeBestseller') + '</span>';
   }
   return '';
 }
@@ -162,7 +163,7 @@ function createProductCard(p, lang, extraClass, isFirst) {
   const catLabel = lang === 'ge' ? (p.categoryTitle || '') : (p.categoryTitleEn || '');
   const imgUrl   = sanityImageUrl(p.mainImage, 600);
   const imgSrcset = p.mainImage ? sanityImageSrcset(p.mainImage, [400, 600, 900]) : '';
-  const badge    = buildBadge(p.badge, lang);
+  const badge    = buildBadge(p.badge);
   const priceHtml = buildPriceHtml(p);
 
   const card = document.createElement('div');
@@ -193,8 +194,8 @@ function createProductCard(p, lang, extraClass, isFirst) {
       imgTag +
       badge +
       '<div class="product-actions">' +
-        '<button type="button" class="btn-add-cart" data-ge="\u10D9\u10D0\u10DA\u10D0\u10D7\u10D0\u10E8\u10D8" data-en="Add to Cart">' +
-          (lang === 'ge' ? '\u10D9\u10D0\u10DA\u10D0\u10D7\u10D0\u10E8\u10D8' : 'Add to Cart') +
+        '<button type="button" class="btn-add-cart" data-ge="' + tge('addToCart') + '" data-en="' + ten('addToCart') + '">' +
+          t('addToCart') +
         '</button>' +
       '</div>' +
     '</div>' +
@@ -266,8 +267,8 @@ function buildFilterBar(bar, categoryList) {
   // Build the entire bar as one HTML string — single DOM write avoids
   // multiple reflows and prevents any intermediate state from being visible.
   var html = '<button type="button" class="filter-btn active" data-filter="all"' +
-    ' aria-pressed="true" data-ge="\u10E7\u10D5\u10D4\u10DA\u10D0" data-en="All">' +
-    (lang === 'ge' ? '\u10E7\u10D5\u10D4\u10DA\u10D0' : 'All') + '</button>';
+    ' aria-pressed="true" data-ge="' + tge('filterAll') + '" data-en="' + ten('filterAll') + '">' +
+    t('filterAll') + '</button>';
 
   categoryList.forEach(function (cat) {
     var label = lang === 'ge' ? (cat.title || '') : (cat.titleEn || cat.title || '');
@@ -339,8 +340,8 @@ async function renderProductsGrid(categorySlug) {
 
   // Show loading state
   grid.innerHTML = '<div class="products-loading" style="grid-column:1/-1;text-align:center;padding:3rem 0;color:var(--clr-text-muted,#888)">' +
-    '<p data-ge="იტვირთება..." data-en="Loading...">' +
-    (getLang() === 'ge' ? 'იტვირთება...' : 'Loading...') + '</p></div>';
+    '<p data-ge="' + tge('loading') + '" data-en="' + ten('loading') + '">' +
+    t('loading') + '</p></div>';
 
   try {
     const cat = categorySlug || new URLSearchParams(window.location.search).get('cat') || 'all';
@@ -355,8 +356,8 @@ async function renderProductsGrid(categorySlug) {
           '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--clr-text-muted,#999)" stroke-width="1.2" style="margin-bottom:1rem">' +
             '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>' +
           '</svg>' +
-          '<p style="font-size:1.1rem;color:var(--clr-text-muted,#888)" data-ge="პროდუქტები ვერ მოიძებნა" data-en="No products found">' +
-            (lang === 'ge' ? 'პროდუქტები ვერ მოიძებნა' : 'No products found') +
+          '<p style="font-size:1.1rem;color:var(--clr-text-muted,#888)" data-ge="' + tge('noProducts') + '" data-en="' + ten('noProducts') + '">' +
+            t('noProducts') +
           '</p>' +
         '</div>';
       return;
@@ -379,9 +380,7 @@ async function renderProductsGrid(categorySlug) {
     grid.innerHTML =
       '<div class="products-empty" style="grid-column:1/-1;text-align:center;padding:4rem 1rem">' +
         '<p style="font-size:1.1rem;color:var(--clr-text-muted,#888)">' +
-          (lang === 'ge'
-            ? 'პროდუქტები ვერ ჩაიტვირთა. გთხოვთ სცადოთ მოგვიანებით.'
-            : 'Failed to load products. Please try again later.') +
+          t('loadFailed') +
         '</p>' +
       '</div>';
   }
@@ -566,7 +565,7 @@ async function renderBlogCards() {
           '<h3><a href="/blog/#' + esc(post.slug) + '">' + esc(title) + '</a></h3>' +
           '<p>' + esc(excerpt) + '</p>' +
           '<a href="/blog/#' + esc(post.slug) + '" class="read-more">' +
-            (lang === 'ge' ? 'სრულად წაკითხვა' : 'Read More') +
+            t('readMore') +
           '</a>' +
         '</div>';
 
@@ -591,12 +590,8 @@ function getGeorgianMonth(m) {
 // ══════════════════════════════════════════════════════════════
 
 function buildSectionCategories(section, categories, lang) {
-  var heading = lang === 'ge'
-    ? (section.heading  || 'აღმოაჩინე კოლექცია')
-    : (section.headingEn || 'Browse by Collection');
-  var label = lang === 'ge'
-    ? (section.label  || 'კატეგორიები')
-    : (section.labelEn || 'Categories');
+  var heading = (lang === 'ge' ? section.heading  : section.headingEn)  || t('categoriesHeading');
+  var label   = (lang === 'ge' ? section.label    : section.labelEn)    || t('categoriesLabel');
 
   var el = document.createElement('section');
   el.className = 'categories-section section';
@@ -630,27 +625,23 @@ function buildSectionCategories(section, categories, lang) {
   inner.className = 'container';
   inner.innerHTML =
     '<div class="section-header" data-reveal>' +
-      '<span class="section-label" data-ge="' + esc(section.label || 'კატეგორიები') + '" data-en="' + esc(section.labelEn || 'Categories') + '">' + esc(label) + '</span>' +
-      '<h2 class="section-title" data-ge="' + esc(section.heading || 'აღმოაჩინე კოლექცია') + '" data-en="' + esc(section.headingEn || 'Browse by Collection') + '">' + esc(heading) + '</h2>' +
+      '<span class="section-label" data-ge="' + esc(section.label || tge('categoriesLabel')) + '" data-en="' + esc(section.labelEn || ten('categoriesLabel')) + '">' + esc(label) + '</span>' +
+      '<h2 class="section-title" data-ge="' + esc(section.heading || tge('categoriesHeading')) + '" data-en="' + esc(section.headingEn || ten('categoriesHeading')) + '">' + esc(heading) + '</h2>' +
     '</div>';
   inner.appendChild(grid);
   var cta = document.createElement('div');
   cta.className = 'section-cta';
   cta.setAttribute('data-reveal', '');
-  cta.innerHTML = '<a href="/products/" class="btn btn-outline" data-ge="ყველა პროდუქტი" data-en="View All Products">' +
-    (lang === 'ge' ? 'ყველა პროდუქტი' : 'View All Products') + '</a>';
+  cta.innerHTML = '<a href="/products/" class="btn btn-outline" data-ge="' + tge('viewAll') + '" data-en="' + ten('viewAll') + '">' +
+    t('viewAll') + '</a>';
   inner.appendChild(cta);
   el.appendChild(inner);
   return el;
 }
 
 function buildSectionFeatured(section, products, lang) {
-  var heading = lang === 'ge'
-    ? (section.heading  || 'რჩეული პროდუქტები')
-    : (section.headingEn || 'Top Picks');
-  var label = lang === 'ge'
-    ? (section.label  || 'პოპულარული')
-    : (section.labelEn || 'Popular');
+  var heading = (lang === 'ge' ? section.heading  : section.headingEn)  || t('featuredHeading');
+  var label   = (lang === 'ge' ? section.label    : section.labelEn)    || t('featuredLabel');
 
   var el = document.createElement('section');
   el.className = 'popular-products section';
@@ -675,8 +666,8 @@ function buildSectionFeatured(section, products, lang) {
       '</button>' +
     '</div>' +
     '<div class="section-cta" data-reveal>' +
-      '<a href="/products/" class="btn btn-outline" data-ge="ყველა პროდუქტის ნახვა" data-en="View All Products">' +
-        (lang === 'ge' ? 'ყველა პროდუქტის ნახვა' : 'View All Products') +
+      '<a href="/products/" class="btn btn-outline" data-ge="' + tge('viewAllProducts') + '" data-en="' + ten('viewAllProducts') + '">' +
+        t('viewAllProducts') +
       '</a>' +
     '</div>';
 
@@ -693,9 +684,7 @@ function buildSectionAbout(section, settings, lang) {
   var text = lang === 'ge'
     ? (section.text    || (settings && settings.homepageDescription)     || 'ვქმნით ხელნაკეთ კერამიკას, რომელიც აერთიანებს ქართულ ტრადიციებს თანამედროვე დიზაინთან.')
     : (section.textEn  || (settings && settings.homepageDescriptionEn)   || 'We craft handmade ceramics that unite Georgian traditions with modern design.');
-  var btnText = lang === 'ge'
-    ? (section.buttonText  || 'გაიგე მეტი')
-    : (section.buttonTextEn || 'Learn More');
+  var btnText = (lang === 'ge' ? section.buttonText : section.buttonTextEn) || t('learnMore');
   var btnLink = section.buttonLink || '/about/';
   var imgRef  = (section.image && section.image.asset) ? section.image
               : (settings && settings.heroImage) ? settings.heroImage
@@ -707,8 +696,8 @@ function buildSectionAbout(section, settings, lang) {
   el.innerHTML =
     '<div class="container about-strip-inner">' +
       '<div class="about-strip-text" data-reveal>' +
-        '<span class="section-label" data-ge="ჩვენ შესახებ" data-en="About Us">' +
-          (lang === 'ge' ? 'ჩვენ შესახებ' : 'About Us') +
+        '<span class="section-label" data-ge="' + tge('aboutLabel') + '" data-en="' + ten('aboutLabel') + '">' +
+          t('aboutLabel') +
         '</span>' +
         '<h2>' + esc(heading) + '</h2>' +
         '<p>' + esc(text) + '</p>' +
@@ -726,12 +715,8 @@ function buildSectionAbout(section, settings, lang) {
 function buildSectionBlog(section, posts, lang) {
   if (!posts || !posts.length) return null;
 
-  var heading = lang === 'ge'
-    ? (section.heading  || 'ბლოგი')
-    : (section.headingEn || 'Blog');
-  var label = lang === 'ge'
-    ? (section.label  || 'სტატიები')
-    : (section.labelEn || 'Articles');
+  var heading = (lang === 'ge' ? section.heading  : section.headingEn)  || t('blogHeading');
+  var label   = (lang === 'ge' ? section.label    : section.labelEn)    || t('blogLabel');
 
   var el = document.createElement('section');
   el.className = 'blog-section section';
@@ -757,7 +742,7 @@ function buildSectionBlog(section, posts, lang) {
         '<h3><a href="/blog/#' + esc(post.slug) + '">' + esc(title) + '</a></h3>' +
         '<p>' + esc(excerpt) + '</p>' +
         '<a href="/blog/#' + esc(post.slug) + '" class="read-more">' +
-          (lang === 'ge' ? 'სრულად წაკითხვა' : 'Read More') + '</a>' +
+          t('readMore') + '</a>' +
       '</div>';
     grid.appendChild(card);
   });
@@ -945,6 +930,9 @@ document.addEventListener('DOMContentLoaded', function () {
   // Collect all promises so we know when everything is done
   var renders = [];
 
+  // Prime UI string store early — uses memoised siteSettings, no extra request
+  getSiteSettings().then(function (s) { if (s) loadStrings(s.uiStrings, getLang()); }).catch(function () {});
+
   // Global — runs on every page
   renders.push(renderFooter().catch(function () {}));
   renders.push(renderNavigation().catch(function () {}));
@@ -964,8 +952,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         updatePageSeo(page, settings, lang);
         injectBreadcrumbJsonLd([
-          { name: lang === 'ge' ? 'მთავარი' : 'Home', url: 'https://ceramisia.com/' },
-          { name: lang === 'ge' ? 'პროდუქტები' : 'Products', url: 'https://ceramisia.com/products/' },
+          { name: t('pageHome'), url: 'https://ceramisia.com/' },
+          { name: t('pageProducts'), url: 'https://ceramisia.com/products/' },
         ]);
       }).catch(function () {})
     );

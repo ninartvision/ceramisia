@@ -218,7 +218,20 @@ export function getSiteSettings() {
     copyrightText, copyrightTextEn,
     brandFeatures[] { icon, text, textEn },
     featuredProductCount,
-    socialLinks, seo
+    socialLinks, seo,
+    uiStrings {
+      addToCart, addToCartEn,
+      filterAll, filterAllEn,
+      badgeNew, badgeNewEn, badgeSale, badgeSaleEn, badgeBestseller, badgeBestsellerEn,
+      loading, loadingEn, noProducts, noProductsEn, loadFailed, loadFailedEn,
+      viewAll, viewAllEn, viewAllProducts, viewAllProductsEn,
+      viewProducts, viewProductsEn, readMore, readMoreEn, learnMore, learnMoreEn,
+      categoriesHeading, categoriesHeadingEn, categoriesLabel, categoriesLabelEn,
+      featuredHeading, featuredHeadingEn, featuredLabel, featuredLabelEn,
+      aboutLabel, aboutLabelEn, blogHeading, blogHeadingEn, blogLabel, blogLabelEn,
+      pageHome, pageHomeEn, pageProducts, pageProductsEn,
+      pageAbout, pageAboutEn, pageContact, pageContactEn
+    }
   }`);
   }
   return _cache.siteSettings;

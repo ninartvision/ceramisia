@@ -5,6 +5,7 @@
  */
 
 import { sanityImageUrl, getPage, getHomepage, getSiteSettings, getNavigation, getCategoriesFromProducts } from './sanity.js';
+import { loadStrings, tge, ten } from './ui.js';
 
 const LANG_KEY = 'ceramisia_lang';
 function getLang() { return localStorage.getItem(LANG_KEY) || 'ge'; }
@@ -87,8 +88,8 @@ export async function renderHeroSlider(slidesOverride) {
           headingEn:    settings.homepageTitleEn  || 'Ceramisia',
           subtitle:     '',
           subtitleEn:   '',
-          buttonText:   'პროდუქტების ნახვა',
-          buttonTextEn: 'View Products',
+          buttonText:   tge('viewProducts'),
+          buttonTextEn: ten('viewProducts'),
           buttonLink:   '/products/',
         }];
         console.log('[Hero] source: siteSettings.heroImage fallback');
@@ -355,6 +356,7 @@ export async function renderFooter() {
 
     if (!settings) return;
     var lang = getLang();
+    loadStrings(settings.uiStrings, lang);
 
     // ── Logos ───────────────────────────────────────────
     if (settings.logo) {
