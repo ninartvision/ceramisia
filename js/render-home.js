@@ -23,162 +23,194 @@ var BRAND_ICONS = {
 
 // ── Hero Slider ──────────────────────────────────────
 /**
+/**
+ * Brand-coloured fallback slides — shown when no heroSlides are yet
+ * configured in Sanity Studio. Replace these gradient backgrounds with
+ * real images by adding slides to the Home page doc in Studio.
+ * The `_bg` property is used only for fallback slides; Sanity-sourced
+ * slides always use their uploaded image instead.
+ */
+var FALLBACK_SLIDES = [
+  {
+    heading:      'Ceramisia – კერამიკის ხელოვნება',
+    headingEn:    'Ceramisia – The Art of Ceramics',
+    subtitle:     'ხელნაკეთი კერამიკა',
+    subtitleEn:   'Handmade Ceramics',
+    buttonText:   'კოლექციის ნახვა',
+    buttonTextEn: 'Shop Collection',
+    buttonLink:   '/products/',
+    _bg:          'linear-gradient(135deg, #2a1a16 0%, #4d2c1d 40%, #3d2314 100%)',
+  },
+  {
+    heading:      'ტრადიცია და თანამედროვე დიზაინი',
+    headingEn:    'Tradition Meets Modern Design',
+    subtitle:     'ავტენტური ქართული',
+    subtitleEn:   'Authentic Georgian',
+    buttonText:   'ჩვენ შესახებ',
+    buttonTextEn: 'Our Story',
+    buttonLink:   '/about/',
+    _bg:          'linear-gradient(135deg, #1e1612 0%, #3d2c20 40%, #2d1e14 100%)',
+  },
+  {
+    heading:      'შექმენი შენი უნიკალური კოლექცია',
+    headingEn:    'Create Your Unique Collection',
+    subtitle:     'ინდივიდუალური შეკვეთა',
+    subtitleEn:   'Custom Orders',
+    buttonText:   'დაგვიკავშირდი',
+    buttonTextEn: 'Get in Touch',
+    buttonLink:   '/contact/',
+    _bg:          'linear-gradient(135deg, #24181a 0%, #451c2a 40%, #321620 100%)',
+  },
+];
+
+/**
+ * Build slide + dot DOM from a slides array and inject into the container.
+ * Shared by both the Sanity path and the fallback path so both produce
+ * identical markup.
+ *
+ * Slide fields used (all optional except image OR _bg):
+ *   image       — Sanity image reference (has .asset._ref)
+ *   _bg         — CSS background value for fallback slides without an image
+ *   heading / headingEn      — main h1 text
+ *   subtitle / subtitleEn    — small label above the heading
+ *   buttonText / buttonTextEn + buttonLink — CTA button (hidden if empty)
+ */
+function buildSlides(container, dotsWrap, slides) {
+  var lang = getLang();
+
+  // LCP preload: inject <link rel="preload" as="image"> for the first slide that
+  // has an image. The hero uses CSS background-image, not <img>, so a preload
+  // hint is the only way to signal urgency to the browser before JS renders.
+  var firstImgUrl = slides[0] && slides[0].image ? sanityImageUrl(slides[0].image, 1920) : '';
+  if (firstImgUrl) {
+    var preloadLink = document.createElement('link');
+    preloadLink.rel  = 'preload';
+    preloadLink.as   = 'image';
+    preloadLink.href = firstImgUrl;
+    preloadLink.setAttribute('fetchpriority', 'high');
+    document.head.appendChild(preloadLink);
+  }
+
+  container.innerHTML = '';
+  if (dotsWrap) dotsWrap.innerHTML = '';
+
+  slides.forEach(function (s, i) {
+    var imgUrl   = s.image ? sanityImageUrl(s.image, 1920) : '';
+    var subtitle = lang === 'ge' ? (s.subtitle   || '') : (s.subtitleEn   || s.subtitle   || '');
+    var heading  = lang === 'ge' ? (s.heading    || '') : (s.headingEn    || s.heading    || '');
+    var btnText  = lang === 'ge' ? (s.buttonText || '') : (s.buttonTextEn || s.buttonText || '');
+    var btnLink  = s.buttonLink || '/products/';
+    // Allow only safe link targets
+    var safeBtnLink = /^(https?:\/\/|\/|[a-zA-Z0-9_-]+\.[a-zA-Z])/.test(btnLink)
+      ? btnLink : '/products/';
+
+    var slide = document.createElement('div');
+    slide.className = 'slide' + (i === 0 ? ' active' : '');
+
+    if (imgUrl) {
+      slide.style.backgroundImage = "url('" + esc(imgUrl) + "')";
+    } else if (s._bg) {
+      // Fallback slide — brand-coloured gradient (no Sanity image assigned yet)
+      slide.style.background = s._bg;
+    }
+
+    var imgAlt = (s.image && s.image.alt) ? s.image.alt : (heading || '');
+
+    slide.innerHTML =
+      '<div class="slide-overlay"></div>' +
+      (imgAlt ? '<span class="sr-only">' + esc(imgAlt) + '</span>' : '') +
+      '<div class="slide-content">' +
+        (subtitle
+          ? '<p class="slide-subtitle" data-ge="' + esc(s.subtitle || '') + '" data-en="' + esc(s.subtitleEn || '') + '">' + esc(subtitle) + '</p>'
+          : '') +
+        '<h1 class="slide-title" data-ge="' + esc(s.heading || '') + '" data-en="' + esc(s.headingEn || '') + '">' + esc(heading) + '</h1>' +
+        (btnText
+          ? '<a href="' + esc(safeBtnLink) + '" class="btn btn-light" data-ge="' + esc(s.buttonText || '') + '" data-en="' + esc(s.buttonTextEn || '') + '">' + esc(btnText) + '</a>'
+          : '') +
+      '</div>';
+
+    container.appendChild(slide);
+
+    if (dotsWrap) {
+      var dot = document.createElement('button');
+      dot.className   = 'dot' + (i === 0 ? ' active' : '');
+      dot.dataset.index = i;
+      dot.setAttribute('aria-label', 'Slide ' + (i + 1));
+      dotsWrap.appendChild(dot);
+    }
+  });
+}
+
+// ── Hero Slider ──────────────────────────────────────
+/**
  * Render the homepage hero carousel from Sanity data.
  *
- * Priority order:
- *  1. `slidesOverride` — slides array passed directly by the caller
- *     (used when sanity-render.js processes a homepage "slider" section
- *      that already has embedded slide data).
- *  2. Page document — fetches the "home" page and reads `heroSlides`.
- *  3. Homepage layout document — looks for the first `slider` section
- *     whose `slides[]` array is non-empty.
- *  4. Static HTML fallback — if all above fail, the hardcoded HTML
- *     slides already in index.html are kept and the carousel is
- *     (re-)initialised on them.
+ * Priority order (first match wins):
+ *  1. slidesOverride   — array passed directly by the caller (homepage sections)
+ *  2. page.heroSlides  — slides on the "home" Page document in Studio
+ *  3. homepage.sections slider — first "slider" section in the Homepage layout doc
+ *  4. siteSettings.heroImage  — single-image fallback from Site Settings
+ *  5. FALLBACK_SLIDES  — built-in brand-coloured slides (never hides the hero)
+ *
+ * The hero section is NEVER hidden — if Sanity has no data, the brand-coloured
+ * fallback slides are shown so the layout stays intact.
  */
 export async function renderHeroSlider(slidesOverride) {
   var container = document.getElementById('slidesContainer');
   var dotsWrap  = document.getElementById('sliderDots');
   if (!container) return;
 
-  try {
-    var slides = null;
+  // Helper: build + re-init, then exit
+  function render(slides) {
+    buildSlides(container, dotsWrap, slides);
+    if (typeof window.initHeroSlider === 'function') window.initHeroSlider();
+  }
 
+  try {
     // ── 1. Direct override from caller ──────────────
     if (Array.isArray(slidesOverride) && slidesOverride.length) {
-      slides = slidesOverride;
-      console.log('[Hero] source: slidesOverride (' + slides.length + ' slides)');
+      return render(slidesOverride);
     }
 
     // ── 2. Page document heroSlides ──────────────────
-    if (!slides) {
-      var page = await getPage('home');
-      console.log('[Hero] page doc:', page ? 'ok' : 'null',
-        '| heroSlides:', page && page.heroSlides ? page.heroSlides.length : 'none');
-      if (page && page.heroSlides && page.heroSlides.length) {
-        slides = page.heroSlides;
-        console.log('[Hero] source: page.heroSlides');
-      }
+    var page = await getPage('home');
+    if (page && Array.isArray(page.heroSlides) && page.heroSlides.length) {
+      return render(page.heroSlides);
     }
 
     // ── 3. Homepage layout document slider section ───
-    if (!slides) {
-      var homepage = await getHomepage();
-      console.log('[Hero] homepage doc:', homepage ? 'ok' : 'null',
-        '| sections:', homepage && homepage.sections ? homepage.sections.length : 'none');
-      if (homepage && Array.isArray(homepage.sections)) {
-        var sliderSection = homepage.sections.find(function (s) {
-          return s.type === 'slider' && Array.isArray(s.slides) && s.slides.length;
-        });
-        if (sliderSection) {
-          slides = sliderSection.slides;
-          console.log('[Hero] source: homepage.sections slider (' + slides.length + ' slides)');
-        }
-      }
+    var homepage = await getHomepage();
+    if (homepage && Array.isArray(homepage.sections)) {
+      var sliderSection = homepage.sections.find(function (s) {
+        return s.type === 'slider' && Array.isArray(s.slides) && s.slides.length;
+      });
+      if (sliderSection) return render(sliderSection.slides);
     }
 
-    // ── 4. siteSettings.heroImage as single-slide fallback ──
-    if (!slides) {
-      var settings = await getSiteSettings().catch(function () { return null; });
-      console.log('[Hero] siteSettings.heroImage:', settings && settings.heroImage ? 'found' : 'missing');
-      if (settings && settings.heroImage) {
-        slides = [{
-          image:        settings.heroImage,
-          heading:      settings.homepageTitle    || 'Ceramisia',
-          headingEn:    settings.homepageTitleEn  || 'Ceramisia',
-          subtitle:     '',
-          subtitleEn:   '',
-          buttonText:   tge('viewProducts'),
-          buttonTextEn: ten('viewProducts'),
-          buttonLink:   '/products/',
-        }];
-        console.log('[Hero] source: siteSettings.heroImage fallback');
-      }
+    // ── 4. siteSettings.heroImage as single-slide ───
+    var settings = await getSiteSettings().catch(function () { return null; });
+    if (settings && settings.heroImage) {
+      return render([{
+        image:        settings.heroImage,
+        heading:      settings.homepageTitle   || 'Ceramisia',
+        headingEn:    settings.homepageTitleEn || 'Ceramisia',
+        subtitle:     '',
+        subtitleEn:   '',
+        buttonText:   tge('viewProducts'),
+        buttonTextEn: ten('viewProducts'),
+        buttonLink:   '/products/',
+      }]);
     }
 
-    // ── 5. Nothing found anywhere — hide hero ──
-    if (!slides || !slides.length) {
-      console.warn('[Hero] No slide data found in any source. ' +
-        'Fix: add heroSlides to the Home page in Sanity Studio, ' +
-        'or upload a heroImage in Site Settings.');
-      var heroSection = document.querySelector('.hero-slider');
-      if (heroSection) heroSection.classList.add('section--hidden');
-      return;
-    }
-
-    // ── Build DOM ────────────────────────────────────
-    var lang = getLang();
-
-    // LCP preload: inject <link rel="preload" as="image"> for the first slide.
-    // The hero uses CSS background-image (not <img>), so this is the only way
-    // to tell the browser to fetch it early without waiting for JS to run.
-    var firstImgUrl = sanityImageUrl(slides[0].image, 1920);
-    if (!firstImgUrl) {
-      console.warn('[Hero] First slide image URL is empty. ' +
-        'Check that the slide has an image uploaded in Sanity Studio. ' +
-        'Image ref:', JSON.stringify(slides[0].image));
-    }
-    if (firstImgUrl) {
-      var preloadLink = document.createElement('link');
-      preloadLink.rel  = 'preload';
-      preloadLink.as   = 'image';
-      preloadLink.href = firstImgUrl;
-      preloadLink.setAttribute('fetchpriority', 'high');
-      document.head.appendChild(preloadLink);
-    }
-
-    container.innerHTML = '';
-    if (dotsWrap) dotsWrap.innerHTML = '';
-
-    slides.forEach(function (s, i) {
-      var imgUrl   = sanityImageUrl(s.image, 1920);
-      var subtitle = lang === 'ge' ? (s.subtitle || '') : (s.subtitleEn || s.subtitle || '');
-      var heading  = lang === 'ge' ? (s.heading || '') : (s.headingEn || s.heading || '');
-      var btnText  = lang === 'ge' ? (s.buttonText || '') : (s.buttonTextEn || s.buttonText || '');
-      var btnLink  = s.buttonLink || '/products/';
-      // Sanitise link: only allow relative paths and http/https URLs
-      var safeBtnLink = /^(https?:\/\/|\/|[a-zA-Z0-9_-]+\.[a-zA-Z])/.test(btnLink)
-        ? btnLink : '/products/';
-
-      var slide = document.createElement('div');
-      slide.className = 'slide' + (i === 0 ? ' active' : '');
-      if (imgUrl) slide.style.backgroundImage = "url('" + esc(imgUrl) + "')";
-
-      // Screen-reader text for the background image
-      var imgAlt = (s.image && s.image.alt) ? s.image.alt : (heading || '');
-
-      slide.innerHTML =
-        '<div class="slide-overlay"></div>' +
-        (imgAlt ? '<span class="sr-only">' + esc(imgAlt) + '</span>' : '') +
-        '<div class="slide-content">' +
-          (subtitle
-            ? '<p class="slide-subtitle" data-ge="' + esc(s.subtitle || '') + '" data-en="' + esc(s.subtitleEn || '') + '">' + esc(subtitle) + '</p>'
-            : '') +
-          '<h1 class="slide-title" data-ge="' + esc(s.heading || '') + '" data-en="' + esc(s.headingEn || '') + '">' + esc(heading) + '</h1>' +
-          (btnText
-            ? '<a href="' + esc(safeBtnLink) + '" class="btn btn-light" data-ge="' + esc(s.buttonText || '') + '" data-en="' + esc(s.buttonTextEn || '') + '">' + esc(btnText) + '</a>'
-            : '') +
-        '</div>';
-
-      container.appendChild(slide);
-
-      // Dot
-      if (dotsWrap) {
-        var dot = document.createElement('button');
-        dot.className = 'dot' + (i === 0 ? ' active' : '');
-        dot.dataset.index = i;
-        dot.setAttribute('aria-label', 'Slide ' + (i + 1));
-        dotsWrap.appendChild(dot);
-      }
-    });
-
-    // Re-init slider controls with the new slides
-    if (typeof window.initHeroSlider === 'function') window.initHeroSlider();
+    // ── 5. Brand-coloured fallback — always shows the slider ──
+    console.info('[Hero] No slides in Sanity yet — showing built-in fallback slides. ' +
+      'Add slides to the Home page in Sanity Studio to replace them with real images.');
+    render(FALLBACK_SLIDES);
 
   } catch (err) {
-    console.warn('Hero slider fetch failed, hiding section:', err);
-    var heroSection = document.querySelector('.hero-slider');
-    if (heroSection) heroSection.classList.add('section--hidden');
+    // Network/parse error — still show fallback rather than hiding the hero
+    console.warn('[Hero] Fetch failed, showing fallback slides:', err);
+    render(FALLBACK_SLIDES);
   }
 }
 

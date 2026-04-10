@@ -99,7 +99,7 @@ export default {
             { name: 'headingEn', title: 'Main Heading (EN)', type: 'string' },
             { name: 'buttonText', title: 'Button Text (GE)', type: 'string', description: 'Leave empty to hide the button' },
             { name: 'buttonTextEn', title: 'Button Text (EN)', type: 'string' },
-            { name: 'buttonLink', title: 'Button Link / URL', type: 'string', initialValue: 'products.html', description: 'Relative path (e.g. products.html) or full URL' },
+            { name: 'buttonLink', title: 'Button Link / URL', type: 'string', initialValue: '/products/', description: 'Relative path (e.g. /products/) or full URL' },
           ],
           preview: {
             select: { title: 'heading', media: 'image' },
