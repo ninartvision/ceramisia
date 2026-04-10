@@ -83,10 +83,10 @@ export async function renderHeroSlider(slidesOverride) {
       var subtitle = lang === 'ge' ? (s.subtitle || '') : (s.subtitleEn || s.subtitle || '');
       var heading  = lang === 'ge' ? (s.heading || '') : (s.headingEn || s.heading || '');
       var btnText  = lang === 'ge' ? (s.buttonText || '') : (s.buttonTextEn || s.buttonText || '');
-      var btnLink  = s.buttonLink || 'products.html';
+      var btnLink  = s.buttonLink || '/products/';
       // Sanitise link: only allow relative paths and http/https URLs
       var safeBtnLink = /^(https?:\/\/|\/|[a-zA-Z0-9_-]+\.[a-zA-Z])/.test(btnLink)
-        ? btnLink : 'products.html';
+        ? btnLink : '/products/';
 
       var slide = document.createElement('div');
       slide.className = 'slide' + (i === 0 ? ' active' : '');
@@ -144,7 +144,11 @@ export async function renderNavigation() {
     if (!nav || !nav.mainMenu || !nav.mainMenu.length) return; // keep static HTML
 
     var lang = getLang();
-    var path = window.location.pathname.split('/').pop() || 'index.html';
+    // Derive the current page from the pathname so active-state works with
+    // both clean URLs (/products/) and direct file access (/products/index.html).
+    // Normalise: strip trailing slash, then take the last non-empty segment.
+    var rawPath   = window.location.pathname.replace(/\/index\.html$/, '').replace(/\/$/, '');
+    var currentSegment = rawPath.split('/').pop() || ''; // '' for root /
 
     navUl.innerHTML = '';
 
@@ -159,9 +163,11 @@ export async function renderNavigation() {
       a.textContent = label;
       if (item.openInNewTab) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
 
-      // Active state
-      var linkFile = (item.link || '').split('/').pop().split('?')[0];
-      if (linkFile === path || (path === '' && linkFile === 'index.html')) {
+      // Active state — compare last path segment against last segment of item link
+      // Normalise item link: strip /index.html, trailing slash, then split
+      var linkNorm    = (item.link || '').replace(/\/index\.html$/, '').replace(/\/$/, '');
+      var linkSegment = linkNorm.split('/').pop() || '';
+      if (linkSegment === currentSegment) {
         a.classList.add('active');
       }
 
@@ -317,7 +323,7 @@ export async function renderFooter() {
           var label = lang === 'ge' ? (cat.title || '') : (cat.titleEn || cat.title || '');
           var li = document.createElement('li');
           var a  = document.createElement('a');
-          a.href = 'products.html?cat=' + esc(cat.slug || '');
+          a.href = '/products/?cat=' + esc(cat.slug || '');
           a.dataset.ge  = cat.title   || '';
           a.dataset.en  = cat.titleEn || '';
           a.textContent = label;

@@ -174,6 +174,6 @@ function showNotFound(container) {
     '<div class="container">' +
     '<h1>' + (lang === 'en' ? 'Page Not Found' : 'გვერდი ვერ მოიძებნა') + '</h1>' +
     '<p style="margin-top:1rem">' + (lang === 'en' ? 'The page you are looking for does not exist.' : 'მოთხოვნილი გვერდი არ არსებობს.') + '</p>' +
-    '<a href="index.html" class="btn btn-primary" style="margin-top:2rem">' + (lang === 'en' ? 'Back to Home' : 'მთავარზე დაბრუნება') + '</a>' +
+    '<a href="/" class="btn btn-primary" style="margin-top:2rem">' + (lang === 'en' ? 'Back to Home' : 'მთავარზე დაბრუნება') + '</a>' +
     '</div></section>';
 }

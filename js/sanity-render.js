@@ -53,15 +53,17 @@ function esc(str) {
   return el.innerHTML;
 }
 
-/** Build a row of N skeleton placeholder cards in a grid */
+/** Build a row of N skeleton placeholder cards in a grid (single DOM write) */
 function showSkeletons(grid, count) {
-  grid.innerHTML = '';
+  var frag = document.createDocumentFragment();
   for (var i = 0; i < count; i++) {
     var sk = document.createElement('div');
     sk.className = 'skel-card';
     sk.innerHTML = '<div class="skel-img"></div><div class="skel-line"></div><div class="skel-line short"></div>';
-    grid.appendChild(sk);
+    frag.appendChild(sk);
   }
+  grid.innerHTML = '';   // single write: clear previous content
+  grid.appendChild(frag); // single write: insert all skeletons
 }
 
 /**
@@ -311,10 +313,10 @@ async function renderProductsGrid(categorySlug) {
 
 // ── Render Featured Products (homepage popular grid) ──
 async function renderFeaturedProducts() {
+  var DEFAULT_COUNT = 4;
   const grid = document.querySelector('.popular-grid');
   if (!grid) return;
 
-  // Closest section element — hidden via CSS class when Sanity returns no data
   const section = grid.closest('.popular-products');
 
   function hideSection() {
@@ -322,31 +324,45 @@ async function renderFeaturedProducts() {
     grid.innerHTML = '';
   }
 
+  // Show skeleton placeholders immediately — zero latency before visual feedback.
+  // Uses default count; real count from siteSettings adjusts the slice below.
+  showSkeletons(grid, DEFAULT_COUNT);
+
   try {
-    // Determine max count from siteSettings before fetching products
-    const settings = await getSiteSettings().catch(function () { return null; });
-    const count = (settings && settings.featuredProductCount) ? settings.featuredProductCount : 4;
+    // Both fetches fire concurrently — neither waits on the other.
+    // Individual .catch() guards mean one failure doesn't abort the other.
+    const [settings, allFeatured] = await Promise.all([
+      getSiteSettings().catch(function () { return null; }),
+      getFeaturedProducts().catch(function () { return []; }),
+    ]);
 
-    // Show skeleton placeholders while the product fetch is in flight
-    showSkeletons(grid, count);
-
-    // Fetch only products with isFeatured == true —— no fallback to all products
-    const products = (await getFeaturedProducts() || []).slice(0, count);
+    const count    = (settings && settings.featuredProductCount) || DEFAULT_COUNT;
+    const products = (allFeatured || []).slice(0, count);
 
     if (!products.length) {
-      // Sanity returned no featured products — hide section, clear skeletons
       hideSection();
       return;
     }
 
-    // Build all cards into a DocumentFragment, then write to DOM once
-    // — avoids N separate layout-triggering reflows
+    // Build all cards into a DocumentFragment — one DOM write for the clear,
+    // one DOM write for the insert, zero intermediate layout recalculations.
     const lang     = getLang();
     const fragment = document.createDocumentFragment();
     products.forEach(function (p) { fragment.appendChild(createProductCard(p, lang)); });
 
-    grid.innerHTML = '';        // clear skeletons in one write
-    grid.appendChild(fragment); // insert all product cards in one write
+    grid.innerHTML = '';        // single write: replace skeletons
+    grid.appendChild(fragment); // single write: insert all product cards
+
+    // createProductCard() adds .revealed immediately. Strip it from every card,
+    // wait one paint cycle via rAF, then re-add with cascading delays so the
+    // CSS opacity + transform transition actually fires from the invisible state.
+    var cards = Array.prototype.slice.call(grid.querySelectorAll('.product-card'));
+    cards.forEach(function (card) { card.classList.remove('revealed'); });
+    requestAnimationFrame(function () {
+      cards.forEach(function (card, idx) {
+        setTimeout(function () { card.classList.add('revealed'); }, idx * 80);
+      });
+    });
 
     if (section) section.classList.remove('section--hidden');
     if (typeof window.initCart         === 'function') window.initCart();
@@ -404,7 +420,7 @@ async function renderCategoriesGrid() {
       const imgUrl = sanityImageUrl(cat.image, 600);
 
       const link = document.createElement('a');
-      link.href = 'products.html?cat=' + encodeURIComponent(cat.slug);
+      link.href = '/products/?cat=' + encodeURIComponent(cat.slug);
       link.className = 'category-card';
       link.setAttribute('data-reveal', '');
       link.setAttribute('data-reveal-delay', String((i % 3) * 80));
@@ -452,14 +468,14 @@ async function renderBlogCards() {
       const card = document.createElement('article');
       card.className = 'blog-card revealed';
       card.innerHTML =
-        '<a href="blog.html#' + esc(post.slug) + '" class="blog-card-img-link">' +
+        '<a href="/blog/#' + esc(post.slug) + '" class="blog-card-img-link">' +
           (imgUrl ? '<img src="' + esc(imgUrl) + '" alt="' + esc(title) + '" loading="lazy">' : '') +
         '</a>' +
         '<div class="blog-card-body">' +
           '<span class="blog-date">' + esc(dateStr) + '</span>' +
-          '<h3><a href="blog.html#' + esc(post.slug) + '">' + esc(title) + '</a></h3>' +
+          '<h3><a href="/blog/#' + esc(post.slug) + '">' + esc(title) + '</a></h3>' +
           '<p>' + esc(excerpt) + '</p>' +
-          '<a href="blog.html#' + esc(post.slug) + '" class="read-more">' +
+          '<a href="/blog/#' + esc(post.slug) + '" class="read-more">' +
             (lang === 'ge' ? 'სრულად წაკითხვა' : 'Read More') +
           '</a>' +
         '</div>';
@@ -501,7 +517,7 @@ function buildSectionCategories(section, categories, lang) {
     var title  = lang === 'ge' ? (cat.title || '') : (cat.titleEn || cat.title || '');
     var imgUrl = sanityImageUrl(cat.image, 600);
     var link = document.createElement('a');
-    link.href = 'products.html?cat=' + encodeURIComponent(cat.slug);
+    link.href = '/products/?cat=' + encodeURIComponent(cat.slug);
     link.className = 'category-card';
     link.setAttribute('data-reveal', '');
     link.setAttribute('data-reveal-delay', String((i % 3) * 80));
@@ -528,7 +544,7 @@ function buildSectionCategories(section, categories, lang) {
   var cta = document.createElement('div');
   cta.className = 'section-cta';
   cta.setAttribute('data-reveal', '');
-  cta.innerHTML = '<a href="products.html" class="btn btn-outline" data-ge="ყველა პროდუქტი" data-en="View All Products">' +
+  cta.innerHTML = '<a href="/products/" class="btn btn-outline" data-ge="ყველა პროდუქტი" data-en="View All Products">' +
     (lang === 'ge' ? 'ყველა პროდუქტი' : 'View All Products') + '</a>';
   inner.appendChild(cta);
   el.appendChild(inner);
@@ -566,7 +582,7 @@ function buildSectionFeatured(section, products, lang) {
       '</button>' +
     '</div>' +
     '<div class="section-cta" data-reveal>' +
-      '<a href="products.html" class="btn btn-outline" data-ge="ყველა პროდუქტის ნახვა" data-en="View All Products">' +
+      '<a href="/products/" class="btn btn-outline" data-ge="ყველა პროდუქტის ნახვა" data-en="View All Products">' +
         (lang === 'ge' ? 'ყველა პროდუქტის ნახვა' : 'View All Products') +
       '</a>' +
     '</div>';
@@ -587,7 +603,7 @@ function buildSectionAbout(section, settings, lang) {
   var btnText = lang === 'ge'
     ? (section.buttonText  || 'გაიგე მეტი')
     : (section.buttonTextEn || 'Learn More');
-  var btnLink = section.buttonLink || 'about.html';
+  var btnLink = section.buttonLink || '/about/';
   var imgRef  = (section.image && section.image.asset) ? section.image
               : (settings && settings.heroImage) ? settings.heroImage
               : null;
@@ -640,14 +656,14 @@ function buildSectionBlog(section, posts, lang) {
     var card = document.createElement('article');
     card.className = 'blog-card revealed';
     card.innerHTML =
-      '<a href="blog.html#' + esc(post.slug) + '" class="blog-card-img-link">' +
+      '<a href="/blog/#' + esc(post.slug) + '" class="blog-card-img-link">' +
         (imgUrl ? '<img src="' + esc(imgUrl) + '" alt="' + esc(title) + '" loading="lazy">' : '') +
       '</a>' +
       '<div class="blog-card-body">' +
         '<span class="blog-date">' + esc(dateStr) + '</span>' +
-        '<h3><a href="blog.html#' + esc(post.slug) + '">' + esc(title) + '</a></h3>' +
+        '<h3><a href="/blog/#' + esc(post.slug) + '">' + esc(title) + '</a></h3>' +
         '<p>' + esc(excerpt) + '</p>' +
-        '<a href="blog.html#' + esc(post.slug) + '" class="read-more">' +
+        '<a href="/blog/#' + esc(post.slug) + '" class="read-more">' +
           (lang === 'ge' ? 'სრულად წაკითხვა' : 'Read More') + '</a>' +
       '</div>';
     grid.appendChild(card);
@@ -774,11 +790,9 @@ async function renderHomepageSections() {
 
       } else if (section.type === 'featured') {
         var count = (settings && settings.featuredProductCount) ? settings.featuredProductCount : 4;
-        var prods = featuredProducts || [];
-        if (!prods.length) {
-          prods = await getProducts('all').catch(function () { return []; }) || [];
-        }
-        prods = prods.slice(0, count);
+        // No fallback to all products — if no featured products are set in Sanity,
+        // the section is simply omitted rather than showing unrelated content.
+        var prods = (featuredProducts || []).slice(0, count);
         if (prods.length) el = buildSectionFeatured(section, prods, lang);
 
       } else if (section.type === 'about') {
@@ -829,9 +843,10 @@ document.addEventListener('DOMContentLoaded', function () {
   var revealTimer = setTimeout(revealPage, 5000);
 
   var path = window.location.pathname;
-  var isProducts = path.endsWith('products.html') || document.querySelector('.filter-bar') !== null;
-  var isAbout    = path.endsWith('about.html')    || document.querySelector('.about-hero') !== null;
-  var isContact  = path.endsWith('contact.html')  || document.querySelector('.contact-layout') !== null;
+  // Match both clean URLs (/products/, /products/index.html) and old .html paths
+  var isProducts = /\/products(\/|\.html)/.test(path) || document.querySelector('.filter-bar') !== null;
+  var isAbout    = /\/about(\/|\.html)/.test(path)    || document.querySelector('.about-hero') !== null;
+  var isContact  = /\/contact(\/|\.html)/.test(path)  || document.querySelector('.contact-layout') !== null;
   var isHome     = !isProducts && !isAbout && !isContact;
 
   // Collect all promises so we know when everything is done

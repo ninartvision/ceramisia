@@ -48,6 +48,23 @@ export async function sanityFetch(query, params = {}) {
 // one in-flight network request rather than each firing their own.
 const _cache = {};
 
+/**
+ * Evict one or all memoized promises from the session cache.
+ * Pass a key (e.g. 'featuredProducts') to clear a single entry.
+ * Called with no argument it resets everything — useful after a CMS publish
+ * when you want fresh data without a full page reload.
+ *
+ * Available keys: 'featuredProducts', 'categoriesFromProducts',
+ *                 'siteSettings', 'navigation', 'homepage', page slugs.
+ */
+export function clearCache(key) {
+  if (key) {
+    delete _cache[key];
+  } else {
+    Object.keys(_cache).forEach(function (k) { delete _cache[k]; });
+  }
+}
+
 /** Fetch all categories ordered by display order */
 export async function getCategories() {
   return sanityFetch(`*[_type == "category"] | order(order asc) {
@@ -234,6 +251,7 @@ window.CeramisiaCMS = {
   getCategories,
   getProducts,
   getFeaturedProducts,
+  clearCache,
   getProduct,
   getBlogPosts,
   getBlogPost,

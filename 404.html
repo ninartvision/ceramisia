@@ -52,33 +52,36 @@
       // "/terms"   → "terms"
       var slug = path.charAt(0) === '/' ? path.slice(1) : path;
 
-      // ── Step 5: Skip known static files ──
-      // These pages have their own .html files, no redirect needed.
+      // ── Step 5: Skip known static pages and folder routes ──
+      // Slug matches a top-level clean-URL folder — let the server handle it
+      // (the folder has its own index.html; the 404 is a false alarm from a
+      // direct URL visit before GitHub Pages resolves the directory).
       var staticPages = [
         '',
-        'index',    'index.html',
-        'products', 'products.html',
-        'about',    'about.html',
-        'contact',  'contact.html',
-        'page',     'page.html',
-        '404',      '404.html'
+        'index',
+        'products', 'about', 'contact', 'page',
+        '404'
       ];
 
       // Skip anything with a file extension (css, js, png, jpg, etc.)
       // This prevents redirects for missing assets.
       var hasExtension = slug.indexOf('.') !== -1;
 
-      // Skip asset and cms folders
+      // Skip asset and cms folders (and clean-URL subfolders of known pages)
       var isAssetPath = (
-        slug.indexOf('assets/') === 0 ||
-        slug.indexOf('cms/')    === 0 ||
-        slug.indexOf('.github/') === 0
+        slug.indexOf('assets/')   === 0 ||
+        slug.indexOf('cms/')      === 0 ||
+        slug.indexOf('.github/')  === 0 ||
+        slug.indexOf('products/') === 0 ||
+        slug.indexOf('about/')    === 0 ||
+        slug.indexOf('contact/')  === 0 ||
+        slug.indexOf('page/')     === 0
       );
 
-      // ── Step 6: Redirect or show 404 ──
+      // ── Step 6: Redirect unknown paths to the CMS page renderer ──
       if (slug && staticPages.indexOf(slug) === -1 && !hasExtension && !isAssetPath) {
-        // Build the redirect URL:  /ceramisia/page.html?slug=privacy
-        var target = base + '/page.html?slug=' + encodeURIComponent(slug);
+        // Build the redirect URL:  /page/?slug=privacy
+        var target = base + '/page/?slug=' + encodeURIComponent(slug);
         window.location.replace(target);
       }
       // If we reach here, it's a genuinely missing file — the fallback HTML below is shown.

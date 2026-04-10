@@ -267,10 +267,15 @@
 
   /* ── ACTIVE NAV LINK ─────────────────────────── */
   function initActiveNav() {
-    var path  = window.location.pathname.split('/').pop() || 'index.html';
+    // Normalise the current path: strip trailing /index.html and trailing slash,
+    // then take the last non-empty segment. '' means the root (homepage).
+    var rawPath    = window.location.pathname.replace(/\/index\.html$/, '').replace(/\/$/, '');
+    var segment    = rawPath.split('/').pop() || ''; // '' for /
     document.querySelectorAll('.main-nav a').forEach(function (link) {
-      var href = link.getAttribute('href');
-      if (href && href.split('?')[0] === path) {
+      var href = (link.getAttribute('href') || '')
+                   .replace(/\/index\.html$/, '').replace(/\/$/, '');
+      var linkSegment = href.split('/').pop() || '';
+      if (linkSegment === segment) {
         link.classList.add('active');
       }
     });
