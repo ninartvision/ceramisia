@@ -187,7 +187,7 @@ export function getPage(slug) {
       heroSubtext, heroSubtextEn,
       heroSlides[] {
         _key,
-        image { _type, asset { _ref, _type } },
+        image { _type, alt, asset { _ref, _type } },
         subtitle, subtitleEn,
         heading, headingEn,
         buttonText, buttonTextEn, buttonLink
@@ -262,7 +262,7 @@ export function getHomepage() {
       buttonText, buttonTextEn, buttonLink,
       slides[] {
         _key,
-        image { _type, asset { _ref, _type } },
+        image { _type, alt, asset { _ref, _type } },
         subtitle, subtitleEn,
         heading, headingEn,
         buttonText, buttonTextEn, buttonLink

@@ -23,7 +23,6 @@ var BRAND_ICONS = {
 
 // ── Hero Slider ──────────────────────────────────────
 /**
-/**
  * Brand-coloured fallback slides — shown when no heroSlides are yet
  * configured in Sanity Studio. Replace these gradient backgrounds with
  * real images by adding slides to the Home page doc in Studio.
@@ -64,6 +63,48 @@ var FALLBACK_SLIDES = [
 ];
 
 /**
+ * Validate and filter a raw slides array returned by Sanity.
+ *
+ * Rules:
+ *  - Input must be a non-empty array (GROQ returns null for empty arrays)
+ *  - Each slide must have at least heading or headingEn to be kept
+ *  - Slides with a missing/broken image asset are KEPT but warned about —
+ *    buildSlides() will render them with a dark brand-gradient background
+ *    so text is still readable and layout is not broken
+ *
+ * Returns the filtered array (≥ 1 item) or null if nothing is valid.
+ */
+function validateSlides(raw, label) {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    console.log('[Hero]', label, '→ null or empty array returned by Sanity (field may be unpublished or not yet filled)');
+    return null;
+  }
+  var valid = raw.filter(function (s, idx) {
+    var hasHeading = !!(s.heading || s.headingEn);
+    var hasImgRef  = !!(s.image && s.image.asset && s.image.asset._ref);
+    if (!hasHeading) {
+      console.warn('[Hero]', label, 'slide[' + idx + '] — SKIPPED (no heading text in GE or EN)');
+      return false;
+    }
+    if (!hasImgRef) {
+      console.warn('[Hero]', label, 'slide[' + idx + '] "' + (s.heading || s.headingEn) +
+        '" — WARNING: image.asset._ref is missing (image not uploaded or not published). ' +
+        'Slide will render with a dark-gradient background instead of a photo.');
+    } else {
+      console.log('[Hero]', label, 'slide[' + idx + '] ✓', s.heading || s.headingEn,
+        '| image._ref:', s.image.asset._ref);
+    }
+    return true; // keep slide even without image
+  });
+  if (valid.length === 0) {
+    console.warn('[Hero]', label, '→ 0 valid slides after filtering (all skipped — missing heading)');
+    return null;
+  }
+  console.log('[Hero]', label, '→', valid.length, 'of', raw.length, 'slide(s) passed validation');
+  return valid;
+}
+
+/**
  * Build slide + dot DOM from a slides array and inject into the container.
  * Shared by both the Sanity path and the fallback path so both produce
  * identical markup.
@@ -95,14 +136,14 @@ function buildSlides(container, dotsWrap, slides) {
   if (dotsWrap) dotsWrap.innerHTML = '';
 
   slides.forEach(function (s, i) {
-    var imgUrl   = s.image ? sanityImageUrl(s.image, 1920) : '';
-    var subtitle = lang === 'ge' ? (s.subtitle   || '') : (s.subtitleEn   || s.subtitle   || '');
-    var heading  = lang === 'ge' ? (s.heading    || '') : (s.headingEn    || s.heading    || '');
-    var btnText  = lang === 'ge' ? (s.buttonText || '') : (s.buttonTextEn || s.buttonText || '');
-    var btnLink  = s.buttonLink || '/products/';
-    // Allow only safe link targets
+    var imgUrl = s.image ? sanityImageUrl(s.image, 1920) : '';
+    var subtitle = lang === 'ge' ? (s.subtitle || '') : (s.subtitleEn || s.subtitle || '');
+    var heading = lang === 'ge' ? (s.heading || '') : (s.headingEn || s.heading || '');
+    var btnText = lang === 'ge' ? (s.buttonText || '') : (s.buttonTextEn || s.buttonText || '');
+    var btnLink = s.buttonLink || '/products/';
     var safeBtnLink = /^(https?:\/\/|\/|[a-zA-Z0-9_-]+\.[a-zA-Z])/.test(btnLink)
-      ? btnLink : '/products/';
+      ? btnLink
+      : '/products/';
 
     var slide = document.createElement('div');
     slide.className = 'slide' + (i === 0 ? ' active' : '');
@@ -110,12 +151,12 @@ function buildSlides(container, dotsWrap, slides) {
     if (imgUrl) {
       slide.style.backgroundImage = "url('" + esc(imgUrl) + "')";
     } else if (s._bg) {
-      // Fallback slide — brand-coloured gradient (no Sanity image assigned yet)
       slide.style.background = s._bg;
+    } else {
+      slide.style.background = 'linear-gradient(135deg, #2a1a16 0%, #3d2314 100%)';
     }
 
     var imgAlt = (s.image && s.image.alt) ? s.image.alt : (heading || '');
-
     slide.innerHTML =
       '<div class="slide-overlay"></div>' +
       (imgAlt ? '<span class="sr-only">' + esc(imgAlt) + '</span>' : '') +
@@ -133,7 +174,7 @@ function buildSlides(container, dotsWrap, slides) {
 
     if (dotsWrap) {
       var dot = document.createElement('button');
-      dot.className   = 'dot' + (i === 0 ? ' active' : '');
+      dot.className = 'dot' + (i === 0 ? ' active' : '');
       dot.dataset.index = i;
       dot.setAttribute('aria-label', 'Slide ' + (i + 1));
       dotsWrap.appendChild(dot);
@@ -173,51 +214,41 @@ export async function renderHeroSlider(slidesOverride) {
 
   try {
     // ── 1. Direct override from caller ──────────────
-    if (Array.isArray(slidesOverride) && slidesOverride.length) {
-      return render(slidesOverride, 'slidesOverride (from renderHomepageSections)');
+    if (slidesOverride !== undefined) {
+      var p1slides = validateSlides(slidesOverride, 'P1 slidesOverride');
+      if (p1slides) return render(p1slides, 'slidesOverride (from renderHomepageSections)');
     }
-    console.log('[Hero] Priority 1 (slidesOverride): skipped — no override passed');
+    console.log('[Hero] P1 (slidesOverride): skipped');
 
     // ── 2. Page document heroSlides ──────────────────
     var page = await getPage('home');
-    console.log('[Hero] Priority 2 — getPage("home") result:', page);
-    console.log('[Hero] Priority 2 — page.heroSlides:', page && page.heroSlides);
-    if (page && Array.isArray(page.heroSlides) && page.heroSlides.length) {
-      return render(page.heroSlides, 'page.heroSlides (Home page document in Studio)');
-    }
+    console.log('[Hero] P2 — page doc:', page ? 'found' : 'null');
     if (!page) {
-      console.warn('[Hero] Priority 2 FAILED: getPage("home") returned null.' +
-        ' ▶ Fix: make sure a Page document with slug exactly "home" exists and is PUBLISHED in Studio.');
-    } else if (!page.heroSlides || !page.heroSlides.length) {
-      console.warn('[Hero] Priority 2 FAILED: page exists but heroSlides is empty or null.' +
-        ' ▶ Fix: add slides to the "🖼 Hero Slider Slides" field on the Home page in Studio and PUBLISH.');
+      console.warn('[Hero] P2 FAILED — no Page doc with slug "home".');
+    } else {
+      var p2slides = validateSlides(page.heroSlides, 'P2 page.heroSlides');
+      if (p2slides) return render(p2slides, 'page.heroSlides (Home page in Studio)');
+      console.warn('[Hero] P2: page exists but no valid slides.');
     }
 
     // ── 3. Homepage layout document slider section ───
     var homepage = await getHomepage();
-    console.log('[Hero] Priority 3 — getHomepage() result:', homepage);
     var homepageSections = (homepage && Array.isArray(homepage.sections)) ? homepage.sections : [];
-    console.log('[Hero] Priority 3 — sections count:', homepageSections.length);
-    var sliderSection = homepageSections.find(function (s) {
-      // GROQ returns null (not []) for empty arrays — treat both as "no slides"
-      var hasSlides = Array.isArray(s.slides) && s.slides.length > 0;
-      console.log('[Hero] Section type:', s.type, '| slides:', s.slides, '| valid:', hasSlides);
-      return s.type === 'slider' && hasSlides;
-    });
+    console.log('[Hero] P3 — Homepage sections:', homepageSections.length);
+    var sliderSection = homepageSections.find(function (s) { return s.type === 'slider'; });
     if (sliderSection) {
-      return render(sliderSection.slides, 'homepage.sections slider (Homepage document in Studio)');
-    }
-    if (!homepageSections.length) {
-      console.warn('[Hero] Priority 3 FAILED: Homepage document has no sections or does not exist.');
-    } else if (!sliderSection) {
-      console.warn('[Hero] Priority 3 FAILED: no slider section with slides found.' +
-        ' ▶ Fix: in the Homepage document, add a "Hero Slider" section and add slides inside it. PUBLISH.');
+      var p3slides = validateSlides(sliderSection.slides, 'P3 homepage slider section');
+      if (p3slides) return render(p3slides, 'homepage slider section');
+      console.warn('[Hero] P3: slider section exists but no valid slides.');
+    } else {
+      console.warn('[Hero] P3 FAILED — no slider section in Homepage doc.');
     }
 
     // ── 4. siteSettings.heroImage as single-slide ───
     var settings = await getSiteSettings().catch(function () { return null; });
-    console.log('[Hero] Priority 4 — siteSettings.heroImage:', settings && settings.heroImage);
-    if (settings && settings.heroImage) {
+    var hasHeroImg = !!(settings && settings.heroImage && settings.heroImage.asset && settings.heroImage.asset._ref);
+    console.log('[Hero] P4 — siteSettings.heroImage:', hasHeroImg ? 'found' : 'missing');
+    if (hasHeroImg) {
       return render([{
         image:        settings.heroImage,
         heading:      settings.homepageTitle   || 'Ceramisia',
@@ -229,12 +260,10 @@ export async function renderHeroSlider(slidesOverride) {
         buttonLink:   '/products/',
       }], 'siteSettings.heroImage (Site Settings in Studio)');
     }
-    console.warn('[Hero] Priority 4 FAILED: no heroImage in Site Settings.');
+    console.warn('[Hero] P4 FAILED — no heroImage in Site Settings.');
 
     // ── 5. Brand-coloured fallback — always shows the slider ──
-    console.info('[Hero] ⚠️  All 4 Sanity sources returned no slides.' +
-      ' Showing built-in brand-coloured fallback slides.' +
-      ' To show real images, go to Studio → Pages → Home → Hero Slider Slides → add slides → Publish.');
+    console.info('[Hero] All Sanity sources returned no valid slides; using fallback slides.');
     render(FALLBACK_SLIDES, 'FALLBACK_SLIDES (no Sanity data found)');
 
   } catch (err) {
@@ -272,95 +301,83 @@ export async function renderNavigation() {
       var li = document.createElement('li');
       var a  = document.createElement('a');
 
-      a.href      = esc(item.link || '#');
-      a.dataset.ge = item.title   || '';
-      a.dataset.en = item.titleEn || '';
+      a.href = esc(item.link || '#');
+      a.dataset.ge = item.title || '';
+      a.dataset.en = item.titleEn || item.title || '';
       a.textContent = label;
-      if (item.openInNewTab) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
-
-      // Active state — compare last path segment against last segment of item link
-      // Normalise item link: strip /index.html, trailing slash, then split
-      var linkNorm    = (item.link || '').replace(/\/index\.html$/, '').replace(/\/$/, '');
-      var linkSegment = linkNorm.split('/').pop() || '';
-      if (linkSegment === currentSegment) {
-        a.classList.add('active');
+      if (item.openInNewTab) {
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
       }
+
+      var linkNorm = (item.link || '').replace(/\/index\.html$/, '').replace(/\/$/, '');
+      var linkSegment = linkNorm.split('/').pop() || '';
+      if (linkSegment === currentSegment) a.classList.add('active');
 
       li.appendChild(a);
       navUl.appendChild(li);
     });
 
-    // Re-attach close-on-click for mobile menu NAV links (main.js may not have seen these yet)
-    navUl.querySelectorAll('a').forEach(function (link) {
-      link.addEventListener('click', function () {
-        var mainNav = document.getElementById('mainNav');
-        var menuTgl = document.getElementById('menuToggle');
-        var overlay = document.getElementById('navOverlay');
-        if (mainNav) mainNav.classList.remove('open');
-        if (menuTgl) { menuTgl.classList.remove('open'); menuTgl.setAttribute('aria-expanded', 'false'); }
-        if (overlay) overlay.classList.remove('visible');
-        document.body.style.overflow = '';
-      });
-    });
-
   } catch (err) {
-    console.warn('Navigation fetch failed, keeping static HTML:', err);
+    console.warn('[Navigation] Fetch failed, keeping static HTML:', err);
   }
 }
 
-// ── About Strip (homepage) ──────────────────────────
+// ── About Strip (homepage) ─────────────────────────
 export async function renderAboutStrip() {
   var section = document.querySelector('.about-strip');
   if (!section) return;
 
   try {
-    var page = await getPage('home');
     var lang = getLang();
-    console.log('[About Strip] page:', page ? 'ok' : 'null',
-      '| sections:', page && page.sections ? page.sections.length : 'none');
+    var data = await Promise.all([
+      getHomepage().catch(function () { return null; }),
+      getPage('home').catch(function () { return null; }),
+      getSiteSettings().catch(function () { return null; }),
+    ]);
 
-    var s = (page && page.sections && page.sections.length) ? page.sections[0] : null;
+    var homepage = data[0];
+    var page = data[1];
+    var settings = data[2];
 
-    if (!s) {
-      // No sections in the Home page document — keep static HTML text visible
-      // but try to inject an image from siteSettings so the layout isn't bare.
-      console.warn('[About Strip] No sections on Home page. ' +
-        'Fix: add a Content Section to the Home page in Sanity Studio. ' +
-        'Falling back to siteSettings.heroImage for the image slot.');
-      var stSettings = await getSiteSettings().catch(function () { return null; });
-      var imageWrapFb = section.querySelector('.about-strip-image');
-      if (imageWrapFb && stSettings && stSettings.heroImage) {
-        var fbImgUrl = sanityImageUrl(stSettings.heroImage, 800);
-        if (fbImgUrl) {
-          imageWrapFb.innerHTML = '<img src="' + esc(fbImgUrl) + '" alt="Ceramisia Studio" loading="lazy">';
-          console.log('[About Strip] Image injected from siteSettings.heroImage');
-        } else {
-          console.warn('[About Strip] siteSettings.heroImage asset ref is invalid.');
-          imageWrapFb.classList.add('section--hidden');
-        }
-      } else if (imageWrapFb) {
-        console.warn('[About Strip] No image source. ' +
-          'Fix: upload a heroImage in Site Settings or add a section image.');
-        imageWrapFb.classList.add('section--hidden');
-      }
-      // Static text remains — do NOT add section--hidden
-      return;
+    var aboutFromHomepage = null;
+    if (homepage && Array.isArray(homepage.sections)) {
+      aboutFromHomepage = homepage.sections.find(function (s) {
+        return s.type === 'about' || s.type === 'aboutStrip';
+      }) || null;
     }
 
+    var aboutFromPage = null;
+    if (page && Array.isArray(page.sections) && page.sections.length) {
+      aboutFromPage = page.sections[0];
+    }
+
+    var s = aboutFromHomepage || aboutFromPage;
+    if (!s) return;
+
     var heading = lang === 'ge' ? (s.heading || '') : (s.headingEn || s.heading || '');
-    var imgUrl  = sanityImageUrl(s.image, 800);
-    console.log('[About Strip] section heading:', heading || '(empty)', '| image:', imgUrl || '(none)');
+    var label = lang === 'ge' ? (s.label || '') : (s.labelEn || s.label || '');
+    var btnText = lang === 'ge' ? (s.buttonText || '') : (s.buttonTextEn || s.buttonText || '');
+    var btnLink = s.buttonLink || '/about/';
+    var imgUrl = s.image ? sanityImageUrl(s.image, 1200) : '';
 
     var textEl = section.querySelector('.about-strip-text');
     if (textEl) {
+      var labelEl = textEl.querySelector('.section-label');
       var h2 = textEl.querySelector('h2');
-      var p  = textEl.querySelector('p');
+      var p = textEl.querySelector('p');
+      var cta = textEl.querySelector('a.btn');
+
+      if (labelEl && (s.label || s.labelEn)) {
+        labelEl.dataset.ge = s.label || '';
+        labelEl.dataset.en = s.labelEn || s.label || '';
+        labelEl.textContent = label;
+      }
       if (h2 && heading) {
         h2.dataset.ge = s.heading || '';
-        h2.dataset.en = s.headingEn || '';
+        h2.dataset.en = s.headingEn || s.heading || '';
         h2.textContent = heading;
       }
-      // Portable text — just use the first block's text for plain rendering
       if (p && s.text) {
         var geText = blocksToText(s.text);
         var enText = blocksToText(s.textEn);
@@ -368,27 +385,27 @@ export async function renderAboutStrip() {
         p.dataset.en = enText || geText;
         p.textContent = lang === 'ge' ? geText : (enText || geText);
       }
+      if (cta && (s.buttonText || s.buttonTextEn)) {
+        cta.dataset.ge = s.buttonText || '';
+        cta.dataset.en = s.buttonTextEn || s.buttonText || '';
+        cta.textContent = btnText;
+        cta.href = btnLink;
+      }
     }
 
     var imageWrap = section.querySelector('.about-strip-image');
     if (imageWrap) {
+      if (!imgUrl && settings && settings.heroImage) {
+        imgUrl = sanityImageUrl(settings.heroImage, 800);
+      }
       if (imgUrl) {
         imageWrap.innerHTML = '<img src="' + esc(imgUrl) + '" alt="Ceramisia Studio" loading="lazy">';
       } else {
-        // Section has no image — try siteSettings.heroImage
-        var stSettings2 = await getSiteSettings().catch(function () { return null; });
-        var fbImg2 = stSettings2 && stSettings2.heroImage
-          ? sanityImageUrl(stSettings2.heroImage, 800) : '';
-        if (fbImg2) {
-          imageWrap.innerHTML = '<img src="' + esc(fbImg2) + '" alt="Ceramisia Studio" loading="lazy">';
-        } else {
-          imageWrap.classList.add('section--hidden');
-        }
+        imageWrap.classList.add('section--hidden');
       }
     }
 
   } catch (err) {
-    // Keep static HTML visible — do not hide the section on error
     console.warn('[About Strip] Fetch failed, keeping static HTML:', err);
   }
 }
