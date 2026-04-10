@@ -67,9 +67,11 @@ export async function renderHeroSlider(slidesOverride) {
       }
     }
 
-    // ── 4. Fallback: keep static HTML, already init'd by main.js ──
+    // ── 4. No Sanity slides — hide the section entirely ──
     if (!slides || !slides.length) {
-      return; // main.js DOMContentLoaded already called initHeroSlider()
+      var heroSection = document.querySelector('.hero-slider');
+      if (heroSection) heroSection.classList.add('section--hidden');
+      return;
     }
 
     // ── Build DOM ────────────────────────────────────
@@ -124,8 +126,9 @@ export async function renderHeroSlider(slidesOverride) {
     if (typeof window.initHeroSlider === 'function') window.initHeroSlider();
 
   } catch (err) {
-    console.warn('Hero slider fetch failed, keeping static HTML:', err);
-    // Static HTML already wired by main.js — no re-init needed
+    console.warn('Hero slider fetch failed, hiding section:', err);
+    var heroSection = document.querySelector('.hero-slider');
+    if (heroSection) heroSection.classList.add('section--hidden');
   }
 }
 
@@ -228,9 +231,13 @@ export async function renderAboutStrip() {
       }
     }
 
-    if (imgUrl) {
-      var img = section.querySelector('.about-strip-image img');
-      if (img) img.src = imgUrl;
+    var imageWrap = section.querySelector('.about-strip-image');
+    if (imageWrap) {
+      if (imgUrl) {
+        imageWrap.innerHTML = '<img src="' + esc(imgUrl) + '" alt="Ceramisia Studio" loading="lazy">';
+      } else {
+        imageWrap.classList.add('section--hidden');
+      }
     }
 
   } catch (err) {

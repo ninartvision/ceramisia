@@ -39,11 +39,17 @@ export async function renderAboutPage() {
     }
 
     // Hero image
-    if (page.heroImage) {
-      var imgUrl = sanityImageUrl(page.heroImage, 800);
-      if (imgUrl) {
-        var heroImg = document.querySelector('.about-hero-image img');
-        if (heroImg) heroImg.src = imgUrl;
+    var imageWrap = document.querySelector('.about-hero-image');
+    if (imageWrap) {
+      if (page.heroImage) {
+        var imgUrl = sanityImageUrl(page.heroImage, 800);
+        if (imgUrl) {
+          imageWrap.innerHTML = '<img src="' + esc(imgUrl) + '" alt="' + esc(heading || 'Ceramisia') + '" loading="lazy">';
+        } else {
+          imageWrap.classList.add('section--hidden');
+        }
+      } else {
+        imageWrap.classList.add('section--hidden');
       }
     }
 
