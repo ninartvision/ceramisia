@@ -130,6 +130,7 @@ export async function getSiteSettings() {
     address, addressEn, mapEmbedUrl,
     workingHours, workingHoursEn,
     footerText, footerTextEn,
+    featuredProductCount,
     socialLinks, seo
   }`);
 }

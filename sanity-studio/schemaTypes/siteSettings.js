@@ -141,6 +141,15 @@ export default {
       type: 'string',
       group: 'general',
     },
+    {
+      name: 'featuredProductCount',
+      title: 'Featured Products Count',
+      type: 'number',
+      group: 'general',
+      description: 'How many products to show in the homepage featured section (default: 4)',
+      initialValue: 4,
+      validation: (Rule) => Rule.min(1).max(12),
+    },
 
     // ── Social Links ───────────────────────────────────
     {
