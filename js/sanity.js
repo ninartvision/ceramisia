@@ -66,10 +66,13 @@ export function clearCache(key) {
 }
 
 /** Fetch all categories ordered by display order */
-export async function getCategories() {
-  return sanityFetch(`*[_type == "category"] | order(order asc) {
+export function getCategories() {
+  if (!_cache.categories) {
+    _cache.categories = sanityFetch(`*[_type == "category"] | order(order asc) {
     _id, title, titleEn, "slug": slug.current, description, descriptionEn, image
   }`);
+  }
+  return _cache.categories;
 }
 
 /**
@@ -222,14 +225,18 @@ export function getHomepage() {
 }
 
 /** Fetch latest N blog posts (for homepage cards) */
-export async function getBlogPosts(limit = 3) {
-  return sanityFetch(
-    `*[_type == "blogPost"] | order(publishedAt desc) [0...$limit] {
-      _id, title, titleEn, "slug": slug.current,
-      publishedAt, image, excerpt, excerptEn, tags
-    }`,
-    { limit }
-  );
+export function getBlogPosts(limit = 3) {
+  var key = 'blogPosts_' + limit;
+  if (!_cache[key]) {
+    _cache[key] = sanityFetch(
+      `*[_type == "blogPost"] | order(publishedAt desc) [0...$limit] {
+        _id, title, titleEn, "slug": slug.current,
+        publishedAt, image, excerpt, excerptEn, tags
+      }`,
+      { limit }
+    );
+  }
+  return _cache[key];
 }
 
 /** Fetch a single blog post by slug */

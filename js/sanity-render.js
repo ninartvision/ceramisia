@@ -14,6 +14,7 @@ import {
   getCategoriesFromProducts,
   getProducts,
   getFeaturedProducts,
+  getPage,
   getSiteSettings,
   getHomepage,
   getBlogPosts,
@@ -307,7 +308,16 @@ async function renderProductsGrid(categorySlug) {
     if (typeof window.initProductModal === 'function') window.initProductModal();
 
   } catch (err) {
-    console.warn('Sanity products fetch failed, keeping static HTML:', err);
+    console.warn('Sanity products fetch failed:', err);
+    const lang = getLang();
+    grid.innerHTML =
+      '<div class="products-empty" style="grid-column:1/-1;text-align:center;padding:4rem 1rem">' +
+        '<p style="font-size:1.1rem;color:var(--clr-text-muted,#888)">' +
+          (lang === 'ge'
+            ? 'პროდუქტები ვერ ჩაიტვირთა. გთხოვთ სცადოთ მოგვიანებით.'
+            : 'Failed to load products. Please try again later.') +
+        '</p>' +
+      '</div>';
   }
 }
 
@@ -409,8 +419,12 @@ async function renderCategoriesGrid() {
       }
     }
 
-    // No categories returned — grid stays empty (no static fallback to preserve)
-    if (!categories || !categories.length) return;
+    // No categories returned — hide the static section so empty grid is not shown
+    if (!categories || !categories.length) {
+      var catSection = document.querySelector('.categories-section[data-static-home-section]');
+      if (catSection) catSection.classList.add('section--hidden');
+      return;
+    }
 
     const lang = getLang();
     grid.innerHTML = '';
@@ -439,8 +453,10 @@ async function renderCategoriesGrid() {
     reinitScrollReveal();
 
   } catch (err) {
-    // Fetch failed — leave static HTML untouched
-    console.warn('Categories grid fetch failed, keeping static HTML:', err);
+    // Fetch failed — hide static section rather than show an empty grid
+    console.warn('Categories grid fetch failed, hiding section:', err);
+    var catSection = document.querySelector('.categories-section[data-static-home-section]');
+    if (catSection) catSection.classList.add('section--hidden');
   }
 }
 
@@ -858,6 +874,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Products page only
   if (isProducts) {
+    // Set page banner from Sanity "products" page document if a heroImage is defined
+    renders.push(
+      getPage('products').then(function (page) {
+        if (page && page.heroImage) {
+          var imgUrl = sanityImageUrl(page.heroImage, 1920);
+          var banner = document.querySelector('.page-banner');
+          if (banner && imgUrl) banner.style.backgroundImage = "url('" + imgUrl + "')";
+        }
+      }).catch(function () {})
+    );
     var urlCat = new URLSearchParams(window.location.search).get('cat') || 'all';
     // Filter bar and grid can fetch in parallel — grid reads ?cat= directly
     renders.push(

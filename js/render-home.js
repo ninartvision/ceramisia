@@ -203,7 +203,10 @@ export async function renderAboutStrip() {
 
   try {
     var page = await getPage('home');
-    if (!page || !page.sections || !page.sections.length) return;
+    if (!page || !page.sections || !page.sections.length) {
+      if (section) section.classList.add('section--hidden');
+      return;
+    }
 
     // Use the first section as "about strip"
     var s    = page.sections[0];
@@ -241,7 +244,9 @@ export async function renderAboutStrip() {
     }
 
   } catch (err) {
-    console.warn('About strip fetch failed, keeping static HTML:', err);
+    console.warn('About strip fetch failed, hiding section:', err);
+    var aboutEl = document.querySelector('.about-strip');
+    if (aboutEl) aboutEl.classList.add('section--hidden');
   }
 }
 

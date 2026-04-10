@@ -800,6 +800,7 @@ p { color: var(--clr-text-mid); }
 .page-banner {
   position: relative;
   height: 300px;
+  background-color: #3d2a1e; /* fallback when no Sanity banner image */
   background-size: cover;
   background-position: center;
   display: flex;

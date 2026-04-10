@@ -68,8 +68,8 @@ export async function renderContactPage() {
       if (settings.phoneNumber2) phones.push(settings.phoneNumber2);
       if (phones.length) {
         phonesWrap.innerHTML = phones.map(function (num) {
-          var cleaned = num.replace(/\s+/g, '');
-          return '<a href="tel:' + cleaned + '">' + num + '</a>';
+          var cleaned = num.replace(/\D/g, '');
+          return '<a href="tel:+' + cleaned + '">' + num + '</a>';
         }).join('\n');
       }
     }
