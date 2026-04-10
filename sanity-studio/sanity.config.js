@@ -4,7 +4,7 @@ import { structureTool } from 'sanity/structure'
 import { schemaTypes } from './schemaTypes'
 
 // Singleton document types — only one instance should exist
-const singletonTypes = new Set(['siteSettings', 'navigation'])
+const singletonTypes = new Set(['siteSettings', 'navigation', 'homepage'])
 
 // Custom desk structure for singletons
 const deskStructure = (S) =>
@@ -29,6 +29,17 @@ const deskStructure = (S) =>
             .schemaType('navigation')
             .documentId('navigation')
             .title('Navigation & Menus')
+        ),
+
+      // ── Homepage (singleton) ───────────────────────────
+      S.listItem()
+        .title('Homepage Layout')
+        .id('homepage')
+        .child(
+          S.document()
+            .schemaType('homepage')
+            .documentId('homepage')
+            .title('Homepage Layout')
         ),
 
       S.divider(),
