@@ -46,29 +46,60 @@ export async function renderHeroSlider(slidesOverride) {
     // ── 1. Direct override from caller ──────────────
     if (Array.isArray(slidesOverride) && slidesOverride.length) {
       slides = slidesOverride;
+      console.log('[Hero] source: slidesOverride (' + slides.length + ' slides)');
     }
 
     // ── 2. Page document heroSlides ──────────────────
     if (!slides) {
       var page = await getPage('home');
+      console.log('[Hero] page doc:', page ? 'ok' : 'null',
+        '| heroSlides:', page && page.heroSlides ? page.heroSlides.length : 'none');
       if (page && page.heroSlides && page.heroSlides.length) {
         slides = page.heroSlides;
+        console.log('[Hero] source: page.heroSlides');
       }
     }
 
     // ── 3. Homepage layout document slider section ───
     if (!slides) {
       var homepage = await getHomepage();
+      console.log('[Hero] homepage doc:', homepage ? 'ok' : 'null',
+        '| sections:', homepage && homepage.sections ? homepage.sections.length : 'none');
       if (homepage && Array.isArray(homepage.sections)) {
         var sliderSection = homepage.sections.find(function (s) {
           return s.type === 'slider' && Array.isArray(s.slides) && s.slides.length;
         });
-        if (sliderSection) slides = sliderSection.slides;
+        if (sliderSection) {
+          slides = sliderSection.slides;
+          console.log('[Hero] source: homepage.sections slider (' + slides.length + ' slides)');
+        }
       }
     }
 
-    // ── 4. No Sanity slides — hide the section entirely ──
+    // ── 4. siteSettings.heroImage as single-slide fallback ──
+    if (!slides) {
+      var settings = await getSiteSettings().catch(function () { return null; });
+      console.log('[Hero] siteSettings.heroImage:', settings && settings.heroImage ? 'found' : 'missing');
+      if (settings && settings.heroImage) {
+        slides = [{
+          image:        settings.heroImage,
+          heading:      settings.homepageTitle    || 'Ceramisia',
+          headingEn:    settings.homepageTitleEn  || 'Ceramisia',
+          subtitle:     '',
+          subtitleEn:   '',
+          buttonText:   'პროდუქტების ნახვა',
+          buttonTextEn: 'View Products',
+          buttonLink:   '/products/',
+        }];
+        console.log('[Hero] source: siteSettings.heroImage fallback');
+      }
+    }
+
+    // ── 5. Nothing found anywhere — hide hero ──
     if (!slides || !slides.length) {
+      console.warn('[Hero] No slide data found in any source. ' +
+        'Fix: add heroSlides to the Home page in Sanity Studio, ' +
+        'or upload a heroImage in Site Settings.');
       var heroSection = document.querySelector('.hero-slider');
       if (heroSection) heroSection.classList.add('section--hidden');
       return;
@@ -81,6 +112,11 @@ export async function renderHeroSlider(slidesOverride) {
     // The hero uses CSS background-image (not <img>), so this is the only way
     // to tell the browser to fetch it early without waiting for JS to run.
     var firstImgUrl = sanityImageUrl(slides[0].image, 1920);
+    if (!firstImgUrl) {
+      console.warn('[Hero] First slide image URL is empty. ' +
+        'Check that the slide has an image uploaded in Sanity Studio. ' +
+        'Image ref:', JSON.stringify(slides[0].image));
+    }
     if (firstImgUrl) {
       var preloadLink = document.createElement('link');
       preloadLink.rel  = 'preload';
@@ -216,17 +252,41 @@ export async function renderAboutStrip() {
 
   try {
     var page = await getPage('home');
-    if (!page || !page.sections || !page.sections.length) {
-      if (section) section.classList.add('section--hidden');
+    var lang = getLang();
+    console.log('[About Strip] page:', page ? 'ok' : 'null',
+      '| sections:', page && page.sections ? page.sections.length : 'none');
+
+    var s = (page && page.sections && page.sections.length) ? page.sections[0] : null;
+
+    if (!s) {
+      // No sections in the Home page document — keep static HTML text visible
+      // but try to inject an image from siteSettings so the layout isn't bare.
+      console.warn('[About Strip] No sections on Home page. ' +
+        'Fix: add a Content Section to the Home page in Sanity Studio. ' +
+        'Falling back to siteSettings.heroImage for the image slot.');
+      var stSettings = await getSiteSettings().catch(function () { return null; });
+      var imageWrapFb = section.querySelector('.about-strip-image');
+      if (imageWrapFb && stSettings && stSettings.heroImage) {
+        var fbImgUrl = sanityImageUrl(stSettings.heroImage, 800);
+        if (fbImgUrl) {
+          imageWrapFb.innerHTML = '<img src="' + esc(fbImgUrl) + '" alt="Ceramisia Studio" loading="lazy">';
+          console.log('[About Strip] Image injected from siteSettings.heroImage');
+        } else {
+          console.warn('[About Strip] siteSettings.heroImage asset ref is invalid.');
+          imageWrapFb.classList.add('section--hidden');
+        }
+      } else if (imageWrapFb) {
+        console.warn('[About Strip] No image source. ' +
+          'Fix: upload a heroImage in Site Settings or add a section image.');
+        imageWrapFb.classList.add('section--hidden');
+      }
+      // Static text remains — do NOT add section--hidden
       return;
     }
 
-    // Use the first section as "about strip"
-    var s    = page.sections[0];
-    var lang = getLang();
-
     var heading = lang === 'ge' ? (s.heading || '') : (s.headingEn || s.heading || '');
     var imgUrl  = sanityImageUrl(s.image, 800);
+    console.log('[About Strip] section heading:', heading || '(empty)', '| image:', imgUrl || '(none)');
 
     var textEl = section.querySelector('.about-strip-text');
     if (textEl) {
@@ -252,14 +312,21 @@ export async function renderAboutStrip() {
       if (imgUrl) {
         imageWrap.innerHTML = '<img src="' + esc(imgUrl) + '" alt="Ceramisia Studio" loading="lazy">';
       } else {
-        imageWrap.classList.add('section--hidden');
+        // Section has no image — try siteSettings.heroImage
+        var stSettings2 = await getSiteSettings().catch(function () { return null; });
+        var fbImg2 = stSettings2 && stSettings2.heroImage
+          ? sanityImageUrl(stSettings2.heroImage, 800) : '';
+        if (fbImg2) {
+          imageWrap.innerHTML = '<img src="' + esc(fbImg2) + '" alt="Ceramisia Studio" loading="lazy">';
+        } else {
+          imageWrap.classList.add('section--hidden');
+        }
       }
     }
 
   } catch (err) {
-    console.warn('About strip fetch failed, hiding section:', err);
-    var aboutEl = document.querySelector('.about-strip');
-    if (aboutEl) aboutEl.classList.add('section--hidden');
+    // Keep static HTML visible — do not hide the section on error
+    console.warn('[About Strip] Fetch failed, keeping static HTML:', err);
   }
 }
 

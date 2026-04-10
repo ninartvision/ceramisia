@@ -247,7 +247,7 @@ export function getHomepage() {
       buttonText, buttonTextEn, buttonLink,
       slides[] {
         _key,
-        image { ..., asset-> },
+        image,
         subtitle, subtitleEn,
         heading, headingEn,
         buttonText, buttonTextEn, buttonLink
