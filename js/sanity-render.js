@@ -11,6 +11,7 @@
 import {
   sanityImageUrl,
   getCategories,
+  getCategoriesFromProducts,
   getProducts,
   getFeaturedProducts,
   getSiteSettings,
@@ -339,9 +340,15 @@ async function renderCategoriesGrid() {
   if (!grid) return;
 
   try {
-    let categories = await getCategories();
+    // Primary: only categories that have actual products
+    let categories = await getCategoriesFromProducts();
 
-    // Fallback: if no Category documents exist, extract unique categories from products
+    // Secondary fallback: all category documents (no product filter)
+    if (!categories || !categories.length) {
+      categories = await getCategories();
+    }
+
+    // Tertiary fallback: extract unique categories from product list data
     if (!categories || !categories.length) {
       const products = await getProducts('all');
       if (products && products.length) {
@@ -689,7 +696,7 @@ async function renderHomepageSections() {
 
     // Parallel data fetch — only what we actually need
     var results = await Promise.all([
-      needsCats     ? getCategories()                          : Promise.resolve(null),
+      needsCats     ? getCategoriesFromProducts()               : Promise.resolve(null),
       needsFeatured ? getFeaturedProducts()                    : Promise.resolve(null),
       needsBlog     ? getBlogPosts(3)                          : Promise.resolve(null),
       needsSettings ? getSiteSettings().catch(function () { return null; }) : Promise.resolve(null),
@@ -698,6 +705,11 @@ async function renderHomepageSections() {
     var featuredProducts = results[1];
     var blogPosts        = results[2];
     var settings         = results[3];
+
+    // Secondary fallback for categories in section builder
+    if (needsCats && (!categories || !categories.length)) {
+      categories = await getCategories().catch(function () { return []; }) || [];
+    }
 
     var container = document.getElementById('sanity-home-sections');
     if (!container) return false;

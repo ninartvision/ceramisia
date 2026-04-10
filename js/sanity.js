@@ -51,6 +51,20 @@ export async function getCategories() {
   }`);
 }
 
+/**
+ * Fetch only categories that are actually referenced by at least one
+ * in-stock product — the definitive source for the homepage grid.
+ * Result is ordered by the category's own `order` field.
+ */
+export async function getCategoriesFromProducts() {
+  return sanityFetch(
+    `*[_type == "category" && _id in *[_type == "product" && defined(category) && inStock != false].category._ref] | order(order asc) {
+      _id, title, titleEn, "slug": slug.current, image,
+      "productCount": count(*[_type == "product" && category._ref == ^._id && inStock != false])
+    }`
+  );
+}
+
 /** Fetch products, optionally filtered by category slug */
 export async function getProducts(categorySlug) {
   const base = `
