@@ -11,6 +11,26 @@ const LANG_KEY = 'ceramisia_lang';
 function getLang() { return localStorage.getItem(LANG_KEY) || 'ge'; }
 function esc(str) { if (!str) return ''; var el = document.createElement('span'); el.textContent = str; return el.innerHTML; }
 
+function resolveSlideHeading(slide, lang) {
+  var h = slide && slide.heading;
+  if (h && typeof h === 'object') {
+    return h[lang] || h.ge || h.en || '';
+  }
+  var heading = slide && slide.heading ? slide.heading : '';
+  var headingEn = slide && slide.headingEn ? slide.headingEn : heading;
+  return lang === 'ge' ? heading : (headingEn || heading);
+}
+
+function resolveSlideSubtext(slide, lang) {
+  var st = slide && slide.subtext;
+  if (st && typeof st === 'object') {
+    return st[lang] || st.ge || st.en || '';
+  }
+  var subtitle = slide && slide.subtitle ? slide.subtitle : '';
+  var subtitleEn = slide && slide.subtitleEn ? slide.subtitleEn : subtitle;
+  return lang === 'ge' ? subtitle : (subtitleEn || subtitle);
+}
+
 // SVG path data for brand strip icons (keyed by icon id from siteSettings)
 var BRAND_ICONS = {
   shield:  '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
@@ -80,18 +100,20 @@ function validateSlides(raw, label) {
     return null;
   }
   var valid = raw.filter(function (s, idx) {
-    var hasHeading = !!(s.heading || s.headingEn);
+    var geHeading = resolveSlideHeading(s, 'ge');
+    var enHeading = resolveSlideHeading(s, 'en');
+    var hasHeading = !!(geHeading || enHeading);
     var hasImgRef  = !!(s.image && s.image.asset && s.image.asset._ref);
     if (!hasHeading) {
       console.warn('[Hero]', label, 'slide[' + idx + '] — SKIPPED (no heading text in GE or EN)');
       return false;
     }
     if (!hasImgRef) {
-      console.warn('[Hero]', label, 'slide[' + idx + '] "' + (s.heading || s.headingEn) +
+      console.warn('[Hero]', label, 'slide[' + idx + '] "' + (geHeading || enHeading) +
         '" — WARNING: image.asset._ref is missing (image not uploaded or not published). ' +
         'Slide will render with a dark-gradient background instead of a photo.');
     } else {
-      console.log('[Hero]', label, 'slide[' + idx + '] ✓', s.heading || s.headingEn,
+      console.log('[Hero]', label, 'slide[' + idx + '] ✓', geHeading || enHeading,
         '| image._ref:', s.image.asset._ref);
     }
     return true; // keep slide even without image
@@ -122,7 +144,9 @@ function buildSlides(container, dotsWrap, slides) {
   // LCP preload: inject <link rel="preload" as="image"> for the first slide that
   // has an image. The hero uses CSS background-image, not <img>, so a preload
   // hint is the only way to signal urgency to the browser before JS renders.
-  var firstImgUrl = slides[0] && slides[0].image ? sanityImageUrl(slides[0].image, 1920) : '';
+  var firstImgUrl = slides[0] && slides[0].image && slides[0].image.asset && slides[0].image.asset._ref
+    ? sanityImageUrl(slides[0].image, 1920)
+    : '';
   if (firstImgUrl) {
     var preloadLink = document.createElement('link');
     preloadLink.rel  = 'preload';
@@ -136,9 +160,9 @@ function buildSlides(container, dotsWrap, slides) {
   if (dotsWrap) dotsWrap.innerHTML = '';
 
   slides.forEach(function (s, i) {
-    var imgUrl = s.image ? sanityImageUrl(s.image, 1920) : '';
-    var subtitle = lang === 'ge' ? (s.subtitle || '') : (s.subtitleEn || s.subtitle || '');
-    var heading = lang === 'ge' ? (s.heading || '') : (s.headingEn || s.heading || '');
+    var imgUrl = s.image && s.image.asset && s.image.asset._ref ? sanityImageUrl(s.image, 1920) : '';
+    var subtitle = resolveSlideSubtext(s, lang);
+    var heading = resolveSlideHeading(s, lang);
     var btnText = lang === 'ge' ? (s.buttonText || '') : (s.buttonTextEn || s.buttonText || '');
     var btnLink = s.buttonLink || '/products/';
     var safeBtnLink = /^(https?:\/\/|\/|[a-zA-Z0-9_-]+\.[a-zA-Z])/.test(btnLink)
@@ -162,9 +186,9 @@ function buildSlides(container, dotsWrap, slides) {
       (imgAlt ? '<span class="sr-only">' + esc(imgAlt) + '</span>' : '') +
       '<div class="slide-content">' +
         (subtitle
-          ? '<p class="slide-subtitle" data-ge="' + esc(s.subtitle || '') + '" data-en="' + esc(s.subtitleEn || '') + '">' + esc(subtitle) + '</p>'
+          ? '<p class="slide-subtitle" data-ge="' + esc(resolveSlideSubtext(s, 'ge')) + '" data-en="' + esc(resolveSlideSubtext(s, 'en')) + '">' + esc(subtitle) + '</p>'
           : '') +
-        '<h1 class="slide-title" data-ge="' + esc(s.heading || '') + '" data-en="' + esc(s.headingEn || '') + '">' + esc(heading) + '</h1>' +
+        '<h1 class="slide-title" data-ge="' + esc(resolveSlideHeading(s, 'ge')) + '" data-en="' + esc(resolveSlideHeading(s, 'en')) + '">' + esc(heading) + '</h1>' +
         (btnText
           ? '<a href="' + esc(safeBtnLink) + '" class="btn btn-light" data-ge="' + esc(s.buttonText || '') + '" data-en="' + esc(s.buttonTextEn || '') + '">' + esc(btnText) + '</a>'
           : '') +
@@ -226,7 +250,9 @@ export async function renderHeroSlider(slidesOverride) {
     if (!page) {
       console.warn('[Hero] P2 FAILED — no Page doc with slug "home".');
     } else {
-      var p2slides = validateSlides(page.heroSlides, 'P2 page.heroSlides');
+      var slides = Array.isArray(page.heroSlides) ? page.heroSlides : [];
+      console.log('[Hero] slides:', slides);
+      var p2slides = validateSlides(slides, 'P2 page.heroSlides');
       if (p2slides) return render(p2slides, 'page.heroSlides (Home page in Studio)');
       console.warn('[Hero] P2: page exists but no valid slides.');
     }

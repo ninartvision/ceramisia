@@ -190,10 +190,6 @@ export function getPage(slug) {
         image { _type, alt, asset { _ref, _type } },
         heading,
         subtext,
-        "subtitle": coalesce(subtext.ge, subtitle),
-        "subtitleEn": coalesce(subtext.en, subtitleEn, subtext.ge),
-        "heading": coalesce(heading.ge, heading),
-        "headingEn": coalesce(heading.en, headingEn, heading.ge),
         buttonText, buttonTextEn, buttonLink
       },
       sections[] {
