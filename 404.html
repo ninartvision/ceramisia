@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ceramisia</title>
+  <title>404 – Ceramisia</title>
   <script>
     // ═══════════════════════════════════════════════════════
     // GitHub Pages 404 → Dynamic Page Redirect
@@ -55,16 +55,28 @@
       // ── Step 5: Skip known static files ──
       // These pages have their own .html files, no redirect needed.
       var staticPages = [
-        '', 'index.html', 'products.html', 'about.html',
-        'contact.html', 'page.html', '404.html'
+        '',
+        'index',    'index.html',
+        'products', 'products.html',
+        'about',    'about.html',
+        'contact',  'contact.html',
+        'page',     'page.html',
+        '404',      '404.html'
       ];
 
       // Skip anything with a file extension (css, js, png, jpg, etc.)
       // This prevents redirects for missing assets.
       var hasExtension = slug.indexOf('.') !== -1;
 
+      // Skip asset and cms folders
+      var isAssetPath = (
+        slug.indexOf('assets/') === 0 ||
+        slug.indexOf('cms/')    === 0 ||
+        slug.indexOf('.github/') === 0
+      );
+
       // ── Step 6: Redirect or show 404 ──
-      if (slug && staticPages.indexOf(slug) === -1 && !hasExtension) {
+      if (slug && staticPages.indexOf(slug) === -1 && !hasExtension && !isAssetPath) {
         // Build the redirect URL:  /ceramisia/page.html?slug=privacy
         var target = base + '/page.html?slug=' + encodeURIComponent(slug);
         window.location.replace(target);
@@ -73,6 +85,7 @@
     })();
   </script>
   <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       display: flex;
@@ -80,40 +93,75 @@
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      margin: 0;
       background: #FDFAF6;
       color: #333;
       text-align: center;
       padding: 2rem;
     }
+    .error-code {
+      font-family: 'Cormorant Garamond', 'Noto Serif Georgian', serif;
+      font-size: 8rem;
+      line-height: 1;
+      color: #8C1C13;
+      opacity: 0.1;
+      margin-bottom: 0.5rem;
+      user-select: none;
+    }
     h1 {
       font-family: 'Cormorant Garamond', 'Noto Serif Georgian', serif;
       color: #8C1C13;
-      font-size: 2.5rem;
+      font-size: 2rem;
       margin-bottom: 1rem;
     }
-    p { margin-bottom: 2rem; max-width: 400px; line-height: 1.6; }
-    a {
+    p {
+      margin-bottom: 1rem;
+      max-width: 400px;
+      line-height: 1.6;
+      color: #555;
+    }
+    small { color: #999; font-size: 0.8rem; }
+    .btn {
       display: inline-block;
-      margin-top: 0.5rem;
+      margin-top: 1.5rem;
+      padding: 0.75rem 2rem;
+      background: #8C1C13;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 2px;
+      font-size: 0.9rem;
+      letter-spacing: 0.05em;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.8; }
+    .back-link {
+      display: block;
+      margin-top: 1rem;
       color: #8C1C13;
+      font-size: 0.85rem;
       text-decoration: none;
       border-bottom: 1px solid currentColor;
       padding-bottom: 2px;
+      cursor: pointer;
     }
-    a:hover { opacity: 0.7; }
+    .back-link:hover { opacity: 0.7; }
+    noscript p {
+      margin-top: 2rem;
+      font-size: 0.8rem;
+      color: #bbb;
+    }
   </style>
 </head>
 <body>
-  <!-- Fallback content: only visible if JS redirect didn't fire -->
-  <!-- (e.g. a missing .css file, or JavaScript is disabled)    -->
-  <h1>404</h1>
-  <p>გვერდი ვერ მოიძებნა.<br>Page not found.</p>
-  <a href="index.html">მთავარზე დაბრუნება / Back to Home</a>
+  <div class="error-code" aria-hidden="true">404</div>
+  <h1>გვერდი ვერ მოიძებნა</h1>
+  <p>
+    თქვენ მიერ მოთხოვნილი გვერდი არ არსებობს ან გადატანილია.<br>
+    <small>The page you requested does not exist.</small>
+  </p>
+  <a href="/" class="btn">მთავარზე დაბრუნება</a>
+  <a onclick="history.back()" class="back-link">← უკან დაბრუნება</a>
   <noscript>
-    <p style="margin-top:1rem;font-size:0.85rem;color:#999">
-      JavaScript is required for dynamic pages.
-    </p>
+    <p>JavaScript გათიშულია. გთხოვთ ჩართოთ.</p>
   </noscript>
 </body>
 </html>
