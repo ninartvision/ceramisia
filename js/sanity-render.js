@@ -198,25 +198,23 @@ function createProductCard(p, lang, extraClass) {
 // ── Build & bind filter bar buttons ─────────────────
 function buildFilterBar(bar, categoryList) {
   const lang = getLang();
-  bar.innerHTML = '';
 
-  const allBtn = document.createElement('button');
-  allBtn.className = 'filter-btn active';
-  allBtn.dataset.filter = 'all';
-  allBtn.dataset.ge = 'ყველა';
-  allBtn.dataset.en = 'All';
-  allBtn.textContent = lang === 'ge' ? 'ყველა' : 'All';
-  bar.appendChild(allBtn);
+  // Build the entire bar as one HTML string — single DOM write avoids
+  // multiple reflows and prevents any intermediate state from being visible.
+  var html = '<button class="filter-btn active" data-filter="all"' +
+    ' data-ge="\u10E7\u10D5\u10D4\u10DA\u10D0" data-en="All">' +
+    (lang === 'ge' ? '\u10E7\u10D5\u10D4\u10DA\u10D0' : 'All') + '</button>';
 
   categoryList.forEach(function (cat) {
-    const btn = document.createElement('button');
-    btn.className = 'filter-btn';
-    btn.dataset.filter = cat.slug;
-    btn.dataset.ge = cat.title || '';
-    btn.dataset.en = cat.titleEn || cat.title || '';
-    btn.textContent = lang === 'ge' ? (cat.title || '') : (cat.titleEn || cat.title || '');
-    bar.appendChild(btn);
+    var label = lang === 'ge' ? (cat.title || '') : (cat.titleEn || cat.title || '');
+    html += '<button class="filter-btn"' +
+      ' data-filter="'  + esc(cat.slug)                        + '"' +
+      ' data-ge="'      + esc(cat.title   || '')               + '"' +
+      ' data-en="'      + esc(cat.titleEn || cat.title || '') + '">' +
+      esc(label) + '</button>';
   });
+
+  bar.innerHTML = html; // single DOM update — no partial render visible
 
   bar.querySelectorAll('.filter-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
@@ -260,11 +258,11 @@ async function renderFilterBar() {
       }
     }
 
-    if (!categories || !categories.length) return; // keep static buttons
+    if (!categories || !categories.length) return; // nothing to render — bar stays empty
 
     buildFilterBar(bar, categories);
   } catch (err) {
-    console.warn('Categories fetch failed, keeping static filter bar:', err);
+    console.warn('Categories fetch failed, filter bar stays empty:', err);
   }
 }
 
@@ -316,36 +314,38 @@ async function renderFeaturedProducts() {
   const grid = document.querySelector('.popular-grid');
   if (!grid) return;
 
+  // Parent section — hidden when no featured products exist
+  const section = grid.closest('.popular-products');
+
   try {
-    // Get count from siteSettings (default 4)
     const settings = await getSiteSettings().catch(function () { return null; });
     const count = (settings && settings.featuredProductCount) ? settings.featuredProductCount : 4;
 
-    // Try featured first; fall back to first N products if none are marked featured
-    let products = await getFeaturedProducts();
-    if (!products || !products.length) {
-      products = await getProducts('all');
-      if (products && products.length) products = products.slice(0, count);
-    } else {
-      products = products.slice(0, count);
+    // Only show products explicitly marked isFeatured == true — no fallback
+    const products = (await getFeaturedProducts() || []).slice(0, count);
+
+    if (!products.length) {
+      // No featured products: hide the section entirely so no empty block shows
+      if (section) section.style.display = 'none';
+      return;
     }
 
-    // Only replace static HTML when Sanity returns real data
-    if (!products || !products.length) return;
-
     const lang = getLang();
+    // Single innerHTML reset then one card-per-append (cards are already safe via esc())
     grid.innerHTML = '';
     products.forEach(function (p) {
       grid.appendChild(createProductCard(p, lang));
     });
 
+    if (section) section.style.display = ''; // ensure visible if it was previously hidden
     if (typeof window.initCart === 'function') window.initCart();
     if (typeof window.initProductModal === 'function') window.initProductModal();
     reinitPopularSlider();
 
   } catch (err) {
-    // Fetch failed — leave static HTML untouched
-    console.warn('Featured products fetch failed, keeping static HTML:', err);
+    // Fetch failed — hide the empty section rather than showing a blank grid
+    if (section) section.style.display = 'none';
+    console.warn('Featured products fetch failed:', err);
   }
 }
 
@@ -383,7 +383,7 @@ async function renderCategoriesGrid() {
       }
     }
 
-    // Only replace static HTML when Sanity returns real data
+    // No categories returned — grid stays empty (no static fallback to preserve)
     if (!categories || !categories.length) return;
 
     const lang = getLang();
@@ -815,8 +815,8 @@ async function renderHomepageSections() {
 
 // ── Init on DOM ready ────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
-  // Safety timeout — always reveal the page after 8 s even if fetches hang
-  var revealTimer = setTimeout(revealPage, 8000);
+  // Safety timeout — always reveal the page after 5 s even if fetches hang
+  var revealTimer = setTimeout(revealPage, 5000);
 
   var path = window.location.pathname;
   var isProducts = path.endsWith('products.html') || document.querySelector('.filter-bar') !== null;
@@ -833,18 +833,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Products page only
   if (isProducts) {
-    var filterAndProducts = renderFilterBar().then(function () {
-      var urlCat = new URLSearchParams(window.location.search).get('cat');
-      if (urlCat) {
-        var btn = document.querySelector('.filter-btn[data-filter="' + urlCat + '"]');
-        if (btn) {
-          document.querySelectorAll('.filter-btn').forEach(function (b) { b.classList.remove('active'); });
-          btn.classList.add('active');
+    var urlCat = new URLSearchParams(window.location.search).get('cat') || 'all';
+    // Filter bar and grid can fetch in parallel — grid reads ?cat= directly
+    renders.push(
+      renderFilterBar().then(function () {
+        // After bar is built, activate the URL-driven button
+        if (urlCat !== 'all') {
+          var btn = document.querySelector('.filter-btn[data-filter="' + urlCat + '"]');
+          if (btn) {
+            document.querySelectorAll('.filter-btn').forEach(function (b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+          }
         }
-      }
-      return renderProductsGrid();
-    }).catch(function () {});
-    renders.push(filterAndProducts);
+      }).catch(function () {})
+    );
+    renders.push(renderProductsGrid(urlCat).catch(function () {}));
   }
 
   // Homepage only
@@ -877,7 +880,10 @@ document.addEventListener('DOMContentLoaded', function () {
   // Reveal the page once all renders have settled
   Promise.all(renders).then(function () {
     clearTimeout(revealTimer);
-    // One rAF to let the browser paint the freshly rendered content first
-    requestAnimationFrame(revealPage);
+    // Double rAF: first frame lets the browser process DOM mutations,
+    // second frame guarantees a paint cycle before the fade-in begins.
+    requestAnimationFrame(function () {
+      requestAnimationFrame(revealPage);
+    });
   });
 });

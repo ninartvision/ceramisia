@@ -43,6 +43,10 @@ export async function sanityFetch(query, params = {}) {
 }
 
 // ── Ready-made queries ────────────────────────────────
+// Per-page-load Promise cache — prevents duplicate simultaneous fetches.
+// Caching the Promise (not the value) ensures concurrent callers share
+// one in-flight network request rather than each firing their own.
+const _cache = {};
 
 /** Fetch all categories ordered by display order */
 export async function getCategories() {
@@ -56,13 +60,16 @@ export async function getCategories() {
  * in-stock product — the definitive source for the homepage grid.
  * Result is ordered by the category's own `order` field.
  */
-export async function getCategoriesFromProducts() {
-  return sanityFetch(
-    `*[_type == "category" && _id in *[_type == "product" && defined(category) && inStock != false].category._ref] | order(order asc) {
-      _id, title, titleEn, "slug": slug.current, image,
-      "productCount": count(*[_type == "product" && category._ref == ^._id && inStock != false])
-    }`
-  );
+export function getCategoriesFromProducts() {
+  if (!_cache.categoriesFromProducts) {
+    _cache.categoriesFromProducts = sanityFetch(
+      `*[_type == "category" && _id in *[_type == "product" && defined(category) && inStock != false].category._ref] | order(order asc) {
+        _id, title, titleEn, "slug": slug.current, image,
+        "productCount": count(*[_type == "product" && category._ref == ^._id && inStock != false])
+      }`
+    );
+  }
+  return _cache.categoriesFromProducts;
 }
 
 /** Fetch products, optionally filtered by category slug */
@@ -114,9 +121,11 @@ export async function getProduct(slug) {
 }
 
 /** Fetch page content by slug (home, about, contact) */
-export async function getPage(slug) {
-  return sanityFetch(
-    `*[_type == "page" && slug.current == $slug][0] {
+export function getPage(slug) {
+  var key = 'page_' + slug;
+  if (!_cache[key]) {
+    _cache[key] = sanityFetch(
+      `*[_type == "page" && slug.current == $slug][0] {
       _id, title, titleEn, "slug": slug.current,
       heroImage, heroHeading, heroHeadingEn,
       heroSubtext, heroSubtextEn,
@@ -130,13 +139,16 @@ export async function getPage(slug) {
       },
       seo
     }`,
-    { slug }
-  );
+      { slug }
+    );
+  }
+  return _cache[key];
 }
 
 /** Fetch global site settings */
-export async function getSiteSettings() {
-  return sanityFetch(`*[_type == "siteSettings"][0] {
+export function getSiteSettings() {
+  if (!_cache.siteSettings) {
+    _cache.siteSettings = sanityFetch(`*[_type == "siteSettings"][0] {
     siteTitle, logo, logoDark, favicon,
     homepageTitle, homepageTitleEn,
     homepageDescription, homepageDescriptionEn,
@@ -149,20 +161,26 @@ export async function getSiteSettings() {
     featuredProductCount,
     socialLinks, seo
   }`);
+  }
+  return _cache.siteSettings;
 }
 
 /** Fetch navigation menus */
-export async function getNavigation() {
-  return sanityFetch(`*[_type == "navigation"][0] {
-    mainMenu[] { _key, title, titleEn, link, openInNewTab },
-    footerLinks[] { _key, title, titleEn, link, openInNewTab },
-    footerText, footerTextEn
-  }`);
+export function getNavigation() {
+  if (!_cache.navigation) {
+    _cache.navigation = sanityFetch(`*[_type == "navigation"][0] {
+      mainMenu[] { _key, title, titleEn, link, openInNewTab },
+      footerLinks[] { _key, title, titleEn, link, openInNewTab },
+      footerText, footerTextEn
+    }`);
+  }
+  return _cache.navigation;
 }
 
 /** Fetch homepage sections layout document (includes slider slides) */
-export async function getHomepage() {
-  return sanityFetch(`*[_type == "homepage"][0] {
+export function getHomepage() {
+  if (!_cache.homepage) {
+    _cache.homepage = sanityFetch(`*[_type == "homepage"][0] {
     sections[] {
       _key, type,
       heading, headingEn, label, labelEn,
@@ -177,6 +195,8 @@ export async function getHomepage() {
       }
     }
   }`);
+  }
+  return _cache.homepage;
 }
 
 /** Fetch latest N blog posts (for homepage cards) */

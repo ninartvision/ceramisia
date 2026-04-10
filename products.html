@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ka">
 <head>
   <meta charset="UTF-8">
@@ -111,16 +111,8 @@
   <section class="section">
     <div class="container">
 
-      <!-- Filter Bar -->
-      <div class="filter-bar">
-        <button class="filter-btn active" data-filter="all" data-ge="ყველა" data-en="All">ყველა</button>
-        <button class="filter-btn" data-filter="vases"      data-ge="ღვინის კულტურა"          data-en="Vases">ღვინის კულტურა</button>
-        <button class="filter-btn" data-filter="decorative" data-ge="კერამიკული ჭურჭელი"      data-en="Decorative Items">კერამიკული ჭურჭელი</button>
-        <button class="filter-btn" data-filter="tableware"  data-ge="დეკორი &amp; ინტერიერი"  data-en="Tableware">დეკორი &amp; ინტერიერი</button>
-        <button class="filter-btn" data-filter="bathroom"   data-ge="სანათები &amp; ატმოსფერო" data-en="Bathroom Accessories">სანათები &amp; ატმოსფერო</button>
-        <button class="filter-btn" data-filter="georgian"   data-ge="სიმბოლური კოლექცია"      data-en="Georgian Collection">სიმბოლური კოლექცია</button>
-        <button class="filter-btn" data-filter="misc"       data-ge="სხვადასხვა"            data-en="Misc">სხვადასხვა</button>
-      </div>
+            <!-- Filter Bar — built by renderFilterBar() from Sanity -->
+      <div class="filter-bar"></div>
 
       <!-- Products Grid -->
       <div class="products-slider-wrap">
@@ -130,155 +122,7 @@
         <button class="products-slider-arrow next" id="productsNext" aria-label="Next" type="button">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
-      <div id="products" class="products-grid">
-
-        <div class="product-card revealed" data-category="vases"
-             data-desc-ge="ხელნაკეთი კერამიკული ვაზი, უნიკალური დიზაინით. იდეალურია ინტერიერის გასალამაზებლად."
-             data-desc-en="Handmade ceramic vase with a unique design. Perfect for interior decoration."
-             data-gallery="images/ceramsia-01.webp,images/ceramsia-05.webp,images/ceramsia-22.webp"
-             data-status="new">
-          <div class="product-img-wrap">
-            <img src="images/ceramsia-01.webp" alt="Vase No.1" loading="lazy">
-            <span class="product-badge new" data-ge="ახალი" data-en="New">ახალი</span>
-            <div class="product-actions">
-              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
-            </div>
-          </div>
-          <div class="product-info">
-            <p class="product-category" data-ge="ღვინის კულტურა" data-en="Vases">ღვინის კულტურა</p>
-            <h3 class="product-name" data-ge="კერამიკული ლარნაკი" data-en="Ceramic Larnak">კერამიკული ლარნაკი</h3>
-            <p class="product-price">₾ 85</p>
-          </div>
-        </div>
-
-        <div class="product-card revealed" data-category="decorative"
-             data-desc-ge="ხელნაკეთი კერამიკული თასი, მინიმალისტური სტილით. შესანიშნავია დეკორისთვის."
-             data-desc-en="Handmade ceramic bowl with minimalist style. Excellent for decor."
-             data-gallery="images/ceramsia-05.webp,images/ceramsia-01.webp,images/ceramsia-48.webp">
-          <div class="product-img-wrap">
-            <img src="images/ceramsia-05.webp" alt="Decorative Bowl" loading="lazy">
-            <div class="product-actions">
-              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
-            </div>
-          </div>
-          <div class="product-info">
-            <p class="product-category" data-ge="კერამიკული ჭურჭელი" data-en="Decorative Items">კერამიკული ჭურჭელი</p>
-            <h3 class="product-name" data-ge="დეკორატიული თასი" data-en="Decorative Bowl">დეკორატიული თასი</h3>
-            <p class="product-price">₾ 65</p>
-          </div>
-        </div>
-
-        <div class="product-card revealed" data-category="tableware"
-             data-desc-ge="კერამიკული სუფრის სერვიზი, ელეგანტური დიზაინით. მოიცავს თეფშებს და თასებს."
-             data-desc-en="Ceramic tableware set with elegant design. Includes plates and bowls."
-             data-gallery="images/ceramsia-15.webp,images/ceramsia-16.webp,images/ceramsia-48.webp"
-             data-status="sale">
-          <div class="product-img-wrap">
-            <img src="images/ceramsia-15.webp" alt="Tableware Set" loading="lazy">
-            <span class="product-badge sale" data-ge="ფასდაკლება" data-en="Sale">ფასდაკლება</span>
-            <div class="product-actions">
-              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
-            </div>
-          </div>
-          <div class="product-info">
-            <p class="product-category" data-ge="დეკორი &amp; ინტერიერი" data-en="Tableware">დეკორი &amp; ინტერიერი</p>
-            <h3 class="product-name" data-ge="ბროწეულები" data-en="Tableware Set">ბროწეულები</h3>
-            <p class="product-price">
-              <span class="original">₾ 220</span>₾ 175
-            </p>
-          </div>
-        </div>
-
-        <div class="product-card revealed" data-category="bathroom"
-             data-desc-ge="კერამიკული სააბაზანო ნაკრები, ნატურალური ტექსტურით. მოიცავს საპნის ჭურჭელს და ჭიქას."
-             data-desc-en="Ceramic bathroom set with natural texture. Includes soap dish and tumbler."
-             data-gallery="images/ceramsia-16.webp,images/ceramsia-15.webp">
-          <div class="product-img-wrap">
-            <img src="images/ceramsia-16.webp" alt="Bathroom Set" loading="lazy">
-            <div class="product-actions">
-              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
-            </div>
-          </div>
-          <div class="product-info">
-            <p class="product-category" data-ge="სანათები &amp; ატმოსფერო" data-en="Bathroom Accessories">სანათები &amp; ატმოსფერო</p>
-            <h3 class="product-name" data-ge="ლარნაკი" data-en="Bathroom Set">ლარნაკი</h3>
-            <p class="product-price">₾ 120</p>
-          </div>
-        </div>
-
-        <div class="product-card revealed" data-category="georgian"
-             data-desc-ge="ავთენტური ქართული ქვევრი, ხელნაკეთი. ტრადიციული ფორმა თანამედროვე ინტერპრეტაციით."
-             data-desc-en="Authentic Georgian Qvevri, handmade. Traditional form with modern interpretation."
-             data-gallery="images/ceramsia-22.webp,images/ceramsia-01.webp,images/ceramsia-53.webp"
-             data-status="new">
-          <div class="product-img-wrap">
-            <img src="images/ceramsia-22.webp" alt="Georgian Qvevri" loading="lazy">
-            <span class="product-badge new" data-ge="ახალი" data-en="New">ახალი</span>
-            <div class="product-actions">
-              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
-            </div>
-          </div>
-          <div class="product-info">
-            <p class="product-category" data-ge="სიმბოლური კოლექცია" data-en="Georgian Collection">სიმბოლური კოლექცია</p>
-            <h3 class="product-name" data-ge="საკოლექციო" data-en="Georgian Qvevri">საკოლექციო</h3>
-            <p class="product-price">₾ 195</p>
-          </div>
-        </div>
-
-        <div class="product-card revealed" data-category="misc"
-             data-desc-ge="ხელნაკეთი კერამიკული თეფში, უნიკალური ფერებით და ტექსტურით."
-             data-desc-en="Handmade ceramic plate with unique colors and texture."
-             data-gallery="images/ceramsia-48.webp,images/ceramsia-54.webp">
-          <div class="product-img-wrap">
-            <img src="images/ceramsia-48.webp" alt="Ceramic vase" loading="lazy">
-            <div class="product-actions">
-              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
-            </div>
-          </div>
-          <div class="product-info">
-            <p class="product-category" data-ge="სხვადასხვა" data-en="Misc">სხვადასხვა</p>
-            <h3 class="product-name" data-ge="კერამიკული ლარნაკი" data-en="Ceramic Larnak">კერამიკული ლარნაკი</h3>
-            <p class="product-price">₾ 45</p>
-          </div>
-        </div>
-
-        <div class="product-card revealed" data-category="vases"
-             data-desc-ge="ვაზების კოლექცია, სხვადასხვა ზომისა და ფორმის. იდეალური საჩუქარი."
-             data-desc-en="Vase collection with various sizes and forms. Ideal as a gift."
-             data-gallery="images/ceramsia-53.webp,images/ceramsia-01.webp,images/ceramsia-22.webp">
-          <div class="product-img-wrap">
-            <img src="images/ceramsia-53.webp" alt="Vase Collection" loading="lazy">
-            <div class="product-actions">
-              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
-            </div>
-          </div>
-          <div class="product-info">
-            <p class="product-category" data-ge="ღვინის კულტურა" data-en="Vases">ღვინის კულტურა</p>
-            <h3 class="product-name" data-ge="ბროწეულები" data-en="Vase Collection">ბროწეულები</h3>
-            <p class="product-price">₾ 145</p>
-          </div>
-        </div>
-
-        <div class="product-card revealed" data-category="decorative"
-             data-desc-ge="დეკორატიული ფიგურა, ხელნაკეთი კერამიკა. სხვადასხვა დამუშავება შესაძლებელია."
-             data-desc-en="Decorative sculpture, handmade ceramic. Various finishing options available."
-             data-gallery="images/ceramsia-54.webp,images/ceramsia-53.webp,images/ceramsia-05.webp"
-             data-status="new">
-          <div class="product-img-wrap">
-            <img src="images/ceramsia-54.webp" alt="Decorative Piece" loading="lazy">
-            <span class="product-badge new" data-ge="ახალი" data-en="New">ახალი</span>
-            <div class="product-actions">
-              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
-            </div>
-          </div>
-          <div class="product-info">
-            <p class="product-category" data-ge="კერამიკული ჭურჭელი" data-en="Decorative Items">კერამიკული ჭურჭელი</p>
-            <h3 class="product-name" data-ge="ქართული" data-en="Decorative Sculpture">ქართული</h3>
-            <p class="product-price">₾ 95</p>
-          </div>
-        </div>
-
-      </div>
+      <div id="products" class="products-grid"></div>
       </div> <!-- /.products-slider-wrap -->
     </div>
   </section>

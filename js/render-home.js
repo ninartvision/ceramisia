@@ -67,10 +67,9 @@ export async function renderHeroSlider(slidesOverride) {
       }
     }
 
-    // ── 4. Fallback: keep static HTML, just re-init ──
+    // ── 4. Fallback: keep static HTML, already init'd by main.js ──
     if (!slides || !slides.length) {
-      if (typeof window.initHeroSlider === 'function') window.initHeroSlider();
-      return;
+      return; // main.js DOMContentLoaded already called initHeroSlider()
     }
 
     // ── Build DOM ────────────────────────────────────
@@ -126,8 +125,7 @@ export async function renderHeroSlider(slidesOverride) {
 
   } catch (err) {
     console.warn('Hero slider fetch failed, keeping static HTML:', err);
-    // Still wire up the slider controls on the static HTML
-    if (typeof window.initHeroSlider === 'function') window.initHeroSlider();
+    // Static HTML already wired by main.js — no re-init needed
   }
 }
 

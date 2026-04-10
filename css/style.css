@@ -2584,8 +2584,22 @@ body.modal-open {
    PAGE LOADING STATE — eliminates FOUC
    Body gets 'cms-loading' class directly in HTML.
    revealPage() in sanity-render.js removes it after
-   all Sanity fetches complete (8 s max timeout).
+   all Sanity fetches complete (5 s max timeout).
    ══════════════════════════════════════════════════ */
+
+/* Smooth fade-in on reveal — applied to direct body children
+   (header, main, footer, FAB, nav-overlay).
+   Only fires during the cms-loading → visible transition;
+   has no effect on hover/scroll/other interactions. */
+body > header,
+body > main,
+body > footer,
+body > .fab-social,
+body > .fab-social__backdrop,
+body > .nav-overlay {
+  transition: opacity 0.3s ease;
+}
+
 body.cms-loading {
   overflow: hidden;
 }
