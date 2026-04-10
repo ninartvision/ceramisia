@@ -79,12 +79,11 @@ export default defineConfig({
   },
 
   document: {
-    // Prevent singletons from being deleted or duplicated
-    actions: (input, context) =>
-      singletonTypes.has(context.schemaType)
-        ? input.filter(({ action }) =>
-            action && ['publish', 'discardChanges', 'restore'].includes(action)
-          )
-        : input,
-  },
+  actions: (input, context) =>
+    singletonTypes.has(context.schemaType)
+      ? input.filter(({ action }) =>
+          action && ['publish'].includes(action)
+        )
+      : input,
+},
 })
