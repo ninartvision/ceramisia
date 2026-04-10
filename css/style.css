@@ -2580,6 +2580,9 @@ body.modal-open {
                            background: rgba(0,0,0,.07); }
 .skel-card .skel-line.short { width: 60%; }
 
+/* Sections hidden by the CMS renderer when Sanity returns no data */
+.section--hidden { display: none !important; }
+
 /* ══════════════════════════════════════════════════
    PAGE LOADING STATE — eliminates FOUC
    Body gets 'cms-loading' class directly in HTML.

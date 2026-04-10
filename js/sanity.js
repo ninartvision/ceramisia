@@ -94,15 +94,20 @@ export async function getProducts(categorySlug) {
   );
 }
 
-/** Fetch featured products for homepage */
-export async function getFeaturedProducts() {
-  return sanityFetch(`*[_type == "product" && isFeatured == true && inStock != false] | order(order asc) {
-    _id, name, nameEn, "slug": slug.current, mainImage, gallery,
-    price, salePrice, badge,
-    "categoryTitle": category->title,
-    "categoryTitleEn": category->titleEn,
-    "categorySlug": category->slug.current
-  }`);
+/** Fetch products marked isFeatured in Sanity, ordered by display order (order field) */
+export function getFeaturedProducts() {
+  if (!_cache.featuredProducts) {
+    _cache.featuredProducts = sanityFetch(
+      `*[_type == "product" && isFeatured == true && inStock != false] | order(order asc) {
+        _id, name, nameEn, "slug": slug.current, mainImage, gallery,
+        price, salePrice, badge,
+        "categoryTitle": category->title,
+        "categoryTitleEn": category->titleEn,
+        "categorySlug": category->slug.current
+      }`
+    );
+  }
+  return _cache.featuredProducts;
 }
 
 /** Fetch single product by slug (full detail) */

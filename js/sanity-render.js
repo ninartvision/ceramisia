@@ -314,37 +314,47 @@ async function renderFeaturedProducts() {
   const grid = document.querySelector('.popular-grid');
   if (!grid) return;
 
-  // Parent section — hidden when no featured products exist
+  // Closest section element — hidden via CSS class when Sanity returns no data
   const section = grid.closest('.popular-products');
 
+  function hideSection() {
+    if (section) section.classList.add('section--hidden');
+    grid.innerHTML = '';
+  }
+
   try {
+    // Determine max count from siteSettings before fetching products
     const settings = await getSiteSettings().catch(function () { return null; });
     const count = (settings && settings.featuredProductCount) ? settings.featuredProductCount : 4;
 
-    // Only show products explicitly marked isFeatured == true — no fallback
+    // Show skeleton placeholders while the product fetch is in flight
+    showSkeletons(grid, count);
+
+    // Fetch only products with isFeatured == true —— no fallback to all products
     const products = (await getFeaturedProducts() || []).slice(0, count);
 
     if (!products.length) {
-      // No featured products: hide the section entirely so no empty block shows
-      if (section) section.style.display = 'none';
+      // Sanity returned no featured products — hide section, clear skeletons
+      hideSection();
       return;
     }
 
-    const lang = getLang();
-    // Single innerHTML reset then one card-per-append (cards are already safe via esc())
-    grid.innerHTML = '';
-    products.forEach(function (p) {
-      grid.appendChild(createProductCard(p, lang));
-    });
+    // Build all cards into a DocumentFragment, then write to DOM once
+    // — avoids N separate layout-triggering reflows
+    const lang     = getLang();
+    const fragment = document.createDocumentFragment();
+    products.forEach(function (p) { fragment.appendChild(createProductCard(p, lang)); });
 
-    if (section) section.style.display = ''; // ensure visible if it was previously hidden
-    if (typeof window.initCart === 'function') window.initCart();
+    grid.innerHTML = '';        // clear skeletons in one write
+    grid.appendChild(fragment); // insert all product cards in one write
+
+    if (section) section.classList.remove('section--hidden');
+    if (typeof window.initCart         === 'function') window.initCart();
     if (typeof window.initProductModal === 'function') window.initProductModal();
     reinitPopularSlider();
 
   } catch (err) {
-    // Fetch failed — hide the empty section rather than showing a blank grid
-    if (section) section.style.display = 'none';
+    hideSection();
     console.warn('Featured products fetch failed:', err);
   }
 }
