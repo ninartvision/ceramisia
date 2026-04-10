@@ -35,7 +35,8 @@ export async function sanityFetch(query, params = {}) {
     searchParams.set(`$${key}`, JSON.stringify(val));
   }
   const url = `${CDN_BASE}/v${SANITY_API_VER}/data/query/${SANITY_DATASET}?${searchParams}`;
-  const res = await fetch(url);
+  // no-store prevents browser from serving stale cached responses
+  const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error(`Sanity fetch failed: ${res.status}`);
   const json = await res.json();
   return json.result;
@@ -53,28 +54,29 @@ export async function getCategories() {
 /** Fetch products, optionally filtered by category slug */
 export async function getProducts(categorySlug) {
   const base = `
-    _id, name, nameEn, "slug": slug.current, sku, mainImage,
+    _id, name, nameEn, "slug": slug.current, sku, mainImage, gallery,
     price, salePrice, badge, isFeatured, inStock,
     additionalPackaging, packagingPrice, variants,
     "categoryTitle": category->title,
     "categoryTitleEn": category->titleEn,
     "categorySlug": category->slug.current
   `;
+  // inStock != false handles: true → show, false → hide, null/unset → show
   if (categorySlug && categorySlug !== 'all') {
     return sanityFetch(
-      `*[_type == "product" && category->slug.current == $cat && inStock == true] | order(order asc) { ${base} }`,
+      `*[_type == "product" && category->slug.current == $cat && inStock != false] | order(order asc) { ${base} }`,
       { cat: categorySlug }
     );
   }
   return sanityFetch(
-    `*[_type == "product" && inStock == true] | order(order asc) { ${base} }`
+    `*[_type == "product" && inStock != false] | order(order asc) { ${base} }`
   );
 }
 
 /** Fetch featured products for homepage */
 export async function getFeaturedProducts() {
-  return sanityFetch(`*[_type == "product" && isFeatured == true && inStock == true] | order(order asc) {
-    _id, name, nameEn, "slug": slug.current, mainImage,
+  return sanityFetch(`*[_type == "product" && isFeatured == true && inStock != false] | order(order asc) {
+    _id, name, nameEn, "slug": slug.current, mainImage, gallery,
     price, salePrice, badge,
     "categoryTitle": category->title,
     "categoryTitleEn": category->titleEn,

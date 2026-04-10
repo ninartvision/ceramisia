@@ -202,7 +202,12 @@ async function renderFeaturedProducts() {
   if (!grid) return;
 
   try {
-    const products = await getFeaturedProducts();
+    // Try featured first; fall back to first 4 products if none are marked featured
+    let products = await getFeaturedProducts();
+    if (!products || !products.length) {
+      products = await getProducts('all');
+      if (products && products.length) products = products.slice(0, 4);
+    }
     if (!products || !products.length) return; // keep static cards
 
     const lang = getLang();
@@ -226,7 +231,29 @@ async function renderCategoriesGrid() {
   if (!grid) return;
 
   try {
-    const categories = await getCategories();
+    let categories = await getCategories();
+
+    // Fallback: if no Category documents exist, extract unique categories from products
+    if (!categories || !categories.length) {
+      const products = await getProducts('all');
+      if (!products || !products.length) return; // keep static HTML
+
+      const seen = new Set();
+      categories = [];
+      products.forEach(function (p) {
+        if (p.categorySlug && !seen.has(p.categorySlug)) {
+          seen.add(p.categorySlug);
+          // Use first product in this category as the cover image
+          categories.push({
+            title:    p.categoryTitle    || p.categorySlug || '',
+            titleEn:  p.categoryTitleEn  || p.categorySlug || '',
+            slug:     p.categorySlug,
+            image:    p.mainImage || null,
+          });
+        }
+      });
+    }
+
     if (!categories || !categories.length) return;
 
     const lang = getLang();
