@@ -71,24 +71,35 @@ export default {
     },
     {
       name: 'heroSlides',
-      title: 'Hero Slides (Homepage)',
+      title: '🖼 Hero Slider Slides',
       type: 'array',
       group: 'content',
-      description: 'For homepage hero slider only. Leave empty on other pages.',
+      description: 'Add, remove and drag-to-reorder slides for the homepage hero carousel. ' +
+        'Each slide has its own image, heading, subtitle and optional button. ' +
+        'If this list is empty the site falls back to its built-in static slides.',
       of: [
         {
           type: 'object',
           name: 'heroSlide',
           title: 'Slide',
           fields: [
-            { name: 'image', title: 'Background Image', type: 'image', options: { hotspot: true }, validation: (Rule) => Rule.required() },
-            { name: 'subtitle', title: 'Subtitle (GE)', type: 'string' },
-            { name: 'subtitleEn', title: 'Subtitle (EN)', type: 'string' },
-            { name: 'heading', title: 'Heading (GE)', type: 'string', validation: (Rule) => Rule.required() },
-            { name: 'headingEn', title: 'Heading (EN)', type: 'string' },
-            { name: 'buttonText', title: 'Button Text (GE)', type: 'string' },
+            {
+              name: 'image',
+              title: 'Background Image',
+              type: 'image',
+              options: { hotspot: true },
+              validation: (Rule) => Rule.required(),
+              fields: [
+                { name: 'alt', title: 'Alt Text (for accessibility)', type: 'string' },
+              ],
+            },
+            { name: 'subtitle', title: 'Subtitle / Label (GE)', type: 'string', description: 'Small text above the main heading' },
+            { name: 'subtitleEn', title: 'Subtitle / Label (EN)', type: 'string' },
+            { name: 'heading', title: 'Main Heading (GE)', type: 'string', validation: (Rule) => Rule.required() },
+            { name: 'headingEn', title: 'Main Heading (EN)', type: 'string' },
+            { name: 'buttonText', title: 'Button Text (GE)', type: 'string', description: 'Leave empty to hide the button' },
             { name: 'buttonTextEn', title: 'Button Text (EN)', type: 'string' },
-            { name: 'buttonLink', title: 'Button Link', type: 'string', initialValue: 'products.html' },
+            { name: 'buttonLink', title: 'Button Link / URL', type: 'string', initialValue: 'products.html', description: 'Relative path (e.g. products.html) or full URL' },
           ],
           preview: {
             select: { title: 'heading', media: 'image' },

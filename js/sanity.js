@@ -144,6 +144,8 @@ export async function getSiteSettings() {
     address, addressEn, mapEmbedUrl,
     workingHours, workingHoursEn,
     footerText, footerTextEn,
+    copyrightText, copyrightTextEn,
+    brandFeatures[] { icon, text, textEn },
     featuredProductCount,
     socialLinks, seo
   }`);
@@ -158,14 +160,21 @@ export async function getNavigation() {
   }`);
 }
 
-/** Fetch homepage sections layout document */
+/** Fetch homepage sections layout document (includes slider slides) */
 export async function getHomepage() {
   return sanityFetch(`*[_type == "homepage"][0] {
     sections[] {
       _key, type,
       heading, headingEn, label, labelEn,
       text, textEn, image,
-      buttonText, buttonTextEn, buttonLink
+      buttonText, buttonTextEn, buttonLink,
+      slides[] {
+        _key,
+        image { ..., asset-> },
+        subtitle, subtitleEn,
+        heading, headingEn,
+        buttonText, buttonTextEn, buttonLink
+      }
     }
   }`);
 }

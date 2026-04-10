@@ -19,7 +19,7 @@ import {
   getBlogPosts,
 } from './sanity.js';
 
-import { renderHeroSlider, renderAboutStrip, renderFooter } from './render-home.js';
+import { renderHeroSlider, renderAboutStrip, renderFooter, renderNavigation } from './render-home.js';
 import { renderAboutPage } from './render-about.js';
 import { renderContactPage } from './render-contact.js';
 
@@ -27,6 +27,21 @@ const LANG_KEY = 'ceramisia_lang';
 
 function getLang() {
   return localStorage.getItem(LANG_KEY) || 'ge';
+}
+
+// ── Page reveal — called after all Sanity renders complete ───
+var _revealed = false;
+function revealPage() {
+  if (_revealed) return;
+  _revealed = true;
+  document.body.classList.remove('cms-loading');
+  var loader = document.getElementById('cmsLoader');
+  if (loader) {
+    loader.classList.add('cms-loader--fade');
+    setTimeout(function () {
+      if (loader.parentNode) loader.parentNode.removeChild(loader);
+    }, 400);
+  }
 }
 
 /** Safely escape HTML to prevent XSS */
@@ -722,7 +737,9 @@ async function renderHomepageSections() {
       var el      = null;
 
       if (section.type === 'slider') {
-        // Hero slider is always rendered at the top; skip in the dynamic container
+        // renderHeroSlider() is called separately before renderHomepageSections()
+        // and already falls back to checking homepage-doc slider slides (priority 3).
+        // Calling it again here would cause a double-render, so we just skip.
         continue;
 
       } else if (section.type === 'categories') {
@@ -798,19 +815,25 @@ async function renderHomepageSections() {
 
 // ── Init on DOM ready ────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
+  // Safety timeout — always reveal the page after 8 s even if fetches hang
+  var revealTimer = setTimeout(revealPage, 8000);
+
   var path = window.location.pathname;
   var isProducts = path.endsWith('products.html') || document.querySelector('.filter-bar') !== null;
   var isAbout    = path.endsWith('about.html')    || document.querySelector('.about-hero') !== null;
   var isContact  = path.endsWith('contact.html')  || document.querySelector('.contact-layout') !== null;
   var isHome     = !isProducts && !isAbout && !isContact;
 
+  // Collect all promises so we know when everything is done
+  var renders = [];
+
   // Global — runs on every page
-  renderFooter();
+  renders.push(renderFooter().catch(function () {}));
+  renders.push(renderNavigation().catch(function () {}));
 
   // Products page only
   if (isProducts) {
-    // Build filter bar first, then load products (so URL ?cat= activates the right button)
-    renderFilterBar().then(function () {
+    var filterAndProducts = renderFilterBar().then(function () {
       var urlCat = new URLSearchParams(window.location.search).get('cat');
       if (urlCat) {
         var btn = document.querySelector('.filter-btn[data-filter="' + urlCat + '"]');
@@ -819,37 +842,42 @@ document.addEventListener('DOMContentLoaded', function () {
           btn.classList.add('active');
         }
       }
-    });
-    renderProductsGrid();
-    return; // nothing else needed on products page
+      return renderProductsGrid();
+    }).catch(function () {});
+    renders.push(filterAndProducts);
   }
 
   // Homepage only
-  if (isHome) {
-    renderHeroSlider();
-
-    // Try Sanity-controlled section layout first.
-    // If no homepage document exists (or fetch fails), fall back to
-    // individual section renderers that safely update the static HTML.
-    renderHomepageSections().then(function (handled) {
-      if (!handled) {
-        renderCategoriesGrid();
-        renderFeaturedProducts();
-        renderAboutStrip();
-        renderBlogCards();
-      }
-    });
-    return;
+  else if (isHome) {
+    renders.push(renderHeroSlider().catch(function () {}));
+    renders.push(
+      renderHomepageSections().then(function (handled) {
+        if (!handled) {
+          return Promise.all([
+            renderCategoriesGrid().catch(function () {}),
+            renderFeaturedProducts().catch(function () {}),
+            renderAboutStrip().catch(function () {}),
+            renderBlogCards().catch(function () {}),
+          ]);
+        }
+      }).catch(function () {})
+    );
   }
 
   // About page only
-  if (isAbout) {
-    renderAboutPage();
-    return;
+  else if (isAbout) {
+    renders.push(renderAboutPage().catch(function () {}));
   }
 
   // Contact page only
-  if (isContact) {
-    renderContactPage();
+  else if (isContact) {
+    renders.push(renderContactPage().catch(function () {}));
   }
+
+  // Reveal the page once all renders have settled
+  Promise.all(renders).then(function () {
+    clearTimeout(revealTimer);
+    // One rAF to let the browser paint the freshly rendered content first
+    requestAnimationFrame(revealPage);
+  });
 });

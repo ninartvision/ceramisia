@@ -105,6 +105,81 @@ export default {
               type: 'string',
               description: 'e.g. products.html or https://example.com',
             },
+
+            // ── Hero Slider Slides ─────────────────────────────────
+            // Only relevant when type === 'slider'
+            {
+              name: 'slides',
+              title: '🖼 Slides',
+              type: 'array',
+              description: 'Add slides for the hero carousel. Drag to reorder. Only used when Section Type is "Hero Slider".',
+              hidden: ({ parent }) => parent?.type !== 'slider',
+              of: [
+                {
+                  type: 'object',
+                  name: 'heroSlide',
+                  title: 'Slide',
+                  fields: [
+                    {
+                      name: 'image',
+                      title: 'Background Image',
+                      type: 'image',
+                      options: { hotspot: true },
+                      validation: (R) => R.required(),
+                      fields: [
+                        { name: 'alt', title: 'Alt Text (accessibility)', type: 'string' },
+                      ],
+                    },
+                    {
+                      name: 'subtitle',
+                      title: 'Subtitle / Label (Georgian)',
+                      type: 'string',
+                      description: 'Small label displayed above the main heading',
+                    },
+                    {
+                      name: 'subtitleEn',
+                      title: 'Subtitle / Label (English)',
+                      type: 'string',
+                    },
+                    {
+                      name: 'heading',
+                      title: 'Main Heading (Georgian)',
+                      type: 'string',
+                      validation: (R) => R.required(),
+                    },
+                    {
+                      name: 'headingEn',
+                      title: 'Main Heading (English)',
+                      type: 'string',
+                    },
+                    {
+                      name: 'buttonText',
+                      title: 'Button Text (Georgian)',
+                      type: 'string',
+                      description: 'Leave empty to hide the button on this slide',
+                    },
+                    {
+                      name: 'buttonTextEn',
+                      title: 'Button Text (English)',
+                      type: 'string',
+                    },
+                    {
+                      name: 'buttonLink',
+                      title: 'Button Link / URL',
+                      type: 'string',
+                      initialValue: 'products.html',
+                      description: 'Relative path (e.g. products.html) or full URL',
+                    },
+                  ],
+                  preview: {
+                    select: { title: 'heading', subtitle: 'subtitleEn', media: 'image' },
+                    prepare({ title, subtitle, media }) {
+                      return { title: title || 'Untitled Slide', subtitle, media };
+                    },
+                  },
+                },
+              ],
+            },
           ],
 
           preview: {

@@ -162,7 +162,7 @@ export const HOMEPAGE = `
     heroSubtextEn,
     heroSlides[] {
       _key,
-      image,
+      image { ..., asset-> },
       subtitle,
       subtitleEn,
       heading,
@@ -180,6 +180,37 @@ export const HOMEPAGE = `
       image
     },
     seo
+  }
+`
+
+// Fetch homepage layout with embedded slider slides
+export const HOMEPAGE_LAYOUT = `
+  *[_type == "homepage"][0] {
+    sections[] {
+      _key,
+      type,
+      heading,
+      headingEn,
+      label,
+      labelEn,
+      text,
+      textEn,
+      image,
+      buttonText,
+      buttonTextEn,
+      buttonLink,
+      slides[] {
+        _key,
+        image { ..., asset-> },
+        subtitle,
+        subtitleEn,
+        heading,
+        headingEn,
+        buttonText,
+        buttonTextEn,
+        buttonLink
+      }
+    }
   }
 `
 
@@ -208,6 +239,10 @@ export const SITE_SETTINGS = `
     workingHoursEn,
     footerText,
     footerTextEn,
+    copyrightText,
+    copyrightTextEn,
+    brandFeatures[] { icon, text, textEn },
+    featuredProductCount,
     socialLinks,
     seo
   }

@@ -431,6 +431,11 @@
   }
 
   /* ── INIT ALL ────────────────────────────────── */
+
+  // Expose so render-home.js can re-initialise the slider
+  // after dynamically injecting Sanity slides.
+  window.initHeroSlider = initHeroSlider;
+
   document.addEventListener('DOMContentLoaded', function () {
     initLanguage();
     initMobileMenu();

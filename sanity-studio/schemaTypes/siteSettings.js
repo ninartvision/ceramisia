@@ -142,6 +142,69 @@ export default {
       group: 'general',
     },
     {
+      name: 'copyrightText',
+      title: 'Copyright Line (GE)',
+      type: 'string',
+      group: 'general',
+      description: 'Shown at the very bottom of the footer, e.g. "© 2026 Ceramisia. ყველა უფლება დაცულია."',
+    },
+    {
+      name: 'copyrightTextEn',
+      title: 'Copyright Line (EN)',
+      type: 'string',
+      group: 'general',
+    },
+
+    // ── Brand Strip ────────────────────────────────────
+    {
+      name: 'brandFeatures',
+      title: '✨ Brand Strip Features',
+      type: 'array',
+      group: 'general',
+      description: 'Trust badges shown below the hero slider on the homepage. Drag to reorder.',
+      of: [
+        {
+          type: 'object',
+          name: 'brandFeature',
+          title: 'Feature Badge',
+          fields: [
+            {
+              name: 'icon',
+              title: 'Icon',
+              type: 'string',
+              options: {
+                list: [
+                  { title: '🛡 Shield – Quality / Security', value: 'shield' },
+                  { title: '⏱ Clock – Speed / Delivery', value: 'clock' },
+                  { title: '❤️ Heart – Handmade / Custom', value: 'heart' },
+                  { title: '🎁 Gift – Packaging', value: 'gift' },
+                  { title: '🚚 Truck – Shipping', value: 'truck' },
+                  { title: '⭐ Star – Premium Quality', value: 'star' },
+                ],
+                layout: 'dropdown',
+              },
+            },
+            {
+              name: 'text',
+              title: 'Text (Georgian)',
+              type: 'string',
+              validation: (Rule) => Rule.required(),
+            },
+            {
+              name: 'textEn',
+              title: 'Text (English)',
+              type: 'string',
+              validation: (Rule) => Rule.required(),
+            },
+          ],
+          preview: {
+            select: { title: 'text', subtitle: 'textEn' },
+          },
+        },
+      ],
+    },
+
+    {
       name: 'featuredProductCount',
       title: 'Featured Products Count',
       type: 'number',
@@ -160,6 +223,7 @@ export default {
       fields: [
         { name: 'instagram', title: 'Instagram URL', type: 'url' },
         { name: 'facebook', title: 'Facebook URL', type: 'url' },
+        { name: 'whatsapp', title: 'WhatsApp URL (wa.me link)', type: 'url', description: 'e.g. https://wa.me/995597224407 — used for the floating contact button' },
         { name: 'tiktok', title: 'TikTok URL', type: 'url' },
         { name: 'pinterest', title: 'Pinterest URL', type: 'url' },
         { name: 'etsy', title: 'Etsy Shop URL', type: 'url' },
