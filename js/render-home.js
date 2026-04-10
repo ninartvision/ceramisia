@@ -154,6 +154,9 @@ function buildSlides(container, dotsWrap, slides) {
  *
  * The hero section is NEVER hidden — if Sanity has no data, the brand-coloured
  * fallback slides are shown so the layout stays intact.
+ *
+ * All checks are logged to the browser console — open DevTools → Console and
+ * look for "[Hero]" lines to diagnose which source is being used.
  */
 export async function renderHeroSlider(slidesOverride) {
   var container = document.getElementById('slidesContainer');
@@ -161,7 +164,9 @@ export async function renderHeroSlider(slidesOverride) {
   if (!container) return;
 
   // Helper: build + re-init, then exit
-  function render(slides) {
+  function render(slides, source) {
+    console.log('[Hero] ✅ Rendering from:', source, '| slide count:', slides.length);
+    console.log('[Hero] slides data:', slides);
     buildSlides(container, dotsWrap, slides);
     if (typeof window.initHeroSlider === 'function') window.initHeroSlider();
   }
@@ -169,26 +174,49 @@ export async function renderHeroSlider(slidesOverride) {
   try {
     // ── 1. Direct override from caller ──────────────
     if (Array.isArray(slidesOverride) && slidesOverride.length) {
-      return render(slidesOverride);
+      return render(slidesOverride, 'slidesOverride (from renderHomepageSections)');
     }
+    console.log('[Hero] Priority 1 (slidesOverride): skipped — no override passed');
 
     // ── 2. Page document heroSlides ──────────────────
     var page = await getPage('home');
+    console.log('[Hero] Priority 2 — getPage("home") result:', page);
+    console.log('[Hero] Priority 2 — page.heroSlides:', page && page.heroSlides);
     if (page && Array.isArray(page.heroSlides) && page.heroSlides.length) {
-      return render(page.heroSlides);
+      return render(page.heroSlides, 'page.heroSlides (Home page document in Studio)');
+    }
+    if (!page) {
+      console.warn('[Hero] Priority 2 FAILED: getPage("home") returned null.' +
+        ' ▶ Fix: make sure a Page document with slug exactly "home" exists and is PUBLISHED in Studio.');
+    } else if (!page.heroSlides || !page.heroSlides.length) {
+      console.warn('[Hero] Priority 2 FAILED: page exists but heroSlides is empty or null.' +
+        ' ▶ Fix: add slides to the "🖼 Hero Slider Slides" field on the Home page in Studio and PUBLISH.');
     }
 
     // ── 3. Homepage layout document slider section ───
     var homepage = await getHomepage();
-    if (homepage && Array.isArray(homepage.sections)) {
-      var sliderSection = homepage.sections.find(function (s) {
-        return s.type === 'slider' && Array.isArray(s.slides) && s.slides.length;
-      });
-      if (sliderSection) return render(sliderSection.slides);
+    console.log('[Hero] Priority 3 — getHomepage() result:', homepage);
+    var homepageSections = (homepage && Array.isArray(homepage.sections)) ? homepage.sections : [];
+    console.log('[Hero] Priority 3 — sections count:', homepageSections.length);
+    var sliderSection = homepageSections.find(function (s) {
+      // GROQ returns null (not []) for empty arrays — treat both as "no slides"
+      var hasSlides = Array.isArray(s.slides) && s.slides.length > 0;
+      console.log('[Hero] Section type:', s.type, '| slides:', s.slides, '| valid:', hasSlides);
+      return s.type === 'slider' && hasSlides;
+    });
+    if (sliderSection) {
+      return render(sliderSection.slides, 'homepage.sections slider (Homepage document in Studio)');
+    }
+    if (!homepageSections.length) {
+      console.warn('[Hero] Priority 3 FAILED: Homepage document has no sections or does not exist.');
+    } else if (!sliderSection) {
+      console.warn('[Hero] Priority 3 FAILED: no slider section with slides found.' +
+        ' ▶ Fix: in the Homepage document, add a "Hero Slider" section and add slides inside it. PUBLISH.');
     }
 
     // ── 4. siteSettings.heroImage as single-slide ───
     var settings = await getSiteSettings().catch(function () { return null; });
+    console.log('[Hero] Priority 4 — siteSettings.heroImage:', settings && settings.heroImage);
     if (settings && settings.heroImage) {
       return render([{
         image:        settings.heroImage,
@@ -199,18 +227,20 @@ export async function renderHeroSlider(slidesOverride) {
         buttonText:   tge('viewProducts'),
         buttonTextEn: ten('viewProducts'),
         buttonLink:   '/products/',
-      }]);
+      }], 'siteSettings.heroImage (Site Settings in Studio)');
     }
+    console.warn('[Hero] Priority 4 FAILED: no heroImage in Site Settings.');
 
     // ── 5. Brand-coloured fallback — always shows the slider ──
-    console.info('[Hero] No slides in Sanity yet — showing built-in fallback slides. ' +
-      'Add slides to the Home page in Sanity Studio to replace them with real images.');
-    render(FALLBACK_SLIDES);
+    console.info('[Hero] ⚠️  All 4 Sanity sources returned no slides.' +
+      ' Showing built-in brand-coloured fallback slides.' +
+      ' To show real images, go to Studio → Pages → Home → Hero Slider Slides → add slides → Publish.');
+    render(FALLBACK_SLIDES, 'FALLBACK_SLIDES (no Sanity data found)');
 
   } catch (err) {
     // Network/parse error — still show fallback rather than hiding the hero
-    console.warn('[Hero] Fetch failed, showing fallback slides:', err);
-    render(FALLBACK_SLIDES);
+    console.error('[Hero] ❌ Fetch error — showing fallback slides. Error:', err);
+    render(FALLBACK_SLIDES, 'FALLBACK_SLIDES (fetch error)');
   }
 }
 
