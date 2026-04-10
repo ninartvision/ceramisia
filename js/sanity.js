@@ -11,16 +11,19 @@
 const SANITY_PROJECT_ID = 'uemjhi9v';
 const SANITY_DATASET    = 'production';
 const SANITY_API_VER    = '2025-01-01';
-const CDN_BASE = `https://${SANITY_PROJECT_ID}.cdn.sanity.io`;
+// Use api.sanity.io (not cdn) so new content appears immediately without cache delay
+const CDN_BASE   = `https://${SANITY_PROJECT_ID}.api.sanity.io`;
+// Images must always use cdn.sanity.io regardless
+const IMAGE_BASE = `https://cdn.sanity.io`;
 
 // ── Image URL builder (no extra dependencies) ─────────
 export function sanityImageUrl(ref, width) {
   if (!ref || !ref.asset || !ref.asset._ref) return '';
   const parts = ref.asset._ref.replace('image-', '').split('-');
-  const id    = parts[0];
-  const dims  = parts[1];
-  const ext   = parts[2];
-  let url = `${CDN_BASE}/images/${SANITY_PROJECT_ID}/${SANITY_DATASET}/${id}-${dims}.${ext}`;
+  const ext   = parts[parts.length - 1];
+  const dims  = parts[parts.length - 2];
+  const id    = parts.slice(0, parts.length - 2).join('-');
+  let url = `${IMAGE_BASE}/images/${SANITY_PROJECT_ID}/${SANITY_DATASET}/${id}-${dims}.${ext}`;
   if (width) url += `?w=${width}&fit=max&auto=format`;
   return url;
 }
