@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "createdAt": "2026-04-09T17:36:27.952Z",
+  "workspaces": [
+    {
+      "name": "ceramisia",
+      "title": "Ceramisia Studio",
+      "basePath": "/",
+      "projectId": "uemjhi9v",
+      "dataset": "production",
+      "icon": "<style data-styled=\"true\" data-styled-version=\"6.3.12\">.doGNCu{font-family:Inter,-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,\"Helvetica Neue\",\"Liberation Sans\",Helvetica,Arial,system-ui,sans-serif;font-weight:500;font-size:13px;transform:translateY(1px);}/*!sc*/\ndata-styled.g106[id=\"sc-dkiZCX\"]{content:\"doGNCu,\"}/*!sc*/\n</style><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 32\"><rect width=\"32\" height=\"32\" rx=\"2\" fill=\"#f77769\"></rect><text x=\"50%\" y=\"50%\" text-anchor=\"middle\" alignment-baseline=\"middle\" fill=\"hsla(6, 90%, 29%, 1)\" class=\"sc-dkiZCX doGNCu\">CS</text></svg>",
+      "mediaLibrary": {
+        "enabled": false
+      },
+      "schema": "6bf45eda.create-schema.json",
+      "tools": "7f43705a.create-tools.json"
+    }
+  ]
+}
