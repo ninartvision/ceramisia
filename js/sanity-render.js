@@ -312,23 +312,40 @@ function getGeorgianMonth(m) {
 
 // ── Init on DOM ready ────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
-  // Products page
-  renderFilterBar();
-  renderProductsGrid();
+  var path = window.location.pathname;
+  var isProducts = path.endsWith('products.html') || document.querySelector('.filter-bar') !== null;
+  var isAbout    = path.endsWith('about.html')    || document.querySelector('.about-hero') !== null;
+  var isContact  = path.endsWith('contact.html')  || document.querySelector('.contact-layout') !== null;
+  var isHome     = !isProducts && !isAbout && !isContact;
 
-  // Homepage
-  renderHeroSlider();
-  renderCategoriesGrid();
-  renderFeaturedProducts();
-  renderAboutStrip();
-  renderBlogCards();
-
-  // About page
-  renderAboutPage();
-
-  // Contact page
-  renderContactPage();
-
-  // Global (footer, logo, social links — runs on every page)
+  // Global — runs on every page
   renderFooter();
+
+  // Products page only
+  if (isProducts) {
+    renderFilterBar();
+    renderProductsGrid();
+    return; // nothing else needed on products page
+  }
+
+  // Homepage only
+  if (isHome) {
+    renderHeroSlider();
+    renderCategoriesGrid();
+    renderFeaturedProducts();
+    renderAboutStrip();
+    renderBlogCards();
+    return;
+  }
+
+  // About page only
+  if (isAbout) {
+    renderAboutPage();
+    return;
+  }
+
+  // Contact page only
+  if (isContact) {
+    renderContactPage();
+  }
 });
