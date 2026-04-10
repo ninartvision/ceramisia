@@ -1,0 +1,13 @@
+# Jekyll configuration for Ceramisia
+# Excludes folders that should not be processed by Jekyll
+
+exclude:
+  - node_modules/
+  - sanity-studio/
+  - scripts/
+  - package.json
+  - package-lock.json
+  - "*.mjs"
+  - CNAME
+  - .nojekyll
+  - .gitignore
