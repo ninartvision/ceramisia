@@ -188,8 +188,12 @@ export function getPage(slug) {
       heroSlides[] {
         _key,
         image { _type, alt, asset { _ref, _type } },
-        subtitle, subtitleEn,
-        heading, headingEn,
+        heading,
+        subtext,
+        "subtitle": coalesce(subtext.ge, subtitle),
+        "subtitleEn": coalesce(subtext.en, subtitleEn, subtext.ge),
+        "heading": coalesce(heading.ge, heading),
+        "headingEn": coalesce(heading.en, headingEn, heading.ge),
         buttonText, buttonTextEn, buttonLink
       },
       sections[] {

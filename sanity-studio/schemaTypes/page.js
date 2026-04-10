@@ -75,7 +75,7 @@ export default {
       type: 'array',
       group: 'content',
       description: 'Add, remove and drag-to-reorder slides for the homepage hero carousel. ' +
-        'Each slide has its own image, heading, subtitle and optional button. ' +
+        'Each slide has an image, localized heading/subtext, and optional button fields. ' +
         'If this list is empty the site falls back to its built-in static slides.',
       of: [
         {
@@ -93,16 +93,37 @@ export default {
                 { name: 'alt', title: 'Alt Text (for accessibility)', type: 'string' },
               ],
             },
-            { name: 'subtitle', title: 'Subtitle / Label (GE)', type: 'string', description: 'Small text above the main heading' },
-            { name: 'subtitleEn', title: 'Subtitle / Label (EN)', type: 'string' },
-            { name: 'heading', title: 'Main Heading (GE)', type: 'string', validation: (Rule) => Rule.required() },
-            { name: 'headingEn', title: 'Main Heading (EN)', type: 'string' },
+            {
+              name: 'heading',
+              title: 'Heading',
+              type: 'object',
+              fields: [
+                { name: 'ge', title: 'Main Heading (GE)', type: 'string', validation: (Rule) => Rule.required() },
+                { name: 'en', title: 'Main Heading (EN)', type: 'string' },
+              ],
+            },
+            {
+              name: 'subtext',
+              title: 'Subtext',
+              type: 'object',
+              fields: [
+                { name: 'ge', title: 'Subtitle / Label (GE)', type: 'string', description: 'Small text above the main heading' },
+                { name: 'en', title: 'Subtitle / Label (EN)', type: 'string' },
+              ],
+            },
             { name: 'buttonText', title: 'Button Text (GE)', type: 'string', description: 'Leave empty to hide the button' },
             { name: 'buttonTextEn', title: 'Button Text (EN)', type: 'string' },
             { name: 'buttonLink', title: 'Button Link / URL', type: 'string', initialValue: '/products/', description: 'Relative path (e.g. /products/) or full URL' },
           ],
           preview: {
-            select: { title: 'heading', media: 'image' },
+            select: { titleGe: 'heading.ge', titleEn: 'heading.en', media: 'image' },
+            prepare({ titleGe, titleEn, media }) {
+              return {
+                title: titleGe || titleEn || 'Untitled Slide',
+                subtitle: titleEn && titleGe ? titleEn : undefined,
+                media,
+              };
+            },
           },
         },
       ],
