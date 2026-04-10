@@ -237,9 +237,6 @@ async function renderFeaturedProducts() {
   const grid = document.querySelector('.popular-grid');
   if (!grid) return;
 
-  // Show skeletons immediately (no flash of static content)
-  showSkeletons(grid, 4);
-
   try {
     // Get count from siteSettings (default 4)
     const settings = await getSiteSettings().catch(function () { return null; });
@@ -254,16 +251,11 @@ async function renderFeaturedProducts() {
       products = products.slice(0, count);
     }
 
-    grid.innerHTML = '';
-
-    if (!products || !products.length) {
-      // No products at all — hide the whole section cleanly
-      var section = grid.closest('.popular-products');
-      if (section) section.style.display = 'none';
-      return;
-    }
+    // Only replace static HTML when Sanity returns real data
+    if (!products || !products.length) return;
 
     const lang = getLang();
+    grid.innerHTML = '';
     products.forEach(function (p) {
       grid.appendChild(createProductCard(p, lang));
     });
@@ -273,10 +265,8 @@ async function renderFeaturedProducts() {
     reinitPopularSlider();
 
   } catch (err) {
-    // Fetch failed — hide section rather than showing broken skeletons
-    console.warn('Featured products fetch failed:', err);
-    var section = grid.closest('.popular-products');
-    if (section) section.style.display = 'none';
+    // Fetch failed — leave static HTML untouched
+    console.warn('Featured products fetch failed, keeping static HTML:', err);
   }
 }
 
@@ -284,9 +274,6 @@ async function renderFeaturedProducts() {
 async function renderCategoriesGrid() {
   const grid = document.querySelector('.categories-grid');
   if (!grid) return;
-
-  // Show skeletons immediately (no flash of empty or stale content)
-  showSkeletons(grid, 6);
 
   try {
     let categories = await getCategories();
@@ -311,16 +298,12 @@ async function renderCategoriesGrid() {
       }
     }
 
-    grid.innerHTML = '';
-
-    if (!categories || !categories.length) {
-      // No categories found at all — hide the section
-      var section = grid.closest('.categories-section');
-      if (section) section.style.display = 'none';
-      return;
-    }
+    // Only replace static HTML when Sanity returns real data
+    if (!categories || !categories.length) return;
 
     const lang = getLang();
+    grid.innerHTML = '';
+
     categories.forEach(function (cat, i) {
       const title  = lang === 'ge' ? (cat.title || '') : (cat.titleEn || cat.title || '');
       const imgUrl = sanityImageUrl(cat.image, 600);
@@ -345,9 +328,8 @@ async function renderCategoriesGrid() {
     reinitScrollReveal();
 
   } catch (err) {
-    console.warn('Categories grid fetch failed:', err);
-    var section = grid.closest('.categories-section');
-    if (section) section.style.display = 'none';
+    // Fetch failed — leave static HTML untouched
+    console.warn('Categories grid fetch failed, keeping static HTML:', err);
   }
 }
 
