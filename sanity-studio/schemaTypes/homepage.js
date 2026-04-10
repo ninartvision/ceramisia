@@ -117,7 +117,7 @@ export default {
               of: [
                 {
                   type: 'object',
-                  name: 'heroSlide',
+                  name: 'homepageHeroSlide',
                   title: 'Slide',
                   fields: [
                     {
