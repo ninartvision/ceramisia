@@ -442,6 +442,34 @@ export async function renderFooter() {
       if (ogUrl) {
         var ogMeta = document.querySelector('meta[property="og:image"]');
         if (ogMeta) ogMeta.setAttribute('content', ogUrl);
+        var twMeta = document.querySelector('meta[name="twitter:image"]');
+        if (twMeta) twMeta.setAttribute('content', ogUrl);
+      }
+    }
+
+    // Favicon from Sanity siteSettings
+    if (settings.favicon) {
+      var favUrl = sanityImageUrl(settings.favicon, 64);
+      if (favUrl) {
+        document.querySelectorAll('link[rel~="icon"], link[rel="apple-touch-icon"]').forEach(function (el) {
+          el.href = favUrl;
+          el.removeAttribute('type'); // Sanity auto=format may change the mime type
+        });
+      }
+    }
+
+    // Logo URL from Sanity — update JSON-LD logo field if present
+    if (settings.logo) {
+      var logoJsonUrl = sanityImageUrl(settings.logo, 400);
+      if (logoJsonUrl) {
+        var ldScript = document.querySelector('script[type="application/ld+json"]');
+        if (ldScript) {
+          try {
+            var ld = JSON.parse(ldScript.textContent);
+            if (ld.logo !== undefined) ld.logo = logoJsonUrl;
+            ldScript.textContent = JSON.stringify(ld);
+          } catch (_) {}
+        }
       }
     }
 

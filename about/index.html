@@ -25,9 +25,9 @@
   <meta name="twitter:title" content="ჩვენ შესახებ – Ceramisia | კერამიკის სტუდია">
   <meta name="twitter:description" content="Ceramisia-ს ისტორია — ხელნაკეთი კერამიკის სტუდია.">
   <meta name="twitter:image" content="https://ceramisia.com/images/og-image-v2.png">
-  <!-- Favicon -->
-  <link rel="icon" href="/images/logo.webp" type="image/webp">
-  <link rel="apple-touch-icon" href="/images/logo.webp">
+  <!-- Favicon — href updated by renderFooter() from Sanity siteSettings.favicon -->
+  <link rel="icon" href="" id="faviconLink">
+  <link rel="apple-touch-icon" href="">
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,7 +47,7 @@
   <header class="site-header" id="siteHeader">
     <div class="container header-inner">
       <a href="/" class="logo-link">
-        <img src="/images/logo.webp" alt="Ceramisia" class="logo-img">
+        <img src="" alt="Ceramisia" class="logo-img">
       </a>
       <button class="menu-toggle" id="menuToggle" aria-label="Menu" aria-expanded="false">
         <span></span><span></span><span></span>
@@ -181,7 +181,7 @@
   </div>
 
   <!-- ═══════════════ TEAM ═══════════════ -->
-  <section class="section">
+  <section class="section section--hidden" id="teamSection">
     <div class="container">
 
       <div class="section-header centered" data-reveal>
@@ -189,31 +189,8 @@
         <h2 data-ge="ვინ დგას თითოეული ნამუშევრის უკან" data-en="The People Behind Ceramisia">ვინ დგას თითოეული ნამუშევრის უკან</h2>
       </div>
 
-      <div class="team-grid">
-
-        <div class="team-card" data-reveal data-reveal-delay="0">
-          <div class="team-card-img">
-            <img src="/images/ceramsia-01.webp" alt="თეა ჯიჯავაძე — თანადამფუძნებელი" loading="lazy">
-          </div>
-          <div class="team-card-info">
-            <h3 data-ge="თეა ჯიჯავაძე" data-en="Tea Jijavadze">თეა ჯიჯავაძე</h3>
-            <span data-ge="დამფუძნებელი / მთავარი ოსტატი" data-en="Co-Founder / Head Artisan">დამფუძნებელი / მთავარი ოსტატი</span>
-          </div>
-        </div>
-
-      
-
-        <div class="team-card" data-reveal data-reveal-delay="200">
-          <div class="team-card-img">
-            <img src="/images/ceramsia-15.webp" alt="თიკა მაღლაკელიძე — დიზაინერი" loading="lazy">
-          </div>
-          <div class="team-card-info">
-            <h3 data-ge="თიკა მაღლაკელიძე" data-en="Tika Maglakelidze">თიკა მაღლაკელიძე</h3>
-            <span data-ge="დიზაინერი " data-en="Designer / Glaze Specialist">დიზაინერი</span>
-          </div>
-        </div>
-
-      </div>
+      <!-- populated by renderAboutPage() → renderTeamGrid() -->
+      <div class="team-grid" id="teamGrid"></div>
     </div>
   </section>
 
@@ -235,7 +212,7 @@
   <footer class="site-footer">
     <div class="container footer-grid">
       <div class="footer-col footer-about">
-        <img src="/images/logo.webp" alt="Ceramisia" class="footer-logo">
+        <img src="" alt="Ceramisia" class="footer-logo">
         <p data-ge="ხელნაკეთი კერამიკა." data-en="Handmade ceramics with Georgian soul.">ხელნაკეთი კერამიკა.</p>
       </div>
       <div class="footer-col">

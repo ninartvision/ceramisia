@@ -162,6 +162,9 @@ export function getPage(slug) {
       sections[] {
         _key, heading, headingEn, text, textEn, image
       },
+      teamMembers[] {
+        _key, name, nameEn, role, roleEn, photo
+      },
       seo
     }`,
       { slug }

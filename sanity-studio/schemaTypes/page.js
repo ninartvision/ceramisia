@@ -116,6 +116,36 @@ export default {
       description: 'Add as many content blocks as needed',
     },
     {
+      name: 'teamMembers',
+      title: '👥 Team Members',
+      type: 'array',
+      group: 'content',
+      description: 'Team section on the About page — add, remove and drag to reorder.',
+      of: [
+        {
+          type: 'object',
+          name: 'teamMember',
+          title: 'Team Member',
+          fields: [
+            {
+              name: 'photo',
+              title: 'Photo',
+              type: 'image',
+              options: { hotspot: true },
+              fields: [{ name: 'alt', title: 'Alt Text', type: 'string' }],
+            },
+            { name: 'name',   title: 'Name (GE)',   type: 'string', validation: (Rule) => Rule.required() },
+            { name: 'nameEn', title: 'Name (EN)',   type: 'string' },
+            { name: 'role',   title: 'Role (GE)',   type: 'string' },
+            { name: 'roleEn', title: 'Role (EN)',   type: 'string' },
+          ],
+          preview: {
+            select: { title: 'name', subtitle: 'role', media: 'photo' },
+          },
+        },
+      ],
+    },
+    {
       name: 'seo',
       title: 'SEO',
       type: 'seo',

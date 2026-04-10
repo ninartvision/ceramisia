@@ -2584,6 +2584,14 @@ body.modal-open {
 /* Sections hidden by the CMS renderer when Sanity returns no data */
 .section--hidden { display: none !important; }
 
+/* Prevent broken-image icon while Sanity logo loads (src set to "" initially) */
+.logo-img:not([src]),
+.logo-img[src=""],
+.footer-logo:not([src]),
+.footer-logo[src=""] {
+  visibility: hidden;
+}
+
 /* ══════════════════════════════════════════════════
    PAGE LOADING STATE — eliminates FOUC
    Body gets 'cms-loading' class directly in HTML.

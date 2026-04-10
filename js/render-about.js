@@ -58,6 +58,9 @@ export async function renderAboutPage() {
       renderAboutSections(page.sections, lang);
     }
 
+    // ── Team grid ────────────────────────────────
+    renderTeamGrid(page.teamMembers || [], lang);
+
   } catch (err) {
     console.warn('About page fetch failed, keeping static HTML:', err);
   }
@@ -83,4 +86,47 @@ function renderAboutSections(sections, lang) {
       }
     }
   });
+}
+
+function renderTeamGrid(members, lang) {
+  var grid = document.getElementById('teamGrid');
+  if (!grid) return;
+
+  var teamSection = grid.closest('.section');
+
+  if (!members || !members.length) {
+    // Hide the whole team section — no Sanity data to show
+    if (teamSection) teamSection.classList.add('section--hidden');
+    return;
+  }
+
+  var frag = document.createDocumentFragment();
+  members.forEach(function (m, i) {
+    var name    = lang === 'ge' ? (m.name || '') : (m.nameEn || m.name || '');
+    var role    = lang === 'ge' ? (m.role || '') : (m.roleEn || m.role || '');
+    var imgUrl  = sanityImageUrl(m.photo, 600);
+    var altText = (m.photo && m.photo.alt) ? m.photo.alt : esc(name);
+
+    var card = document.createElement('div');
+    card.className = 'team-card';
+    card.setAttribute('data-reveal', '');
+    card.setAttribute('data-reveal-delay', String(i * 120));
+
+    card.innerHTML =
+      '<div class="team-card-img">' +
+        (imgUrl
+          ? '<img src="' + esc(imgUrl) + '" alt="' + esc(altText) + '" loading="lazy">'
+          : '<div style="aspect-ratio:1;background:var(--clr-bg-alt,#f5f0eb)"></div>') +
+      '</div>' +
+      '<div class="team-card-info">' +
+        '<h3 data-ge="' + esc(m.name || '') + '" data-en="' + esc(m.nameEn || '') + '">' + esc(name) + '</h3>' +
+        '<span data-ge="' + esc(m.role || '') + '" data-en="' + esc(m.roleEn || '') + '">' + esc(role) + '</span>' +
+      '</div>';
+
+    frag.appendChild(card);
+  });
+
+  grid.innerHTML = '';       // single clear
+  grid.appendChild(frag);   // single insert
+  if (teamSection) teamSection.classList.remove('section--hidden');
 }
