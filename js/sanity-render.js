@@ -232,17 +232,20 @@ async function renderCategoriesGrid() {
     const lang = getLang();
     grid.innerHTML = '';
 
-    categories.forEach(function (cat) {
-      const title  = lang === 'ge' ? (cat.title || '') : (cat.titleEn || '');
-      const imgUrl = sanityImageUrl(cat.image, 500);
+    categories.forEach(function (cat, i) {
+      const title  = lang === 'ge' ? (cat.title || '') : (cat.titleEn || cat.title || '');
+      const imgUrl = sanityImageUrl(cat.image, 600);
 
       const link = document.createElement('a');
       link.href = 'products.html?cat=' + encodeURIComponent(cat.slug);
       link.className = 'category-card';
       link.setAttribute('data-reveal', '');
+      link.setAttribute('data-reveal-delay', String((i % 3) * 80));
       link.innerHTML =
         '<div class="category-img-wrap">' +
-          (imgUrl ? '<img src="' + esc(imgUrl) + '" alt="' + esc(title) + '" loading="lazy">' : '') +
+          (imgUrl
+            ? '<img src="' + esc(imgUrl) + '" alt="' + esc(title) + '" loading="lazy">'
+            : '<div style="aspect-ratio:1;background:var(--clr-bg-alt,#f5f0eb)"></div>') +
         '</div>' +
         '<div class="category-info">' +
           '<h3 data-ge="' + esc(cat.title || '') + '" data-en="' + esc(cat.titleEn || '') + '">' + esc(title) + '</h3>' +
