@@ -14,6 +14,7 @@ import {
   getProducts,
   getFeaturedProducts,
   getSiteSettings,
+  getHomepage,
   getBlogPosts,
 } from './sanity.js';
 
@@ -45,6 +46,68 @@ function showSkeletons(grid, count) {
     sk.innerHTML = '<div class="skel-img"></div><div class="skel-line"></div><div class="skel-line short"></div>';
     grid.appendChild(sk);
   }
+}
+
+/**
+ * Re-observe [data-reveal] elements added after initial page load.
+ * Mirrors initScrollReveal() in main.js for dynamically injected content.
+ */
+function reinitScrollReveal() {
+  var elements = document.querySelectorAll('[data-reveal]:not(.revealed)');
+  if (!elements.length) return;
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) {
+        var delay = entry.target.dataset.revealDelay || 0;
+        setTimeout(function () { entry.target.classList.add('revealed'); }, Number(delay));
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  elements.forEach(function (el) { observer.observe(el); });
+}
+
+/**
+ * Re-init popular slider arrows for a dynamically rendered .popular-grid.
+ * Prefers #sanity-home-sections grid if present; falls back to static grid.
+ */
+function reinitPopularSlider() {
+  // Find the grid that's actually visible (dynamic section takes priority)
+  var grid    = document.querySelector('#sanity-home-sections .popular-grid')
+             || document.querySelector('.popular-grid');
+  var prevBtn = document.querySelector('#sanity-home-sections .popular-slider-arrow.prev')
+             || document.getElementById('popularPrev');
+  var nextBtn = document.querySelector('#sanity-home-sections .popular-slider-arrow.next')
+             || document.getElementById('popularNext');
+  if (!grid || !prevBtn || !nextBtn) return;
+
+  function isMobile() { return window.innerWidth <= 768; }
+
+  function updateArrows() {
+    if (isMobile()) {
+      prevBtn.style.display = 'none';
+      nextBtn.style.display = 'none';
+      return;
+    }
+    prevBtn.style.display = '';
+    nextBtn.style.display = '';
+    prevBtn.disabled = grid.scrollLeft <= 4;
+    nextBtn.disabled = grid.scrollLeft + grid.offsetWidth >= grid.scrollWidth - 4;
+  }
+
+  function scrollByCard(dir) {
+    if (isMobile()) return;
+    var card = grid.querySelector('.product-card');
+    if (!card) return;
+    var dist = card.offsetWidth + parseInt(getComputedStyle(grid).gap || '16', 10);
+    grid.scrollBy({ left: dir * dist, behavior: 'smooth' });
+  }
+
+  prevBtn.addEventListener('click', function () { scrollByCard(-1); });
+  nextBtn.addEventListener('click', function () { scrollByCard(1); });
+  grid.addEventListener('scroll', updateArrows, { passive: true });
+  window.addEventListener('resize', updateArrows);
+  updateArrows();
 }
 
 /** Build price HTML from product data */
@@ -385,6 +448,342 @@ function getGeorgianMonth(m) {
   return months[m] || '';
 }
 
+// ══════════════════════════════════════════════════════════════
+// SECTION BUILDERS — each builds a <section> DOM element
+// ══════════════════════════════════════════════════════════════
+
+function buildSectionCategories(section, categories, lang) {
+  var heading = lang === 'ge'
+    ? (section.heading  || 'აღმოაჩინე კოლექცია')
+    : (section.headingEn || 'Browse by Collection');
+  var label = lang === 'ge'
+    ? (section.label  || 'კატეგორიები')
+    : (section.labelEn || 'Categories');
+
+  var el = document.createElement('section');
+  el.className = 'categories-section section';
+
+  var grid = document.createElement('div');
+  grid.className = 'categories-grid';
+  categories.forEach(function (cat, i) {
+    var title  = lang === 'ge' ? (cat.title || '') : (cat.titleEn || cat.title || '');
+    var imgUrl = sanityImageUrl(cat.image, 600);
+    var link = document.createElement('a');
+    link.href = 'products.html?cat=' + encodeURIComponent(cat.slug);
+    link.className = 'category-card';
+    link.setAttribute('data-reveal', '');
+    link.setAttribute('data-reveal-delay', String((i % 3) * 80));
+    link.innerHTML =
+      '<div class="category-img-wrap">' +
+        (imgUrl
+          ? '<img src="' + esc(imgUrl) + '" alt="' + esc(title) + '" loading="lazy">'
+          : '<div style="aspect-ratio:1;background:var(--clr-bg-alt,#f5f0eb)"></div>') +
+      '</div>' +
+      '<div class="category-info">' +
+        '<h3 data-ge="' + esc(cat.title || '') + '" data-en="' + esc(cat.titleEn || '') + '">' + esc(title) + '</h3>' +
+      '</div>';
+    grid.appendChild(link);
+  });
+
+  var inner = document.createElement('div');
+  inner.className = 'container';
+  inner.innerHTML =
+    '<div class="section-header" data-reveal>' +
+      '<span class="section-label" data-ge="' + esc(section.label || 'კატეგორიები') + '" data-en="' + esc(section.labelEn || 'Categories') + '">' + esc(label) + '</span>' +
+      '<h2 class="section-title" data-ge="' + esc(section.heading || 'აღმოაჩინე კოლექცია') + '" data-en="' + esc(section.headingEn || 'Browse by Collection') + '">' + esc(heading) + '</h2>' +
+    '</div>';
+  inner.appendChild(grid);
+  var cta = document.createElement('div');
+  cta.className = 'section-cta';
+  cta.setAttribute('data-reveal', '');
+  cta.innerHTML = '<a href="products.html" class="btn btn-outline" data-ge="ყველა პროდუქტი" data-en="View All Products">' +
+    (lang === 'ge' ? 'ყველა პროდუქტი' : 'View All Products') + '</a>';
+  inner.appendChild(cta);
+  el.appendChild(inner);
+  return el;
+}
+
+function buildSectionFeatured(section, products, lang) {
+  var heading = lang === 'ge'
+    ? (section.heading  || 'რჩეული პროდუქტები')
+    : (section.headingEn || 'Top Picks');
+  var label = lang === 'ge'
+    ? (section.label  || 'პოპულარული')
+    : (section.labelEn || 'Popular');
+
+  var el = document.createElement('section');
+  el.className = 'popular-products section';
+
+  var grid = document.createElement('div');
+  grid.className = 'popular-grid';
+  products.forEach(function (p) { grid.appendChild(createProductCard(p, lang)); });
+
+  var inner = document.createElement('div');
+  inner.className = 'container';
+  inner.innerHTML =
+    '<div class="section-header" data-reveal>' +
+      '<span class="section-label">' + esc(label) + '</span>' +
+      '<h2 class="section-title">' + esc(heading) + '</h2>' +
+    '</div>' +
+    '<div class="popular-slider-wrap">' +
+      '<button class="popular-slider-arrow prev" aria-label="Previous" type="button">' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>' +
+      '</button>' +
+      '<button class="popular-slider-arrow next" aria-label="Next" type="button">' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>' +
+      '</button>' +
+    '</div>' +
+    '<div class="section-cta" data-reveal>' +
+      '<a href="products.html" class="btn btn-outline" data-ge="ყველა პროდუქტის ნახვა" data-en="View All Products">' +
+        (lang === 'ge' ? 'ყველა პროდუქტის ნახვა' : 'View All Products') +
+      '</a>' +
+    '</div>';
+
+  // Insert grid inside slider-wrap (between the arrow buttons)
+  inner.querySelector('.popular-slider-wrap').appendChild(grid);
+  el.appendChild(inner);
+  return el;
+}
+
+function buildSectionAbout(section, settings, lang) {
+  var heading = lang === 'ge'
+    ? (section.heading  || (settings && settings.homepageTitle)          || 'Ceramisia – კერამიკის ხელოვნება')
+    : (section.headingEn || (settings && settings.homepageTitleEn)        || 'Ceramisia – The Art of Ceramics');
+  var text = lang === 'ge'
+    ? (section.text    || (settings && settings.homepageDescription)     || 'ვქმნით ხელნაკეთ კერამიკას, რომელიც აერთიანებს ქართულ ტრადიციებს თანამედროვე დიზაინთან.')
+    : (section.textEn  || (settings && settings.homepageDescriptionEn)   || 'We craft handmade ceramics that unite Georgian traditions with modern design.');
+  var btnText = lang === 'ge'
+    ? (section.buttonText  || 'გაიგე მეტი')
+    : (section.buttonTextEn || 'Learn More');
+  var btnLink = section.buttonLink || 'about.html';
+  var imgRef  = (section.image && section.image.asset) ? section.image
+              : (settings && settings.heroImage) ? settings.heroImage
+              : null;
+  var imgUrl = sanityImageUrl(imgRef, 800);
+
+  var el = document.createElement('section');
+  el.className = 'about-strip';
+  el.innerHTML =
+    '<div class="container about-strip-inner">' +
+      '<div class="about-strip-text" data-reveal>' +
+        '<span class="section-label" data-ge="ჩვენ შესახებ" data-en="About Us">' +
+          (lang === 'ge' ? 'ჩვენ შესახებ' : 'About Us') +
+        '</span>' +
+        '<h2>' + esc(heading) + '</h2>' +
+        '<p>' + esc(text) + '</p>' +
+        '<a href="' + esc(btnLink) + '" class="btn btn-primary">' + esc(btnText) + '</a>' +
+      '</div>' +
+      (imgUrl
+        ? '<div class="about-strip-image" data-reveal data-reveal-delay="150">' +
+            '<img src="' + esc(imgUrl) + '" alt="' + esc(heading) + '" loading="lazy">' +
+          '</div>'
+        : '') +
+    '</div>';
+  return el;
+}
+
+function buildSectionBlog(section, posts, lang) {
+  if (!posts || !posts.length) return null;
+
+  var heading = lang === 'ge'
+    ? (section.heading  || 'ბლოგი')
+    : (section.headingEn || 'Blog');
+  var label = lang === 'ge'
+    ? (section.label  || 'სტატიები')
+    : (section.labelEn || 'Articles');
+
+  var el = document.createElement('section');
+  el.className = 'blog-section section';
+
+  var grid = document.createElement('div');
+  grid.className = 'blog-grid';
+  posts.forEach(function (post) {
+    var title   = lang === 'ge' ? post.title : (post.titleEn || post.title);
+    var excerpt = lang === 'ge' ? post.excerpt : (post.excerptEn || post.excerpt);
+    var imgUrl  = sanityImageUrl(post.image, 600);
+    var date    = new Date(post.publishedAt);
+    var dateStr = lang === 'ge'
+      ? date.getDate() + ' ' + getGeorgianMonth(date.getMonth()) + ', ' + date.getFullYear()
+      : date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    var card = document.createElement('article');
+    card.className = 'blog-card revealed';
+    card.innerHTML =
+      '<a href="blog.html#' + esc(post.slug) + '" class="blog-card-img-link">' +
+        (imgUrl ? '<img src="' + esc(imgUrl) + '" alt="' + esc(title) + '" loading="lazy">' : '') +
+      '</a>' +
+      '<div class="blog-card-body">' +
+        '<span class="blog-date">' + esc(dateStr) + '</span>' +
+        '<h3><a href="blog.html#' + esc(post.slug) + '">' + esc(title) + '</a></h3>' +
+        '<p>' + esc(excerpt) + '</p>' +
+        '<a href="blog.html#' + esc(post.slug) + '" class="read-more">' +
+          (lang === 'ge' ? 'სრულად წაკითხვა' : 'Read More') + '</a>' +
+      '</div>';
+    grid.appendChild(card);
+  });
+
+  var inner = document.createElement('div');
+  inner.className = 'container';
+  inner.innerHTML =
+    '<div class="section-header" data-reveal>' +
+      '<span class="section-label">' + esc(label) + '</span>' +
+      '<h2 class="section-title">' + esc(heading) + '</h2>' +
+    '</div>';
+  inner.appendChild(grid);
+  el.appendChild(inner);
+  return el;
+}
+
+function buildSectionTextImage(section, lang) {
+  var heading = lang === 'ge'
+    ? (section.heading  || '')
+    : (section.headingEn || section.heading || '');
+  var text = lang === 'ge'
+    ? (section.text    || '')
+    : (section.textEn  || section.text || '');
+  var btnText = lang === 'ge'
+    ? (section.buttonText  || '')
+    : (section.buttonTextEn || section.buttonText || '');
+  var btnLink = section.buttonLink || '#';
+  var imgUrl  = sanityImageUrl(section.image, 800);
+
+  var el = document.createElement('section');
+  el.className = 'about-strip dynamic-section';
+  el.innerHTML =
+    '<div class="container about-strip-inner">' +
+      '<div class="about-strip-text" data-reveal>' +
+        (heading ? '<h2>' + esc(heading) + '</h2>' : '') +
+        (text    ? '<p>'  + esc(text)    + '</p>'  : '') +
+        (btnText ? '<a href="' + esc(btnLink) + '" class="btn btn-primary">' + esc(btnText) + '</a>' : '') +
+      '</div>' +
+      (imgUrl
+        ? '<div class="about-strip-image" data-reveal data-reveal-delay="150">' +
+            '<img src="' + esc(imgUrl) + '" alt="' + esc(heading) + '" loading="lazy">' +
+          '</div>'
+        : '') +
+    '</div>';
+  return el;
+}
+
+// ── Render Homepage Sections from Sanity ─────────────────────
+/**
+ * Fetches the "homepage" document from Sanity.
+ * If sections are defined, renders them in order into #sanity-home-sections
+ * and hides the static fallback sections.
+ * Returns true if sections were rendered, false if static HTML should remain.
+ */
+async function renderHomepageSections() {
+  try {
+    var homepage = await getHomepage();
+    if (!homepage || !homepage.sections || !homepage.sections.length) return false;
+
+    var sections = homepage.sections;
+    var lang     = getLang();
+
+    // Determine which data types are needed
+    var types         = sections.map(function (s) { return s.type; });
+    var needsCats     = types.indexOf('categories') !== -1;
+    var needsFeatured = types.indexOf('featured')   !== -1;
+    var needsBlog     = types.indexOf('blog')       !== -1;
+    var needsAbout    = types.indexOf('about')      !== -1;
+    var needsSettings = needsAbout || needsFeatured;
+
+    // Parallel data fetch — only what we actually need
+    var results = await Promise.all([
+      needsCats     ? getCategories()                          : Promise.resolve(null),
+      needsFeatured ? getFeaturedProducts()                    : Promise.resolve(null),
+      needsBlog     ? getBlogPosts(3)                          : Promise.resolve(null),
+      needsSettings ? getSiteSettings().catch(function () { return null; }) : Promise.resolve(null),
+    ]);
+    var categories       = results[0];
+    var featuredProducts = results[1];
+    var blogPosts        = results[2];
+    var settings         = results[3];
+
+    var container = document.getElementById('sanity-home-sections');
+    if (!container) return false;
+
+    var fragment    = document.createDocumentFragment();
+    var builtCount  = 0;
+
+    for (var i = 0; i < sections.length; i++) {
+      var section = sections[i];
+      var el      = null;
+
+      if (section.type === 'slider') {
+        // Hero slider is always rendered at the top; skip in the dynamic container
+        continue;
+
+      } else if (section.type === 'categories') {
+        var cats = categories || [];
+        // Fallback: extract categories from products if no Category docs
+        if (!cats.length && featuredProducts && featuredProducts.length) {
+          var seen = new Set();
+          cats = [];
+          featuredProducts.forEach(function (p) {
+            if (p.categorySlug && !seen.has(p.categorySlug)) {
+              seen.add(p.categorySlug);
+              cats.push({
+                title:   p.categoryTitle    || p.categorySlug,
+                titleEn: p.categoryTitleEn  || p.categorySlug,
+                slug:    p.categorySlug,
+                image:   p.mainImage || null,
+              });
+            }
+          });
+        }
+        if (cats.length) el = buildSectionCategories(section, cats, lang);
+
+      } else if (section.type === 'featured') {
+        var count = (settings && settings.featuredProductCount) ? settings.featuredProductCount : 4;
+        var prods = featuredProducts || [];
+        if (!prods.length) {
+          prods = await getProducts('all').catch(function () { return []; }) || [];
+        }
+        prods = prods.slice(0, count);
+        if (prods.length) el = buildSectionFeatured(section, prods, lang);
+
+      } else if (section.type === 'about') {
+        el = buildSectionAbout(section, settings, lang);
+
+      } else if (section.type === 'blog') {
+        el = buildSectionBlog(section, blogPosts || [], lang);
+
+      } else if (section.type === 'text_image') {
+        el = buildSectionTextImage(section, lang);
+      }
+
+      if (el) {
+        fragment.appendChild(el);
+        builtCount++;
+      }
+    }
+
+    if (!builtCount) return false;
+
+    // Append all sections at once, then reveal the container
+    container.appendChild(fragment);
+    container.style.display = '';
+    container.removeAttribute('aria-hidden');
+
+    // Only NOW hide static fallback sections (dynamic content is ready)
+    document.querySelectorAll('[data-static-home-section]').forEach(function (staticEl) {
+      staticEl.style.display = 'none';
+    });
+
+    // Re-init dynamic interactions
+    if (typeof window.initCart === 'function') window.initCart();
+    if (typeof window.initProductModal === 'function') window.initProductModal();
+    reinitScrollReveal();
+    reinitPopularSlider();
+
+    return true;
+
+  } catch (err) {
+    console.warn('Homepage sections render failed, keeping static HTML:', err);
+    return false;
+  }
+}
+
 // ── Init on DOM ready ────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
   var path = window.location.pathname;
@@ -416,10 +815,18 @@ document.addEventListener('DOMContentLoaded', function () {
   // Homepage only
   if (isHome) {
     renderHeroSlider();
-    renderCategoriesGrid();
-    renderFeaturedProducts();
-    renderAboutStrip();
-    renderBlogCards();
+
+    // Try Sanity-controlled section layout first.
+    // If no homepage document exists (or fetch fails), fall back to
+    // individual section renderers that safely update the static HTML.
+    renderHomepageSections().then(function (handled) {
+      if (!handled) {
+        renderCategoriesGrid();
+        renderFeaturedProducts();
+        renderAboutStrip();
+        renderBlogCards();
+      }
+    });
     return;
   }
 

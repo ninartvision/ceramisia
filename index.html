@@ -195,8 +195,14 @@
     </div>
   </div>
 
+  <!-- ═══════════════ SANITY HOMEPAGE SECTIONS ═══════════════ -->
+  <!-- Populated by renderHomepageSections() when a "homepage" document
+       exists in Sanity. Hidden until Sanity data is confirmed loaded.
+       Static sections below remain visible as fallback. -->
+  <div id="sanity-home-sections" style="display:none" aria-hidden="true"></div>
+
   <!-- ═══════════════ CATEGORIES ═══════════════ -->
-  <section class="categories-section section">
+  <section class="categories-section section" data-static-home-section="categories">
     <div class="container">
 
       <div class="section-header" data-reveal>
@@ -204,8 +210,62 @@
         <h2 class="section-title" data-ge="აღმოაჩინე კოლექცია" data-en="Browse by Collection">აღმოაჩინე კოლექცია</h2>
       </div>
 
-      <div class="categories-grid" data-sanity>
-        <!-- populated by sanity-render.js -->
+      <div class="categories-grid">
+
+        <a href="products.html?cat=vases" class="category-card" data-reveal data-reveal-delay="0">
+          <div class="category-img-wrap">
+            <img src="images/ceramsia-01.webp" alt="Vases" loading="lazy">
+          </div>
+          <div class="category-info">
+            <h3 data-ge="ღვინის კულტურა" data-en="Vases">ღვინის კულტურა</h3>
+          </div>
+        </a>
+
+        <a href="products.html?cat=decorative" class="category-card" data-reveal data-reveal-delay="80">
+          <div class="category-img-wrap">
+            <img src="images/ceramsia-05.webp" alt="Decorative Items" loading="lazy">
+          </div>
+          <div class="category-info">
+            <h3 data-ge="კერამიკული ჭურჭელი" data-en="Decorative Items">კერამიკული ჭურჭელი</h3>
+          </div>
+        </a>
+
+        <a href="products.html?cat=tableware" class="category-card" data-reveal data-reveal-delay="160">
+          <div class="category-img-wrap">
+            <img src="images/ceramsia-15.webp" alt="Tableware" loading="lazy">
+          </div>
+          <div class="category-info">
+            <h3 data-ge="დეკორი & ინტერიერი" data-en="Tableware">დეკორი & ინტერიერი</h3>
+          </div>
+        </a>
+
+        <a href="products.html?cat=bathroom" class="category-card" data-reveal data-reveal-delay="0">
+          <div class="category-img-wrap">
+            <img src="images/ceramsia-16.webp" alt="Bathroom Accessories" loading="lazy">
+          </div>
+          <div class="category-info">
+            <h3 data-ge="სანათები & ატმოსფერო" data-en="Bathroom Accessories">სანათები & ატმოსფერო</h3>
+          </div>
+        </a>
+
+        <a href="products.html?cat=georgian" class="category-card" data-reveal data-reveal-delay="80">
+          <div class="category-img-wrap">
+            <img src="images/ceramsia-22.webp" alt="Georgian Collection" loading="lazy">
+          </div>
+          <div class="category-info">
+            <h3 data-ge="სიმბოლური კოლექცია" data-en="Georgian Collection">სიმბოლური კოლექცია</h3>
+          </div>
+        </a>
+ <a href="products.html?cat=georgian" class="category-card" data-reveal data-reveal-delay="80">
+          <div class="category-img-wrap">
+            <img src="images/ceramsia-22.webp" alt="Georgian Collection" loading="lazy">
+          </div>
+          <div class="category-info">
+            <h3 data-ge="სხვადასხვა" data-en="Various">სხვადასხვა</h3>
+          </div>
+        </a>
+        
+
       </div>
 
       <div class="section-cta" data-reveal>
@@ -216,7 +276,7 @@
   </section>
 
   <!-- ═══════════════ ABOUT STRIP ═══════════════ -->
-  <section class="about-strip">
+  <section class="about-strip" data-static-home-section="about">
     <div class="container about-strip-inner">
 
       <div class="about-strip-text" data-reveal>
@@ -234,7 +294,7 @@
   </section>
 
   <!-- ═══════════════ POPULAR PRODUCTS ═══════════════ -->
-  <section class="popular-products section">
+  <section class="popular-products section" data-static-home-section="featured">
     <div class="container">
 
       <div class="section-header" data-reveal>
@@ -251,8 +311,86 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
 
-      <div class="popular-grid" data-sanity>
-        <!-- populated by sanity-render.js -->
+      <div class="popular-grid">
+
+        <div class="product-card" data-category="vases"
+             data-desc-ge="ხელნაკეთი კერამიკული ვაზი, უნიკალური დიზაინით. იდეალურია ინტერიერის გასალამაზებლად."
+             data-desc-en="Handmade ceramic vase with a unique design. Perfect for interior decoration."
+             data-gallery="images/ceramsia-01.webp,images/ceramsia-05.webp,images/ceramsia-22.webp"
+             data-status="new" data-reveal data-reveal-delay="0">
+          <div class="product-img-wrap">
+            <img src="images/ceramsia-01.webp" alt="Ceramic Vase No.1" loading="lazy">
+            <span class="product-badge new" data-ge="ახალი" data-en="New">ახალი</span>
+            <div class="product-actions">
+              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
+            </div>
+          </div>
+          <div class="product-info">
+            <p class="product-category" data-ge="ღვინის კულტურა" data-en="Vases">ღვინის კულტურა</p>
+            <h3 class="product-name" data-ge="კერამიკული ვაზი No.1" data-en="Ceramic Vase No.1">კერამიკული ვაზი No.1</h3>
+            <p class="product-price">₾ 85</p>
+          </div>
+        </div>
+
+        <div class="product-card" data-category="tableware"
+             data-desc-ge="კერამიკული სუფრის სერვიზი, ელეგანტური დიზაინით. მოიცავს თეფშებს და თასებს."
+             data-desc-en="Ceramic tableware set with elegant design. Includes plates and bowls."
+             data-gallery="images/ceramsia-15.webp,images/ceramsia-16.webp,images/ceramsia-48.webp"
+             data-status="sale" data-reveal data-reveal-delay="80">
+          <div class="product-img-wrap">
+            <img src="images/ceramsia-15.webp" alt="Tableware Set" loading="lazy">
+            <span class="product-badge sale" data-ge="ფასდაკლება" data-en="Sale">ფასდაკლება</span>
+            <div class="product-actions">
+              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
+            </div>
+          </div>
+          <div class="product-info">
+            <p class="product-category" data-ge="დეკორი &amp; ინტერიერი" data-en="Tableware">დეკორი &amp; ინტერიერი</p>
+            <h3 class="product-name" data-ge="სუფრის სერვიზი" data-en="Tableware Set">სუფრის სერვიზი</h3>
+            <p class="product-price">
+              <span class="original">₾ 220</span>₾ 175
+            </p>
+          </div>
+        </div>
+
+        <div class="product-card" data-category="georgian"
+             data-desc-ge="ავთენტური ქართული ქვევრი, ხელნაკეთი. ტრადიციული ფორმა თანამედროვე ინტერპრეტაციით."
+             data-desc-en="Authentic Georgian Qvevri, handmade. Traditional form with modern interpretation."
+             data-gallery="images/ceramsia-22.webp,images/ceramsia-01.webp,images/ceramsia-53.webp"
+             data-status="new" data-reveal data-reveal-delay="160">
+          <div class="product-img-wrap">
+            <img src="images/ceramsia-22.webp" alt="Georgian Qvevri" loading="lazy">
+            <span class="product-badge new" data-ge="ახალი" data-en="New">ახალი</span>
+            <div class="product-actions">
+              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
+            </div>
+          </div>
+          <div class="product-info">
+            <p class="product-category" data-ge="სიმბოლური კოლექცია" data-en="Georgian Collection">სიმბოლური კოლექცია</p>
+            <h3 class="product-name" data-ge="ქართული ქვევრი" data-en="Georgian Qvevri">ქართული ქვევრი</h3>
+            <p class="product-price">₾ 195</p>
+          </div>
+        </div>
+
+        <div class="product-card" data-category="decorative"
+             data-desc-ge="დეკორატიული ფიგურა, ხელნაკეთი კერამიკა. სხვადასხვა დამუშავება შესაძლებელია."
+             data-desc-en="Decorative sculpture, handmade ceramic. Various finishing options available."
+             data-gallery="images/ceramsia-54.webp,images/ceramsia-53.webp,images/ceramsia-05.webp"
+             data-status="new" data-reveal data-reveal-delay="240">
+          <div class="product-img-wrap">
+            <img src="images/ceramsia-54.webp" alt="Decorative Sculpture" loading="lazy">
+            <span class="product-badge new" data-ge="ახალი" data-en="New">ახალი</span>
+            <div class="product-actions">
+              <button class="btn-add-cart" data-ge="კალათაში" data-en="Add to Cart">კალათაში</button>
+            </div>
+          </div>
+          <div class="product-info">
+            <p class="product-category" data-ge="კერამიკული ჭურჭელი" data-en="Decorative Items">კერამიკული ჭურჭელი</p>
+            <h3 class="product-name" data-ge="დეკორატიული ფიგურა" data-en="Decorative Sculpture">დეკორატიული ფიგურა</h3>
+            <p class="product-price">₾ 95</p>
+          </div>
+        </div>
+
       </div>
       </div> <!-- /.popular-slider-wrap -->
 

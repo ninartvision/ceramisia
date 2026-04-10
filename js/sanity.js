@@ -144,6 +144,18 @@ export async function getNavigation() {
   }`);
 }
 
+/** Fetch homepage sections layout document */
+export async function getHomepage() {
+  return sanityFetch(`*[_type == "homepage"][0] {
+    sections[] {
+      _key, type,
+      heading, headingEn, label, labelEn,
+      text, textEn, image,
+      buttonText, buttonTextEn, buttonLink
+    }
+  }`);
+}
+
 /** Fetch latest N blog posts (for homepage cards) */
 export async function getBlogPosts(limit = 3) {
   return sanityFetch(

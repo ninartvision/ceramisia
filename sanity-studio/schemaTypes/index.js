@@ -12,6 +12,7 @@ import product from './product'
 import blogPost from './blogPost'
 import order from './order'
 import siteSettings from './siteSettings'
+import homepage from './homepage'
 import page from './page'
 import navigation from './navigation'
 
@@ -26,6 +27,7 @@ export const schemaTypes = [
   blogPost,
   order,
   siteSettings,
+  homepage,
   page,
   navigation,
 ]
