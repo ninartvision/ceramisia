@@ -87,10 +87,8 @@ var FALLBACK_SLIDES = [
  *
  * Rules:
  *  - Input must be a non-empty array (GROQ returns null for empty arrays)
- *  - Each slide must have at least heading or headingEn to be kept
- *  - Slides with a missing/broken image asset are KEPT but warned about —
- *    buildSlides() will render them with a dark brand-gradient background
- *    so text is still readable and layout is not broken
+ *  - Each slide must have at least heading text (GE/EN)
+ *  - Slides without image.asset._ref are skipped safely
  *
  * Returns the filtered array (≥ 1 item) or null if nothing is valid.
  */
@@ -110,13 +108,13 @@ function validateSlides(raw, label) {
     }
     if (!hasImgRef) {
       console.warn('[Hero]', label, 'slide[' + idx + '] "' + (geHeading || enHeading) +
-        '" — WARNING: image.asset._ref is missing (image not uploaded or not published). ' +
-        'Slide will render with a dark-gradient background instead of a photo.');
+        '" — SKIPPED (image.asset._ref is missing).');
+      return false;
     } else {
       console.log('[Hero]', label, 'slide[' + idx + '] ✓', geHeading || enHeading,
         '| image._ref:', s.image.asset._ref);
     }
-    return true; // keep slide even without image
+    return true;
   });
   if (valid.length === 0) {
     console.warn('[Hero]', label, '→ 0 valid slides after filtering (all skipped — missing heading)');
@@ -252,6 +250,9 @@ export async function renderHeroSlider(slidesOverride) {
     } else {
       var slides = Array.isArray(page.heroSlides) ? page.heroSlides : [];
       console.log('[Hero] slides:', slides);
+      if (slides.length === 0) {
+        console.warn('[Hero] P2: page.heroSlides is empty.');
+      }
       var p2slides = validateSlides(slides, 'P2 page.heroSlides');
       if (p2slides) return render(p2slides, 'page.heroSlides (Home page in Studio)');
       console.warn('[Hero] P2: page exists but no valid slides.');
