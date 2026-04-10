@@ -1,0 +1,20 @@
+﻿# node
+node_modules/
+npm-debug.log*
+
+# Sanity Studio
+sanity-studio/node_modules/
+sanity-studio/.sanity/
+sanity-studio/dist/
+
+# Scripts
+scripts/node_modules/
+
+# Env
+.env
+.env.local
+.env.production
+
+# OS
+.DS_Store
+Thumbs.db
