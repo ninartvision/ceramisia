@@ -91,13 +91,12 @@ function validateSlides(raw, label) {
     }
     if (!hasImgRef) {
       console.warn('[Hero]', label, 'slide[' + idx + '] "' + (geHeading || enHeading) +
-        '" — SKIPPED (image.asset._ref is missing).');
-      return false;
+        '" — no image.asset._ref; will render with CSS gradient fallback background.');
     } else {
       console.log('[Hero]', label, 'slide[' + idx + '] ✓', geHeading || enHeading,
         '| image._ref:', s.image.asset._ref);
     }
-    return true;
+    return true; // include slide even without image — buildSlides() uses CSS gradient fallback
   });
   if (valid.length === 0) {
     console.warn('[Hero]', label, '→ 0 valid slides after filtering (all skipped — missing heading)');
@@ -241,6 +240,24 @@ export async function renderHeroSlider(slidesOverride) {
       if (p2slides) return render(p2slides, 'page.heroSlides (Home page in Studio)');
       console.warn('[Hero] P2: page exists but no valid slides.');
     }
+
+    // ── 2.5. page.heroImage — single-image hero from the "home" Page doc ──
+    // Falls here when page exists but has no heroSlides.
+    // page is already fetched above — no extra network request needed.
+    if (page && page.heroImage && page.heroImage.asset && page.heroImage.asset._ref) {
+      console.log('[Hero] P2.5 — using page.heroImage:', page.heroImage.asset._ref);
+      return render([{
+        image:        page.heroImage,
+        heading:      page.heroHeading   || 'Ceramisia',
+        headingEn:    page.heroHeadingEn || 'Ceramisia',
+        subtitle:     '',
+        subtitleEn:   '',
+        buttonText:   tge('viewProducts'),
+        buttonTextEn: ten('viewProducts'),
+        buttonLink:   '/products/',
+      }], 'page.heroImage (Home page in Studio)');
+    }
+    console.log('[Hero] P2.5: no heroImage on Home page doc, trying homepage layout...');
 
     // ── 3. Homepage layout document slider section ───
     var homepage = await getHomepage();
