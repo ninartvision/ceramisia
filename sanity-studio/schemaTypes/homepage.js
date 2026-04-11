@@ -167,8 +167,8 @@ export default {
                       name: 'buttonLink',
                       title: 'Button Link / URL',
                       type: 'string',
-                      initialValue: 'products.html',
-                      description: 'Relative path (e.g. products.html) or full URL',
+                      initialValue: '/products/',
+                      description: 'Relative path (e.g. /products/) or full URL',
                     },
                   ],
                   preview: {
