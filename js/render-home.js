@@ -43,44 +43,27 @@ var BRAND_ICONS = {
 
 // ── Hero Slider ──────────────────────────────────────
 /**
- * Brand-coloured fallback slides — shown when no heroSlides are yet
- * configured in Sanity Studio. Replace these gradient backgrounds with
- * real images by adding slides to the Home page doc in Studio.
- * The `_bg` property is used only for fallback slides; Sanity-sourced
- * slides always use their uploaded image instead.
+ * Show a branded CSS-only placeholder when Sanity returns no slide data.
+ * No hardcoded content text — just the gradient background so the layout
+ * stays intact. A console warning guides developers to the next steps.
  */
-var FALLBACK_SLIDES = [
-  {
-    heading:      'Ceramisia – კერამიკის ხელოვნება',
-    headingEn:    'Ceramisia – The Art of Ceramics',
-    subtitle:     'ხელნაკეთი კერამიკა',
-    subtitleEn:   'Handmade Ceramics',
-    buttonText:   'კოლექციის ნახვა',
-    buttonTextEn: 'Shop Collection',
-    buttonLink:   '/products/',
-    _bg:          'linear-gradient(135deg, #2a1a16 0%, #4d2c1d 40%, #3d2314 100%)',
-  },
-  {
-    heading:      'ტრადიცია და თანამედროვე დიზაინი',
-    headingEn:    'Tradition Meets Modern Design',
-    subtitle:     'ავტენტური ქართული',
-    subtitleEn:   'Authentic Georgian',
-    buttonText:   'ჩვენ შესახებ',
-    buttonTextEn: 'Our Story',
-    buttonLink:   '/about/',
-    _bg:          'linear-gradient(135deg, #1e1612 0%, #3d2c20 40%, #2d1e14 100%)',
-  },
-  {
-    heading:      'შექმენი შენი უნიკალური კოლექცია',
-    headingEn:    'Create Your Unique Collection',
-    subtitle:     'ინდივიდუალური შეკვეთა',
-    subtitleEn:   'Custom Orders',
-    buttonText:   'დაგვიკავშირდი',
-    buttonTextEn: 'Get in Touch',
-    buttonLink:   '/contact/',
-    _bg:          'linear-gradient(135deg, #24181a 0%, #451c2a 40%, #321620 100%)',
-  },
-];
+function showHeroEmpty(container, dotsWrap) {
+  var isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  console.warn(
+    '[Hero] ⚠️ No slide data found in Sanity. Showing empty placeholder.\n' +
+    (isLocal
+      ? 'LOCAL: ensure http://localhost:5500 and http://127.0.0.1:5500 are added as CORS origins at ' +
+        'https://sanity.io/manage/personal/project/uemjhi9v/api — then publish a Homepage Layout or ' +
+        'a Page doc with slug "home" containing heroSlides in Sanity Studio.'
+      : 'PRODUCTION: publish a Homepage Layout or a Page doc with slug "home" containing heroSlides in Sanity Studio.')
+  );
+  container.innerHTML =
+    '<div class="slide active" style="background:linear-gradient(135deg,#2a1a16 0%,#4d2c1d 40%,#3d2314 100%)">' +
+      '<div class="slide-overlay"></div>' +
+    '</div>';
+  if (dotsWrap) dotsWrap.innerHTML = '';
+  if (typeof window.initHeroSlider === 'function') window.initHeroSlider();
+}
 
 /**
  * Validate and filter a raw slides array returned by Sanity.
@@ -213,10 +196,10 @@ function buildSlides(container, dotsWrap, slides) {
  *  2. page.heroSlides  — slides on the "home" Page document in Studio
  *  3. homepage.sections slider — first "slider" section in the Homepage layout doc
  *  4. siteSettings.heroImage  — single-image fallback from Site Settings
- *  5. FALLBACK_SLIDES  — built-in brand-coloured slides (never hides the hero)
+ *  5. Empty placeholder     — CSS gradient only; console warns with next steps
  *
- * The hero section is NEVER hidden — if Sanity has no data, the brand-coloured
- * fallback slides are shown so the layout stays intact.
+ * The hero section is NEVER hidden — if Sanity has no data an empty branded
+ * placeholder is shown and the console explains what to configure in Studio.
  *
  * All checks are logged to the browser console — open DevTools → Console and
  * look for "[Hero]" lines to diagnose which source is being used.
@@ -289,14 +272,13 @@ export async function renderHeroSlider(slidesOverride) {
     }
     console.warn('[Hero] P4 FAILED — no heroImage in Site Settings.');
 
-    // ── 5. Brand-coloured fallback — always shows the slider ──
-    console.info('[Hero] All Sanity sources returned no valid slides; using fallback slides.');
-    render(FALLBACK_SLIDES, 'FALLBACK_SLIDES (no Sanity data found)');
+    // ── 5. Empty placeholder — no Sanity data found ──
+    showHeroEmpty(container, dotsWrap);
 
   } catch (err) {
-    // Network/parse error — still show fallback rather than hiding the hero
-    console.error('[Hero] ❌ Fetch error — showing fallback slides. Error:', err);
-    render(FALLBACK_SLIDES, 'FALLBACK_SLIDES (fetch error)');
+    // Network/CORS/parse error — show empty placeholder and surface the error clearly
+    console.error('[Hero] ❌ Fetch error. Check CORS origins and Studio config. Error:', err);
+    showHeroEmpty(container, dotsWrap);
   }
 }
 
