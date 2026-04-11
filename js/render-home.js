@@ -232,7 +232,8 @@ export async function renderHeroSlider(slidesOverride) {
       console.warn('[Hero] P2 FAILED — no Page doc with slug "home".');
     } else {
       var slides = Array.isArray(page.heroSlides) ? page.heroSlides : [];
-      console.log('[Hero] slides:', slides);
+      console.log('[Hero] P2 payload:', page);
+      console.log('[Hero] P2 slides:', slides);
       if (slides.length === 0) {
         console.warn('[Hero] P2: page.heroSlides is empty.');
       }
@@ -244,9 +245,11 @@ export async function renderHeroSlider(slidesOverride) {
     // ── 3. Homepage layout document slider section ───
     var homepage = await getHomepage();
     var homepageSections = (homepage && Array.isArray(homepage.sections)) ? homepage.sections : [];
+    console.log('[Hero] P3 payload:', homepage);
     console.log('[Hero] P3 — Homepage sections:', homepageSections.length);
     var sliderSection = homepageSections.find(function (s) { return s.type === 'slider'; });
     if (sliderSection) {
+      console.log('[Hero] P3 slider section:', sliderSection);
       var p3slides = validateSlides(sliderSection.slides, 'P3 homepage slider section');
       if (p3slides) return render(p3slides, 'homepage slider section');
       console.warn('[Hero] P3: slider section exists but no valid slides.');
@@ -257,6 +260,7 @@ export async function renderHeroSlider(slidesOverride) {
     // ── 4. siteSettings.heroImage as single-slide ───
     var settings = await getSiteSettings().catch(function () { return null; });
     var hasHeroImg = !!(settings && settings.heroImage && settings.heroImage.asset && settings.heroImage.asset._ref);
+    console.log('[Hero] P4 payload:', settings);
     console.log('[Hero] P4 — siteSettings.heroImage:', hasHeroImg ? 'found' : 'missing');
     if (hasHeroImg) {
       return render([{

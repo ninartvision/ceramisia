@@ -317,6 +317,7 @@ window.CeramisiaCMS = {
   getBlogPosts,
   getBlogPost,
   getPage,
+  getHomepage,
   getSiteSettings,
   getNavigation,
 };
