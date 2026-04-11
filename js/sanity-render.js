@@ -445,8 +445,11 @@ async function renderFeaturedProducts() {
     reinitPopularSlider();
 
   } catch (err) {
-    hideSection();
-    console.warn('Featured products fetch failed:', err);
+    // Network or CORS error — restore section to its natural state so it
+    // isn't hidden just because the API was unreachable (e.g. localhost dev).
+    // Clear the skeleton placeholder so no broken loading state is left.
+    grid.innerHTML = '';
+    console.warn('Featured products fetch failed (CORS or network issue — check Sanity CORS origins at sanity.io/manage):', err);
   }
 }
 
@@ -521,10 +524,9 @@ async function renderCategoriesGrid() {
     reinitScrollReveal();
 
   } catch (err) {
-    // Fetch failed — hide static section rather than show an empty grid
-    console.warn('Categories grid fetch failed, hiding section:', err);
-    var catSection = document.querySelector('.categories-section[data-static-home-section]');
-    if (catSection) catSection.classList.add('section--hidden');
+    // Network or CORS error — leave the static section visible.
+    // Only empty-result paths (above) actively hide the section.
+    console.warn('Categories grid fetch failed (CORS or network issue — check Sanity CORS origins at sanity.io/manage):', err);
   }
 }
 

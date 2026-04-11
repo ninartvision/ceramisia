@@ -14,7 +14,12 @@ const SANITY_API_VER    = '2025-01-01';
 // Use the Sanity CDN for GROQ queries — globally distributed, fast TTFB.
 // Content is typically fresh within 60 s, which is fine for a ceramics shop.
 // The JS-level _cache prevents duplicate in-flight requests within a session.
-const CDN_BASE   = `https://${SANITY_PROJECT_ID}.apicdn.sanity.io`;
+// On localhost (Live Server / dev) we bypass the CDN so newly added CORS origins
+// take effect immediately and responses are always fresh.
+const _IS_LOCAL  = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const CDN_BASE   = _IS_LOCAL
+  ? `https://${SANITY_PROJECT_ID}.api.sanity.io`
+  : `https://${SANITY_PROJECT_ID}.apicdn.sanity.io`;
 // Images must always use cdn.sanity.io regardless
 const IMAGE_BASE = `https://cdn.sanity.io`;
 
