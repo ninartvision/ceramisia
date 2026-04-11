@@ -274,23 +274,21 @@ export async function renderHeroSlider(slidesOverride) {
       console.warn('[Hero] P3 FAILED — no slider section in Homepage doc.');
     }
 
-    // ── 4. siteSettings.heroImage as single-slide ───
-    var settings = await getSiteSettings().catch(function () { return null; });
-    var hasHeroImg = !!(settings && settings.heroImage && settings.heroImage.asset && settings.heroImage.asset._ref);
-    console.log('[Hero] P4 payload:', settings);
-    console.log('[Hero] P4 — siteSettings.heroImage:', hasHeroImg ? 'found' : 'missing');
-    if (hasHeroImg) {
-      return render([{
-        image:        settings.heroImage,
-        heading:      settings.homepageTitle   || 'Ceramisia',
-        headingEn:    settings.homepageTitleEn || 'Ceramisia',
-        subtitle:     '',
-        subtitleEn:   '',
-        buttonText:   tge('viewProducts'),
-        buttonTextEn: ten('viewProducts'),
-        buttonLink:   '/products/',
-      }], 'siteSettings.heroImage (Site Settings in Studio)');
-    }
+    // ── 2.5. page.heroImage as single-slide ───
+if (page && page.heroImage && page.heroImage.asset && page.heroImage.asset._ref) {
+  console.log('[Hero] P2.5 — page.heroImage: found');
+
+  return render([{
+    image:        page.heroImage,
+    heading:      page.title || 'Ceramisia',
+    headingEn:    page.titleEn || 'Ceramisia',
+    subtitle:     '',
+    subtitleEn:   '',
+    buttonText:   tge('viewProducts'),
+    buttonTextEn: ten('viewProducts'),
+    buttonLink:   '/products/',
+  }], 'page.heroImage (Pages → home)');
+}
     console.warn('[Hero] P4 FAILED — no heroImage in Site Settings.');
 
     // ── 5. Empty placeholder — no Sanity data found ──
