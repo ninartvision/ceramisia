@@ -226,6 +226,9 @@ export async function renderHeroSlider(slidesOverride) {
 
     // ── 2. Page document heroSlides ──────────────────
     var page = await getPage('home');
+    console.log('PAGE:', page);
+    console.log('heroImage:', page?.heroImage);
+    console.log('asset:', page?.heroImage?.asset);
     console.log('[Hero] P2 — getPage("home") result:', page);
     console.log('[Hero] P2 — page.heroImage:', page ? page.heroImage : 'n/a');
     console.log('[Hero] P2 — page.heroImage.asset._ref:', (page && page.heroImage && page.heroImage.asset) ? page.heroImage.asset._ref : 'MISSING');
@@ -241,9 +244,8 @@ export async function renderHeroSlider(slidesOverride) {
 
     // ── 2.5. page.heroImage — single-image hero from the "home" Page doc ──
     // No extra fetch: page was already loaded above.
-    var heroImgRef = page && page.heroImage && page.heroImage.asset && page.heroImage.asset._ref;
-    console.log('[Hero] P2.5 — heroImgRef:', heroImgRef || 'NOT FOUND');
-    if (heroImgRef) {
+    console.log('[Hero] P2.5 — page.heroImage.asset:', page?.heroImage?.asset);
+    if (page?.heroImage?.asset) {
       var builtUrl = sanityImageUrl(page.heroImage, 1920);
       console.log('[Hero] P2.5 — sanityImageUrl result:', builtUrl);
       var renderInput = [{
@@ -252,14 +254,13 @@ export async function renderHeroSlider(slidesOverride) {
         headingEn:    page.heroHeadingEn || page.titleEn  || 'Ceramisia',
         subtitle:     page.heroSubtext   || '',
         subtitleEn:   page.heroSubtextEn || '',
-        buttonText:   tge('viewProducts'),
-        buttonTextEn: ten('viewProducts'),
         buttonLink:   '/products/',
       }];
       console.log('[Hero] P2.5 — RENDER INPUT:', renderInput);
+      console.log('[Hero] P2.5 — injecting into #slidesContainer:', document.getElementById('slidesContainer'));
       return render(renderInput, 'page.heroImage (Home page in Studio)');
     }
-    console.warn('[Hero] P2.5 FAILED — page.heroImage is null or missing asset._ref. Moving to P3.');
+    console.warn('[Hero] P2.5 FAILED — page.heroImage is null or missing asset. Moving to P3.');
 
     // ── 3. Homepage layout document slider section ───
     var homepage = await getHomepage();
