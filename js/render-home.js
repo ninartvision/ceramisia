@@ -226,38 +226,40 @@ export async function renderHeroSlider(slidesOverride) {
 
     // ── 2. Page document heroSlides ──────────────────
     var page = await getPage('home');
-    console.log('[Hero] P2 — page doc:', page ? 'found' : 'null');
+    console.log('[Hero] P2 — getPage("home") result:', page);
+    console.log('[Hero] P2 — page.heroImage:', page ? page.heroImage : 'n/a');
+    console.log('[Hero] P2 — page.heroImage.asset._ref:', (page && page.heroImage && page.heroImage.asset) ? page.heroImage.asset._ref : 'MISSING');
     if (!page) {
-      console.warn('[Hero] P2 FAILED — no Page doc with slug "home".');
+      console.warn('[Hero] P2 FAILED — getPage("home") returned null. Check CORS at sanity.io/manage and confirm a Page doc with slug "home" is published.');
     } else {
       var slides = Array.isArray(page.heroSlides) ? page.heroSlides : [];
-      console.log('[Hero] P2 payload:', page);
-      console.log('[Hero] P2 slides:', slides);
-      if (slides.length === 0) {
-        console.warn('[Hero] P2: page.heroSlides is empty.');
-      }
+      console.log('[Hero] P2 — page.heroSlides:', slides);
       var p2slides = validateSlides(slides, 'P2 page.heroSlides');
       if (p2slides) return render(p2slides, 'page.heroSlides (Home page in Studio)');
-      console.warn('[Hero] P2: page exists but no valid slides.');
+      console.log('[Hero] P2: no valid heroSlides — checking page.heroImage next.');
     }
 
     // ── 2.5. page.heroImage — single-image hero from the "home" Page doc ──
-    // Falls here when page exists but has no heroSlides.
-    // page is already fetched above — no extra network request needed.
-    if (page && page.heroImage && page.heroImage.asset && page.heroImage.asset._ref) {
-      console.log('[Hero] P2.5 — using page.heroImage:', page.heroImage.asset._ref);
-      return render([{
+    // No extra fetch: page was already loaded above.
+    var heroImgRef = page && page.heroImage && page.heroImage.asset && page.heroImage.asset._ref;
+    console.log('[Hero] P2.5 — heroImgRef:', heroImgRef || 'NOT FOUND');
+    if (heroImgRef) {
+      var builtUrl = sanityImageUrl(page.heroImage, 1920);
+      console.log('[Hero] P2.5 — sanityImageUrl result:', builtUrl);
+      var renderInput = [{
         image:        page.heroImage,
-        heading:      page.heroHeading   || 'Ceramisia',
-        headingEn:    page.heroHeadingEn || 'Ceramisia',
-        subtitle:     '',
-        subtitleEn:   '',
+        heading:      page.heroHeading   || page.title    || 'Ceramisia',
+        headingEn:    page.heroHeadingEn || page.titleEn  || 'Ceramisia',
+        subtitle:     page.heroSubtext   || '',
+        subtitleEn:   page.heroSubtextEn || '',
         buttonText:   tge('viewProducts'),
         buttonTextEn: ten('viewProducts'),
         buttonLink:   '/products/',
-      }], 'page.heroImage (Home page in Studio)');
+      }];
+      console.log('[Hero] P2.5 — RENDER INPUT:', renderInput);
+      return render(renderInput, 'page.heroImage (Home page in Studio)');
     }
-    console.log('[Hero] P2.5: no heroImage on Home page doc, trying homepage layout...');
+    console.warn('[Hero] P2.5 FAILED — page.heroImage is null or missing asset._ref. Moving to P3.');
 
     // ── 3. Homepage layout document slider section ───
     var homepage = await getHomepage();
@@ -274,22 +276,27 @@ export async function renderHeroSlider(slidesOverride) {
       console.warn('[Hero] P3 FAILED — no slider section in Homepage doc.');
     }
 
-    // ── 2.5. page.heroImage as single-slide ───
-if (page && page.heroImage && page.heroImage.asset && page.heroImage.asset._ref) {
-  console.log('[Hero] P2.5 — page.heroImage: found');
-
-  return render([{
-    image:        page.heroImage,
-    heading:      page.title || 'Ceramisia',
-    headingEn:    page.titleEn || 'Ceramisia',
-    subtitle:     '',
-    subtitleEn:   '',
-    buttonText:   tge('viewProducts'),
-    buttonTextEn: ten('viewProducts'),
-    buttonLink:   '/products/',
-  }], 'page.heroImage (Pages → home)');
-}
-    console.warn('[Hero] P4 FAILED — no heroImage in Site Settings.');
+    // ── 4. siteSettings.heroImage as single-slide fallback ───
+    var settings = await getSiteSettings().catch(function (e) {
+      console.warn('[Hero] P4 — getSiteSettings() threw:', e);
+      return null;
+    });
+    console.log('[Hero] P4 payload:', settings);
+    var hasHeroImg = !!(settings && settings.heroImage && settings.heroImage.asset && settings.heroImage.asset._ref);
+    console.log('[Hero] P4 — siteSettings.heroImage:', hasHeroImg ? settings.heroImage.asset._ref : 'MISSING');
+    if (hasHeroImg) {
+      return render([{
+        image:        settings.heroImage,
+        heading:      settings.homepageTitle   || 'Ceramisia',
+        headingEn:    settings.homepageTitleEn || 'Ceramisia',
+        subtitle:     '',
+        subtitleEn:   '',
+        buttonText:   tge('viewProducts'),
+        buttonTextEn: ten('viewProducts'),
+        buttonLink:   '/products/',
+      }], 'siteSettings.heroImage (Site Settings in Studio)');
+    }
+    console.warn('[Hero] P4 FAILED — siteSettings.heroImage is null or missing asset._ref.');
 
     // ── 5. Empty placeholder — no Sanity data found ──
     showHeroEmpty(container, dotsWrap);
