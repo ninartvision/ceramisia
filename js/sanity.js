@@ -133,6 +133,7 @@ export async function getProducts(categorySlug) {
   const base = `
     _id, name, nameEn, "slug": slug.current, sku, mainImage, gallery,
     price, salePrice, badge, isFeatured, inStock,
+    description, descriptionEn,
     additionalPackaging, packagingPrice, variants,
     "categoryTitle": category->title,
     "categoryTitleEn": category->titleEn,
@@ -157,6 +158,7 @@ export function getFeaturedProducts() {
       `*[_type == "product" && isFeatured == true && inStock != false] | order(order asc) {
         _id, name, nameEn, "slug": slug.current, mainImage, gallery,
         price, salePrice, badge,
+        description, descriptionEn,
         "categoryTitle": category->title,
         "categoryTitleEn": category->titleEn,
         "categorySlug": category->slug.current

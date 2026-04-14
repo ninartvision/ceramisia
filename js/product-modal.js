@@ -58,10 +58,13 @@
     var images      = gallerySrc ? gallerySrc.split(',').map(function (s) { return s.trim(); }) : [];
     if (!images.length && imgEl) images = [imgEl.src];
 
-    // Description
+    // Description: read pre-rendered HTML from card data attributes
     var descText = lang === 'ge'
       ? (card.dataset.descGe || '')
-      : (card.dataset.descEn || '');
+      : (card.dataset.descEn || card.dataset.descGe || '');
+
+    // Debug: confirm the field is received from Sanity
+    console.log('[Modal] description HTML received (' + lang + '):', descText || '(empty — check Sanity data and GROQ query)');
 
     // Name
     var nameText = nameEl
@@ -280,7 +283,10 @@
     // Category, title, description
     category.textContent = data.category;
     title.textContent = data.name;
-    desc.textContent = data.description;
+    // data.description is pre-rendered HTML from blocksToHtml (Portable Text)
+    desc.innerHTML = data.description || '';
+    if (!data.description) desc.style.display = 'none';
+    else desc.style.display = '';
 
     // Prices
     if (data.originalPrice) {

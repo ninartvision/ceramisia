@@ -132,6 +132,73 @@ function reinitPopularSlider() {
   updateArrows();
 }
 
+// ── Portable Text → HTML (for product description in modal) ──────────────
+function _blocksToHtml(blocks) {
+  // Guard: must be a non-empty array of block objects
+  if (!blocks || !Array.isArray(blocks) || !blocks.length) return '';
+  var html = '';
+  var listType = null;
+
+  for (var _bi = 0; _bi < blocks.length; _bi++) {
+    var block = blocks[_bi];
+
+    if (block._type !== 'block') continue;
+
+    var style = block.style || 'normal';
+    var text  = _spansToHtml(block.children || [], block.markDefs || []);
+
+    if (block.listItem) {
+      var lt = block.listItem === 'number' ? 'ol' : 'ul';
+      if (listType !== block.listItem) {
+        if (listType) html += listType === 'bullet' ? '</ul>' : '</ol>';
+        html += lt === 'ol' ? '<ol>' : '<ul>';
+        listType = block.listItem;
+      }
+      html += '<li>' + text + '</li>';
+      continue;
+    }
+
+    if (listType) { html += listType === 'bullet' ? '</ul>' : '</ol>'; listType = null; }
+
+    switch (style) {
+      case 'h1': html += '<h1>' + text + '</h1>'; break;
+      case 'h2': html += '<h2>' + text + '</h2>'; break;
+      case 'h3': html += '<h3>' + text + '</h3>'; break;
+      case 'h4': html += '<h4>' + text + '</h4>'; break;
+      case 'blockquote': html += '<blockquote>' + text + '</blockquote>'; break;
+      default: html += '<p>' + text + '</p>';
+    }
+  }
+
+  if (listType) html += listType === 'bullet' ? '</ul>' : '</ol>';
+  return html;
+}
+
+function _spansToHtml(children, markDefs) {
+  var out = '';
+  for (var _si = 0; _si < children.length; _si++) {
+    var span = children[_si];
+    if (!span || typeof span !== 'object') continue;
+    var text = esc(span.text || '');
+    if (!span.marks || !span.marks.length) { out += text; continue; }
+    for (var _mi = 0; _mi < span.marks.length; _mi++) {
+      var mark = span.marks[_mi];
+      if (mark === 'strong')         { text = '<strong>' + text + '</strong>'; }
+      else if (mark === 'em')        { text = '<em>' + text + '</em>'; }
+      else if (mark === 'underline') { text = '<u>' + text + '</u>'; }
+      else if (mark === 'code')      { text = '<code>' + text + '</code>'; }
+      else {
+        var def = markDefs.filter(function (d) { return d._key === mark; })[0];
+        if (def && def._type === 'link' && def.href) {
+          text = '<a href="' + esc(def.href) + '" target="_blank" rel="noopener noreferrer">' + text + '</a>';
+        }
+      }
+    }
+    out += text;
+  }
+  return out;
+}
+
 /** Build price HTML from product data */
 function buildPriceHtml(p) {
   if (p.salePrice) {
@@ -169,7 +236,22 @@ function createProductCard(p, lang, extraClass, isFirst) {
   const card = document.createElement('div');
   card.className = 'product-card revealed' + (extraClass ? ' ' + extraClass : '');
   card.dataset.category = p.categorySlug || '';
+  card.dataset.slug     = p.slug || '';
   if (p.badge) card.dataset.status = p.badge;
+
+  // Description: convert Portable Text → HTML so the modal can render rich text
+  // Guard: ensure we have an array (skip strings, nulls, legacy data)
+  var _rawDescGe = Array.isArray(p.description)   ? p.description   : [];
+  var _rawDescEn = Array.isArray(p.descriptionEn) ? p.descriptionEn : [];
+  var _descGeHtml = _blocksToHtml(_rawDescGe);
+  var _descEnHtml = _blocksToHtml(_rawDescEn);
+  card.dataset.descGe = _descGeHtml;
+  card.dataset.descEn = _descEnHtml;
+  // ── DEBUG (remove after confirming descriptions appear in modal) ────────
+  console.log('[Sanity raw] slug:', p.slug, '| description (GE):', _rawDescGe, '| descriptionEn (EN):', _rawDescEn);
+  console.log('[HTML]       slug:', p.slug, '| GE:', _descGeHtml || '(empty)', '| EN:', _descEnHtml || '(empty)');
+  console.log('[Dataset]    slug:', p.slug, '| data-desc-ge:', card.dataset.descGe || '(empty)', '| data-desc-en:', card.dataset.descEn || '(empty)');
+  // ────────────────────────────────────────────────────────────────────────
 
   // Build gallery: mainImage + gallery array
   const galleryImages = [imgUrl];
