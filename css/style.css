@@ -1103,6 +1103,46 @@ p { color: var(--clr-text-mid); }
   color: var(--clr-text-muted);
 }
 
+/* ── Founder single-card (about page) ────────── */
+.team-founder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1.5rem;
+  max-width: 360px;
+  margin: 0 auto;
+}
+.team-founder-img {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  flex-shrink: 0;
+}
+.team-founder-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.55s ease;
+}
+.team-founder:hover .team-founder-img img { transform: scale(1.05); }
+.team-founder-info { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+.team-founder-info h3 { font-size: 1.25rem; margin: 0; }
+.founder-role {
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--clr-text-muted);
+}
+.founder-secondary {
+  font-size: 0.85rem;
+  color: var(--clr-text-muted);
+  margin: 0.25rem 0 0;
+  font-style: italic;
+}
+
 /* ── 15. CONTACT PAGE ─────────────────────────── */
 .contact-layout {
   display: grid;
