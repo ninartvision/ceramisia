@@ -26,9 +26,9 @@ function resolveSlideSubtext(slide, lang) {
   if (st && typeof st === 'object') {
     return st[lang] || st.ge || st.en || '';
   }
-  var subtitle = slide && slide.subtitle ? slide.subtitle : '';
-  var subtitleEn = slide && slide.subtitleEn ? slide.subtitleEn : subtitle;
-  return lang === 'ge' ? subtitle : (subtitleEn || subtitle);
+  var subtext = slide && slide.subtext ? slide.subtext : (slide && slide.subtitle ? slide.subtitle : '');
+  var subtextEn = slide && slide.subtextEn ? slide.subtextEn : (slide && slide.subtitleEn ? slide.subtitleEn : subtext);
+  return lang === 'ge' ? subtext : (subtextEn || subtext);
 }
 
 // SVG path data for brand strip icons (keyed by icon id from siteSettings)
@@ -196,16 +196,11 @@ function buildSlides(container, dotsWrap, slides) {
  * Render the homepage hero carousel from Sanity data.
  *
  * Priority order (first match wins):
- *  P1. slidesOverride  — array passed directly by the caller
- *  P2. page.heroSlides — multi-slide array on the "home" Page document
- *  P3. homepage.sections slider — slider section in the Homepage layout doc
- *  P4. page.heroImage  — single-image fallback from the "home" Page doc
- *  P5. siteSettings.heroImage — last-resort single-image from Site Settings
- *  P6. Empty placeholder — CSS gradient; console explains what to configure
- *
- * IMPORTANT: P2.5 (page.heroImage) is intentionally placed AFTER P3 so that
- * a Homepage layout doc with 3+ slides is never blocked by a Page doc that
- * happens to have heroImage set for other purposes (e.g. OG/SEO banner).
+ *  P1. slidesOverride — array passed directly by the caller
+ *  P2. page.heroSlides — multi-slide array on the "home" Page document  ← MAIN SOURCE
+ *  P3. page.heroImage  — single-image fallback from the "home" Page doc
+ *  P4. siteSettings.heroImage — last-resort single-image from Site Settings
+ *  P5. Empty placeholder — CSS gradient; console explains what to configure
  *
  * Open DevTools → Console and filter "[Hero]" to trace which path fires.
  */
@@ -216,6 +211,7 @@ export async function renderHeroSlider(slidesOverride) {
 
   function render(slides, source) {
     console.log('[Hero] ✅ WINNER →', source, '| slides:', slides.length);
+    console.log('[Hero] slides:', slides);
     buildSlides(container, dotsWrap, slides);
     if (typeof window.initHeroSlider === 'function') window.initHeroSlider();
   }
@@ -230,74 +226,54 @@ export async function renderHeroSlider(slidesOverride) {
       console.log('[Hero] P1 — no override passed, continuing.');
     }
 
-    // ── P2. Page doc heroSlides (multi-slide) ────────
+    // ── P2. Page doc heroSlides (multi-slide) — MAIN SOURCE ─
     var page = await getPage('home');
     console.log('[Hero] P2 — getPage("home"):', page ? 'found' : 'NULL (check CORS + published Page doc with slug "home")');
     if (page) {
       var rawSlides = Array.isArray(page.heroSlides) ? page.heroSlides : [];
-      console.log('[Hero] P2 — page.heroSlides count:', rawSlides.length, '| raw:', rawSlides);
+      console.log('[Hero] P2 — page.heroSlides count:', rawSlides.length);
+      console.log('[Hero] P2 — raw heroSlides:', rawSlides);
       var p2slides = validateSlides(rawSlides, 'P2 page.heroSlides');
       if (p2slides) return render(p2slides, 'P2 page.heroSlides');
-      console.log('[Hero] P2 — no valid heroSlides, moving to P3.');
+      console.warn('[Hero] P2 — no valid heroSlides, moving to P3 (single-image fallback).');
     }
 
-    // ── P3. Homepage layout doc slider section ───────
-    // Runs BEFORE the page.heroImage fallback (P4) so that a Homepage doc
-    // with 3 configured slides is never shadowed by a single heroImage field
-    // that may be set on the Page doc for SEO/OG purposes only.
-    var homepage = await getHomepage();
-    console.log('[Hero] P3 — getHomepage():', homepage ? 'found' : 'NULL');
-    if (homepage && Array.isArray(homepage.sections)) {
-      console.log('[Hero] P3 — sections count:', homepage.sections.length);
-      var sliderSection = homepage.sections.find(function (s) { return s.type === 'slider'; });
-      if (sliderSection) {
-        var rawP3 = Array.isArray(sliderSection.slides) ? sliderSection.slides : [];
-        console.log('[Hero] P3 — slider section slides count:', rawP3.length, '| raw:', rawP3);
-        var p3slides = validateSlides(rawP3, 'P3 homepage slider section');
-        if (p3slides) return render(p3slides, 'P3 homepage slider section');
-        console.warn('[Hero] P3 — slider section found but 0 valid slides.');
-      } else {
-        console.warn('[Hero] P3 — no section with type="slider" in Homepage doc.');
-      }
-    }
-
-    // ── P4. Page doc heroImage — single-image fallback ─
-    // Only reached when both heroSlides (P2) and homepage sections (P3) yield nothing.
+    // ── P3. Page doc heroImage — single-image fallback ─
     var hasPageHeroImg = !!(page && page.heroImage && page.heroImage.asset && page.heroImage.asset._ref);
-    console.log('[Hero] P4 — page.heroImage:', hasPageHeroImg ? page.heroImage.asset._ref : 'missing');
+    console.log('[Hero] P3 — page.heroImage:', hasPageHeroImg ? page.heroImage.asset._ref : 'missing');
     if (hasPageHeroImg) {
       return render([{
         image:      page.heroImage,
         heading:    page.heroHeading   || page.title    || 'Ceramisia',
         headingEn:  page.heroHeadingEn || page.titleEn  || 'Ceramisia',
-        subtitle:   page.heroSubtext   || '',
-        subtitleEn: page.heroSubtextEn || '',
+        subtext:    page.heroSubtext   || '',
+        subtextEn:  page.heroSubtextEn || '',
         buttonLink: '/products/',
-      }], 'P4 page.heroImage (single-image fallback)');
+      }], 'P3 page.heroImage (single-image fallback)');
     }
 
-    // ── P5. siteSettings.heroImage ───────────────────
+    // ── P4. siteSettings.heroImage ───────────────────
     var settings = await getSiteSettings().catch(function (e) {
-      console.warn('[Hero] P5 — getSiteSettings() threw:', e);
+      console.warn('[Hero] P4 — getSiteSettings() threw:', e);
       return null;
     });
     var hasSettingsImg = !!(settings && settings.heroImage && settings.heroImage.asset && settings.heroImage.asset._ref);
-    console.log('[Hero] P5 — siteSettings.heroImage:', hasSettingsImg ? settings.heroImage.asset._ref : 'missing');
+    console.log('[Hero] P4 — siteSettings.heroImage:', hasSettingsImg ? settings.heroImage.asset._ref : 'missing');
     if (hasSettingsImg) {
       return render([{
-        image:        settings.heroImage,
-        heading:      settings.homepageTitle   || 'Ceramisia',
-        headingEn:    settings.homepageTitleEn || 'Ceramisia',
-        subtitle:     '',
-        subtitleEn:   '',
+        image:      settings.heroImage,
+        heading:    settings.homepageTitle   || 'Ceramisia',
+        headingEn:  settings.homepageTitleEn || 'Ceramisia',
+        subtext:    '',
+        subtextEn:  '',
         buttonText:   tge('viewProducts'),
         buttonTextEn: ten('viewProducts'),
-        buttonLink:   '/products/',
-      }], 'P5 siteSettings.heroImage');
+        buttonLink: '/products/',
+      }], 'P4 siteSettings.heroImage');
     }
 
-    // ── P6. Empty placeholder ────────────────────────
-    console.warn('[Hero] P6 — all sources exhausted, showing gradient placeholder.');
+    // ── P5. Empty placeholder ────────────────────────
+    console.warn('[Hero] P5 — all sources exhausted, showing gradient placeholder.');
     showHeroEmpty(container, dotsWrap);
 
   } catch (err) {

@@ -193,9 +193,11 @@ export function getPage(slug) {
       heroSubtext, heroSubtextEn,
       heroSlides[] {
         _key,
-        image { _type, alt, asset { _ref, _type } },
-        heading { ge, en },
-        subtext { ge, en },
+        image { _type, alt, asset->{ _ref, url } },
+        heading,
+        headingEn,
+        subtext,
+        subtextEn,
         buttonText, buttonTextEn, buttonLink
       },
       sections[] {
