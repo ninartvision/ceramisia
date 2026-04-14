@@ -2658,10 +2658,8 @@ body.cms-loading > *:not(#cmsLoader) {
    PERFORMANCE — rendering hints
    ══════════════════════════════════════════════════ */
 
-/* Hint browser to decode images off the main thread.
-   Applied globally since all images in dynamic sections
-   already have decoding="async" in the JS renderers.  */
-img { decoding: async; }
+/* Note: decoding="async" and loading="lazy" are HTML attributes,
+   not CSS properties — they must be set on <img> elements directly. */
 
 /* Reserve space for all images regardless of src —
    prevents CLS while Sanity images are in-flight.
