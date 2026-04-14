@@ -188,13 +188,14 @@ export function getPage(slug) {
     _cache[key] = sanityFetch(
       `*[_type == "page" && slug.current == $slug][0] {
       _id, title, titleEn, "slug": slug.current,
-      heroImage, heroHeading, heroHeadingEn,
+      heroImage { _type, alt, asset { _ref, _type } },
+      heroHeading, heroHeadingEn,
       heroSubtext, heroSubtextEn,
       heroSlides[] {
         _key,
         image { _type, alt, asset { _ref, _type } },
-        heading,
-        subtext,
+        heading { ge, en },
+        subtext { ge, en },
         buttonText, buttonTextEn, buttonLink
       },
       sections[] {

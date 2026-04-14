@@ -153,7 +153,12 @@ function buildSlides(container, dotsWrap, slides) {
     slide.className = 'slide' + (i === 0 ? ' active' : '');
 
     if (imgUrl) {
-      slide.style.backgroundImage = "url('" + esc(imgUrl) + "')";
+      // NOTE: do NOT use esc() here — esc() encodes & → &amp; which corrupts
+      // Sanity CDN query params (e.g. ?w=1920&fit=max → ?w=1920&amp;fit=max),
+      // causing the browser to request the wrong URL and the image to fail.
+      // imgUrl is safely constructed by sanityImageUrl() from a trusted CDN base
+      // plus a structured asset _ref — no HTML escaping is needed in a CSS context.
+      slide.style.backgroundImage = "url('" + imgUrl + "')";
     } else if (s._bg) {
       slide.style.background = s._bg;
     } else {
@@ -191,101 +196,94 @@ function buildSlides(container, dotsWrap, slides) {
  * Render the homepage hero carousel from Sanity data.
  *
  * Priority order (first match wins):
- *  1. slidesOverride   — array passed directly by the caller (homepage sections)
- *  2. page.heroSlides  — slides on the "home" Page document in Studio
- *  3. homepage.sections slider — first "slider" section in the Homepage layout doc
- *  4. siteSettings.heroImage  — single-image fallback from Site Settings
- *  5. Empty placeholder     — CSS gradient only; console warns with next steps
+ *  P1. slidesOverride  — array passed directly by the caller
+ *  P2. page.heroSlides — multi-slide array on the "home" Page document
+ *  P3. homepage.sections slider — slider section in the Homepage layout doc
+ *  P4. page.heroImage  — single-image fallback from the "home" Page doc
+ *  P5. siteSettings.heroImage — last-resort single-image from Site Settings
+ *  P6. Empty placeholder — CSS gradient; console explains what to configure
  *
- * The hero section is NEVER hidden — if Sanity has no data an empty branded
- * placeholder is shown and the console explains what to configure in Studio.
+ * IMPORTANT: P2.5 (page.heroImage) is intentionally placed AFTER P3 so that
+ * a Homepage layout doc with 3+ slides is never blocked by a Page doc that
+ * happens to have heroImage set for other purposes (e.g. OG/SEO banner).
  *
- * All checks are logged to the browser console — open DevTools → Console and
- * look for "[Hero]" lines to diagnose which source is being used.
+ * Open DevTools → Console and filter "[Hero]" to trace which path fires.
  */
 export async function renderHeroSlider(slidesOverride) {
   var container = document.getElementById('slidesContainer');
   var dotsWrap  = document.getElementById('sliderDots');
   if (!container) return;
 
-  // Helper: build + re-init, then exit
   function render(slides, source) {
-    console.log('[Hero] ✅ Rendering from:', source, '| slide count:', slides.length);
-    console.log('[Hero] slides data:', slides);
+    console.log('[Hero] ✅ WINNER →', source, '| slides:', slides.length);
     buildSlides(container, dotsWrap, slides);
     if (typeof window.initHeroSlider === 'function') window.initHeroSlider();
   }
 
   try {
-    // ── 1. Direct override from caller ──────────────
+    // ── P1. Direct override from caller ─────────────
     if (slidesOverride !== undefined) {
       var p1slides = validateSlides(slidesOverride, 'P1 slidesOverride');
-      if (p1slides) return render(p1slides, 'slidesOverride (from renderHomepageSections)');
+      if (p1slides) return render(p1slides, 'P1 slidesOverride');
+      console.log('[Hero] P1 — no valid slides in override, continuing.');
+    } else {
+      console.log('[Hero] P1 — no override passed, continuing.');
     }
-    console.log('[Hero] P1 (slidesOverride): skipped');
 
-    // ── 2. Page document heroSlides ──────────────────
+    // ── P2. Page doc heroSlides (multi-slide) ────────
     var page = await getPage('home');
-    console.log('PAGE:', page);
-    console.log('heroImage:', page?.heroImage);
-    console.log('asset:', page?.heroImage?.asset);
-    console.log('[Hero] P2 — getPage("home") result:', page);
-    console.log('[Hero] P2 — page.heroImage:', page ? page.heroImage : 'n/a');
-    console.log('[Hero] P2 — page.heroImage.asset._ref:', (page && page.heroImage && page.heroImage.asset) ? page.heroImage.asset._ref : 'MISSING');
-    if (!page) {
-      console.warn('[Hero] P2 FAILED — getPage("home") returned null. Check CORS at sanity.io/manage and confirm a Page doc with slug "home" is published.');
-    } else {
-      var slides = Array.isArray(page.heroSlides) ? page.heroSlides : [];
-      console.log('[Hero] P2 — page.heroSlides:', slides);
-      var p2slides = validateSlides(slides, 'P2 page.heroSlides');
-      if (p2slides) return render(p2slides, 'page.heroSlides (Home page in Studio)');
-      console.log('[Hero] P2: no valid heroSlides — checking page.heroImage next.');
+    console.log('[Hero] P2 — getPage("home"):', page ? 'found' : 'NULL (check CORS + published Page doc with slug "home")');
+    if (page) {
+      var rawSlides = Array.isArray(page.heroSlides) ? page.heroSlides : [];
+      console.log('[Hero] P2 — page.heroSlides count:', rawSlides.length, '| raw:', rawSlides);
+      var p2slides = validateSlides(rawSlides, 'P2 page.heroSlides');
+      if (p2slides) return render(p2slides, 'P2 page.heroSlides');
+      console.log('[Hero] P2 — no valid heroSlides, moving to P3.');
     }
 
-    // ── 2.5. page.heroImage — single-image hero from the "home" Page doc ──
-    // No extra fetch: page was already loaded above.
-    console.log('[Hero] P2.5 — page.heroImage.asset:', page?.heroImage?.asset);
-    if (page?.heroImage?.asset) {
-      var builtUrl = sanityImageUrl(page.heroImage, 1920);
-      console.log('[Hero] P2.5 — sanityImageUrl result:', builtUrl);
-      var renderInput = [{
-        image:        page.heroImage,
-        heading:      page.heroHeading   || page.title    || 'Ceramisia',
-        headingEn:    page.heroHeadingEn || page.titleEn  || 'Ceramisia',
-        subtitle:     page.heroSubtext   || '',
-        subtitleEn:   page.heroSubtextEn || '',
-        buttonLink:   '/products/',
-      }];
-      console.log('[Hero] P2.5 — RENDER INPUT:', renderInput);
-      console.log('[Hero] P2.5 — injecting into #slidesContainer:', document.getElementById('slidesContainer'));
-      return render(renderInput, 'page.heroImage (Home page in Studio)');
-    }
-    console.warn('[Hero] P2.5 FAILED — page.heroImage is null or missing asset. Moving to P3.');
-
-    // ── 3. Homepage layout document slider section ───
+    // ── P3. Homepage layout doc slider section ───────
+    // Runs BEFORE the page.heroImage fallback (P4) so that a Homepage doc
+    // with 3 configured slides is never shadowed by a single heroImage field
+    // that may be set on the Page doc for SEO/OG purposes only.
     var homepage = await getHomepage();
-    var homepageSections = (homepage && Array.isArray(homepage.sections)) ? homepage.sections : [];
-    console.log('[Hero] P3 payload:', homepage);
-    console.log('[Hero] P3 — Homepage sections:', homepageSections.length);
-    var sliderSection = homepageSections.find(function (s) { return s.type === 'slider'; });
-    if (sliderSection) {
-      console.log('[Hero] P3 slider section:', sliderSection);
-      var p3slides = validateSlides(sliderSection.slides, 'P3 homepage slider section');
-      if (p3slides) return render(p3slides, 'homepage slider section');
-      console.warn('[Hero] P3: slider section exists but no valid slides.');
-    } else {
-      console.warn('[Hero] P3 FAILED — no slider section in Homepage doc.');
+    console.log('[Hero] P3 — getHomepage():', homepage ? 'found' : 'NULL');
+    if (homepage && Array.isArray(homepage.sections)) {
+      console.log('[Hero] P3 — sections count:', homepage.sections.length);
+      var sliderSection = homepage.sections.find(function (s) { return s.type === 'slider'; });
+      if (sliderSection) {
+        var rawP3 = Array.isArray(sliderSection.slides) ? sliderSection.slides : [];
+        console.log('[Hero] P3 — slider section slides count:', rawP3.length, '| raw:', rawP3);
+        var p3slides = validateSlides(rawP3, 'P3 homepage slider section');
+        if (p3slides) return render(p3slides, 'P3 homepage slider section');
+        console.warn('[Hero] P3 — slider section found but 0 valid slides.');
+      } else {
+        console.warn('[Hero] P3 — no section with type="slider" in Homepage doc.');
+      }
     }
 
-    // ── 4. siteSettings.heroImage as single-slide fallback ───
+    // ── P4. Page doc heroImage — single-image fallback ─
+    // Only reached when both heroSlides (P2) and homepage sections (P3) yield nothing.
+    var hasPageHeroImg = !!(page && page.heroImage && page.heroImage.asset && page.heroImage.asset._ref);
+    console.log('[Hero] P4 — page.heroImage:', hasPageHeroImg ? page.heroImage.asset._ref : 'missing');
+    if (hasPageHeroImg) {
+      return render([{
+        image:      page.heroImage,
+        heading:    page.heroHeading   || page.title    || 'Ceramisia',
+        headingEn:  page.heroHeadingEn || page.titleEn  || 'Ceramisia',
+        subtitle:   page.heroSubtext   || '',
+        subtitleEn: page.heroSubtextEn || '',
+        buttonLink: '/products/',
+      }], 'P4 page.heroImage (single-image fallback)');
+    }
+
+    // ── P5. siteSettings.heroImage ───────────────────
     var settings = await getSiteSettings().catch(function (e) {
-      console.warn('[Hero] P4 — getSiteSettings() threw:', e);
+      console.warn('[Hero] P5 — getSiteSettings() threw:', e);
       return null;
     });
-    console.log('[Hero] P4 payload:', settings);
-    var hasHeroImg = !!(settings && settings.heroImage && settings.heroImage.asset && settings.heroImage.asset._ref);
-    console.log('[Hero] P4 — siteSettings.heroImage:', hasHeroImg ? settings.heroImage.asset._ref : 'MISSING');
-    if (hasHeroImg) {
+    var hasSettingsImg = !!(settings && settings.heroImage && settings.heroImage.asset && settings.heroImage.asset._ref);
+    console.log('[Hero] P5 — siteSettings.heroImage:', hasSettingsImg ? settings.heroImage.asset._ref : 'missing');
+    if (hasSettingsImg) {
       return render([{
         image:        settings.heroImage,
         heading:      settings.homepageTitle   || 'Ceramisia',
@@ -295,16 +293,15 @@ export async function renderHeroSlider(slidesOverride) {
         buttonText:   tge('viewProducts'),
         buttonTextEn: ten('viewProducts'),
         buttonLink:   '/products/',
-      }], 'siteSettings.heroImage (Site Settings in Studio)');
+      }], 'P5 siteSettings.heroImage');
     }
-    console.warn('[Hero] P4 FAILED — siteSettings.heroImage is null or missing asset._ref.');
 
-    // ── 5. Empty placeholder — no Sanity data found ──
+    // ── P6. Empty placeholder ────────────────────────
+    console.warn('[Hero] P6 — all sources exhausted, showing gradient placeholder.');
     showHeroEmpty(container, dotsWrap);
 
   } catch (err) {
-    // Network/CORS/parse error — show empty placeholder and surface the error clearly
-    console.error('[Hero] ❌ Fetch error. Check CORS origins and Studio config. Error:', err);
+    console.error('[Hero] ❌ Fetch error:', err);
     showHeroEmpty(container, dotsWrap);
   }
 }
