@@ -124,13 +124,82 @@
     onScroll();
   }
 
+  /* ── STATIC HERO SLIDES ──────────────────────── */
+  var STATIC_SLIDES = [
+    {
+      src:      'images/ceramisia-01.webp',
+      alt:      'Ceramisia კერამიკა',
+      heading:  'კერამიკის სამყარო',
+      subtext:  'ხელნაკეთი კერამიკა თქვენი სახლისთვის',
+      btnText:  'პროდუქტები',
+      btnLink:  '/products/',
+    },
+    {
+      src:      'images/ceramisia-05.webp',
+      alt:      'უნიკალური დიზაინი',
+      heading:  'უნიკალური დიზაინი',
+      subtext:  'ყოველი ნამუშევარი ინდივიდუალურია',
+      btnText:  'კოლექცია',
+      btnLink:  '/products/',
+    },
+    {
+      src:      'images/ceramisia-16.webp',
+      alt:      'ეკოლოგიური მასალები',
+      heading:  'ეკოლოგიური მასალები',
+      subtext:  'ბუნებრივი თიხა და ორგანული საღებავები',
+      btnText:  'ჩვენს შესახებ',
+      btnLink:  '/about/',
+    },
+  ];
+
+  function buildStaticSlides() {
+    var container = document.getElementById('slidesContainer');
+    var dotsWrap  = document.getElementById('sliderDots');
+    if (!container || container.children.length) return; // already populated
+
+    // LCP preload hint for the first image
+    var preload = document.createElement('link');
+    preload.rel  = 'preload';
+    preload.as   = 'image';
+    preload.href = STATIC_SLIDES[0].src;
+    preload.setAttribute('fetchpriority', 'high');
+    document.head.appendChild(preload);
+
+    STATIC_SLIDES.forEach(function (s, i) {
+      var slide = document.createElement('div');
+      slide.className = 'slide' + (i === 0 ? ' active' : '');
+      slide.style.backgroundImage = "url('" + s.src + "')";
+      slide.innerHTML =
+        '<div class="slide-overlay"></div>' +
+        (s.alt ? '<span class="sr-only">' + s.alt + '</span>' : '') +
+        '<div class="slide-content">' +
+          '<p class="slide-subtitle">' + s.subtext + '</p>' +
+          '<h1 class="slide-title">' + s.heading + '</h1>' +
+          (s.btnText
+            ? '<a href="' + s.btnLink + '" class="btn btn-light">' + s.btnText + '</a>'
+            : '') +
+        '</div>';
+      container.appendChild(slide);
+
+      if (dotsWrap) {
+        var dot = document.createElement('button');
+        dot.className = 'dot' + (i === 0 ? ' active' : '');
+        dot.dataset.index = i;
+        dot.setAttribute('aria-label', 'Slide ' + (i + 1));
+        dotsWrap.appendChild(dot);
+      }
+    });
+  }
+
   /* ── HERO SLIDER ─────────────────────────────── */
   function initHeroSlider() {
     var slides    = document.querySelectorAll('.slide');
     var dots      = document.querySelectorAll('.dot');
     var prevBtn   = document.getElementById('prevSlide');
     var nextBtn   = document.getElementById('nextSlide');
+    console.log('Slides count:', slides.length);
     if (!slides.length) return;
+    console.log('Slider initialized');
 
     var current  = 0;
     var total    = slides.length;
@@ -444,7 +513,15 @@
     initLanguage();
     initMobileMenu();
     initStickyHeader();
+    buildStaticSlides();   // inject slides before initHeroSlider queries .slide
     initHeroSlider();
+    // Reveal page immediately — static slider is ready, no need to wait for Sanity
+    document.body.classList.remove('cms-loading');
+    var _loader = document.getElementById('cmsLoader');
+    if (_loader) {
+      _loader.classList.add('cms-loader--fade');
+      setTimeout(function () { if (_loader.parentNode) _loader.parentNode.removeChild(_loader); }, 400);
+    }
     initScrollReveal();
     initProductFilter();
     initCart();

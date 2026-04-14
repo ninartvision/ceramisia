@@ -233,7 +233,8 @@ var STATIC_SLIDES = [
 export function renderHeroSlider() {
   var container = document.getElementById('slidesContainer');
   var dotsWrap  = document.getElementById('sliderDots');
-  if (!container) return;
+  // Static slides already built by main.js on DOMContentLoaded — nothing to do.
+  if (!container || container.children.length) return Promise.resolve();
 
   var lang = getLang();
 
