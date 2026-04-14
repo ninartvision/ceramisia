@@ -30,31 +30,55 @@ export async function renderContactPage() {
       { name: t('pageContact'), url: 'https://ceramisia.com/contact/' },
     ]);
 
+    // ── Diagnostics ──────────────────────────────
+    if (!page) {
+      console.warn('[Contact] No page document returned from Sanity. ' +
+        'Check: (1) a "page" document with slug exactly "contact" exists, ' +
+        '(2) it is PUBLISHED (not a draft), ' +
+        '(3) ceramisia.com is in the CORS origins at sanity.io/manage.');
+    } else {
+      console.log('[Contact] page fetched:', page._id, '| heroImage:', page.heroImage || 'NOT SET');
+    }
+
     // ── Page header ──────────────────────────────
     if (page) {
-      var sectionHeader = document.querySelector('.contact-layout').closest('.section').querySelector('.section-header');
-      if (sectionHeader) {
-        var h2 = sectionHeader.querySelector('h2');
-        var p  = sectionHeader.querySelector('p');
-        if (h2 && page.heroHeading) {
-          h2.dataset.ge = page.heroHeading || '';
-          h2.dataset.en = page.heroHeadingEn || '';
-          h2.textContent = lang === 'ge' ? page.heroHeading : (page.heroHeadingEn || page.heroHeading);
+      try {
+        var sectionEl = document.querySelector('.contact-layout').closest('.section');
+        var sectionHeader = sectionEl ? sectionEl.querySelector('.section-header') : null;
+        if (sectionHeader) {
+          var h2 = sectionHeader.querySelector('h2');
+          var p  = sectionHeader.querySelector('p');
+          if (h2 && page.heroHeading) {
+            h2.dataset.ge = page.heroHeading || '';
+            h2.dataset.en = page.heroHeadingEn || '';
+            h2.textContent = lang === 'ge' ? page.heroHeading : (page.heroHeadingEn || page.heroHeading);
+          }
+          if (p && page.heroSubtext) {
+            p.dataset.ge = page.heroSubtext || '';
+            p.dataset.en = page.heroSubtextEn || '';
+            p.textContent = lang === 'ge' ? page.heroSubtext : (page.heroSubtextEn || page.heroSubtext);
+          }
         }
-        if (p && page.heroSubtext) {
-          p.dataset.ge = page.heroSubtext || '';
-          p.dataset.en = page.heroSubtextEn || '';
-          p.textContent = lang === 'ge' ? page.heroSubtext : (page.heroSubtextEn || page.heroSubtext);
-        }
+      } catch (headerErr) {
+        console.warn('[Contact] Section header update failed:', headerErr);
       }
 
-      // Banner image
-      if (page.heroImage) {
-        var banner = document.querySelector('.page-banner');
-        if (banner) {
-          var imgUrl = sanityImageUrl(page.heroImage, 1920);
-          if (imgUrl) banner.style.backgroundImage = "url('" + imgUrl + "')";
+      // Banner image — isolated so header errors cannot block this
+      try {
+        if (page.heroImage) {
+          var banner = document.querySelector('.page-banner');
+          if (banner) {
+            var imgUrl = sanityImageUrl(page.heroImage, 1920);
+            console.log('[Contact] banner image URL:', imgUrl);
+            if (imgUrl) banner.style.backgroundImage = "url('" + imgUrl + "')";
+          } else {
+            console.warn('[Contact] .page-banner element not found in DOM.');
+          }
+        } else {
+          console.warn('[Contact] heroImage field is empty — upload an image to the Contact page document in Sanity Studio and publish.');
         }
+      } catch (bannerErr) {
+        console.warn('[Contact] Banner image render failed:', bannerErr);
       }
     }
 
