@@ -193,93 +193,99 @@ function buildSlides(container, dotsWrap, slides) {
 
 // ── Hero Slider ──────────────────────────────────────
 /**
- * Render the homepage hero carousel from Sanity data.
- *
- * Priority order (first match wins):
- *  P1. slidesOverride — array passed directly by the caller
- *  P2. page.heroSlides — multi-slide array on the "home" Page document  ← MAIN SOURCE
- *  P3. page.heroImage  — single-image fallback from the "home" Page doc
- *  P4. siteSettings.heroImage — last-resort single-image from Site Settings
- *  P5. Empty placeholder — CSS gradient; console explains what to configure
- *
- * Open DevTools → Console and filter "[Hero]" to trace which path fires.
+ * Static hero slides — no CMS / no GROQ.
+ * To swap images, replace the path in each slide's `image` field.
+ * To re-enable CMS slides, restore the async Sanity version.
  */
-export async function renderHeroSlider(slidesOverride) {
+var STATIC_SLIDES = [
+  {
+    image: { asset: { _ref: null }, _staticSrc: '/images/ceramisia-01.webp', alt: 'Ceramisia კერამიკა' },
+    heading:    'კერამიკის სამყარო',
+    headingEn:  'World of Ceramics',
+    subtext:    'ხელნაკეთი კერამიკა თქვენი სახლისთვის',
+    subtextEn:  'Handcrafted ceramics for your home',
+    buttonText:   'პროდუქტები',
+    buttonTextEn: 'Shop Now',
+    buttonLink:   '/products/',
+  },
+  {
+    image: { asset: { _ref: null }, _staticSrc: '/images/ceramisia-05.webp', alt: 'უნიკალური დიზაინი' },
+    heading:    'უნიკალური დიზაინი',
+    headingEn:  'Unique Design',
+    subtext:    'ყოველი ნამუშევარი ინდივიდუალურია',
+    subtextEn:  'Every piece is one of a kind',
+    buttonText:   'კოლექცია',
+    buttonTextEn: 'View Collection',
+    buttonLink:   '/products/',
+  },
+  {
+    image: { asset: { _ref: null }, _staticSrc: '/images/ceramisia-16.webp', alt: 'ეკოლოგიური მასალები' },
+    heading:    'ეკოლოგიური მასალები',
+    headingEn:  'Eco-Friendly Materials',
+    subtext:    'ბუნებრივი თიხა და ორგანული საღებავები',
+    subtextEn:  'Natural clay and organic pigments',
+    buttonText:   'ჩვენს შესახებ',
+    buttonTextEn: 'About Us',
+    buttonLink:   '/about/',
+  },
+];
+
+export function renderHeroSlider() {
   var container = document.getElementById('slidesContainer');
   var dotsWrap  = document.getElementById('sliderDots');
   if (!container) return;
 
-  function render(slides, source) {
-    console.log('[Hero] ✅ WINNER →', source, '| slides:', slides.length);
-    console.log('[Hero] slides:', slides);
-    buildSlides(container, dotsWrap, slides);
-    if (typeof window.initHeroSlider === 'function') window.initHeroSlider();
+  var lang = getLang();
+
+  // LCP preload for first slide
+  if (STATIC_SLIDES[0]._staticSrc) {
+    var preload = document.createElement('link');
+    preload.rel  = 'preload';
+    preload.as   = 'image';
+    preload.href = STATIC_SLIDES[0]._staticSrc;
+    preload.setAttribute('fetchpriority', 'high');
+    document.head.appendChild(preload);
   }
 
-  try {
-    // ── P1. Direct override from caller ─────────────
-    if (slidesOverride !== undefined) {
-      var p1slides = validateSlides(slidesOverride, 'P1 slidesOverride');
-      if (p1slides) return render(p1slides, 'P1 slidesOverride');
-      console.log('[Hero] P1 — no valid slides in override, continuing.');
-    } else {
-      console.log('[Hero] P1 — no override passed, continuing.');
+  container.innerHTML = '';
+  if (dotsWrap) dotsWrap.innerHTML = '';
+
+  STATIC_SLIDES.forEach(function (s, i) {
+    var heading  = lang === 'ge' ? s.heading  : (s.headingEn  || s.heading);
+    var subtitle = lang === 'ge' ? s.subtext  : (s.subtextEn  || s.subtext);
+    var btnText  = lang === 'ge' ? s.buttonText : (s.buttonTextEn || s.buttonText);
+    var btnLink  = s.buttonLink || '/products/';
+
+    var slide = document.createElement('div');
+    slide.className = 'slide' + (i === 0 ? ' active' : '');
+    slide.style.backgroundImage = "url('" + s._staticSrc + "')";
+
+    var imgAlt = (s.image && s.image.alt) ? s.image.alt : (heading || '');
+    slide.innerHTML =
+      '<div class="slide-overlay"></div>' +
+      (imgAlt ? '<span class="sr-only">' + esc(imgAlt) + '</span>' : '') +
+      '<div class="slide-content">' +
+        (subtitle
+          ? '<p class="slide-subtitle" data-ge="' + esc(s.subtext)   + '" data-en="' + esc(s.subtextEn)  + '">' + esc(subtitle) + '</p>'
+          : '') +
+        '<h1 class="slide-title" data-ge="' + esc(s.heading) + '" data-en="' + esc(s.headingEn) + '">' + esc(heading) + '</h1>' +
+        (btnText
+          ? '<a href="' + esc(btnLink) + '" class="btn btn-light" data-ge="' + esc(s.buttonText || '') + '" data-en="' + esc(s.buttonTextEn || '') + '">' + esc(btnText) + '</a>'
+          : '') +
+      '</div>';
+
+    container.appendChild(slide);
+
+    if (dotsWrap) {
+      var dot = document.createElement('button');
+      dot.className = 'dot' + (i === 0 ? ' active' : '');
+      dot.dataset.index = i;
+      dot.setAttribute('aria-label', 'Slide ' + (i + 1));
+      dotsWrap.appendChild(dot);
     }
+  });
 
-    // ── P2. Page doc heroSlides (multi-slide) — MAIN SOURCE ─
-    var page = await getPage('home');
-    console.log('[Hero] P2 — getPage("home"):', page ? 'found' : 'NULL (check CORS + published Page doc with slug "home")');
-    if (page) {
-      var rawSlides = Array.isArray(page.heroSlides) ? page.heroSlides : [];
-      console.log('[Hero] P2 — page.heroSlides count:', rawSlides.length);
-      console.log('[Hero] P2 — raw heroSlides:', rawSlides);
-      var p2slides = validateSlides(rawSlides, 'P2 page.heroSlides');
-      if (p2slides) return render(p2slides, 'P2 page.heroSlides');
-      console.warn('[Hero] P2 — no valid heroSlides, moving to P3 (single-image fallback).');
-    }
-
-    // ── P3. Page doc heroImage — single-image fallback ─
-    var hasPageHeroImg = !!(page && page.heroImage && page.heroImage.asset && page.heroImage.asset._ref);
-    console.log('[Hero] P3 — page.heroImage:', hasPageHeroImg ? page.heroImage.asset._ref : 'missing');
-    if (hasPageHeroImg) {
-      return render([{
-        image:      page.heroImage,
-        heading:    page.heroHeading   || page.title    || 'Ceramisia',
-        headingEn:  page.heroHeadingEn || page.titleEn  || 'Ceramisia',
-        subtext:    page.heroSubtext   || '',
-        subtextEn:  page.heroSubtextEn || '',
-        buttonLink: '/products/',
-      }], 'P3 page.heroImage (single-image fallback)');
-    }
-
-    // ── P4. siteSettings.heroImage ───────────────────
-    var settings = await getSiteSettings().catch(function (e) {
-      console.warn('[Hero] P4 — getSiteSettings() threw:', e);
-      return null;
-    });
-    var hasSettingsImg = !!(settings && settings.heroImage && settings.heroImage.asset && settings.heroImage.asset._ref);
-    console.log('[Hero] P4 — siteSettings.heroImage:', hasSettingsImg ? settings.heroImage.asset._ref : 'missing');
-    if (hasSettingsImg) {
-      return render([{
-        image:      settings.heroImage,
-        heading:    settings.homepageTitle   || 'Ceramisia',
-        headingEn:  settings.homepageTitleEn || 'Ceramisia',
-        subtext:    '',
-        subtextEn:  '',
-        buttonText:   tge('viewProducts'),
-        buttonTextEn: ten('viewProducts'),
-        buttonLink: '/products/',
-      }], 'P4 siteSettings.heroImage');
-    }
-
-    // ── P5. Empty placeholder ────────────────────────
-    console.warn('[Hero] P5 — all sources exhausted, showing gradient placeholder.');
-    showHeroEmpty(container, dotsWrap);
-
-  } catch (err) {
-    console.error('[Hero] ❌ Fetch error:', err);
-    showHeroEmpty(container, dotsWrap);
-  }
+  if (typeof window.initHeroSlider === 'function') window.initHeroSlider();
 }
 
 // ── Navigation Menu ───────────────────────────────────
