@@ -3,6 +3,15 @@
    Premium Handmade Ceramics | Georgia
    ================================================ */
 
+/* ── CUSTOM CATEGORY FONT ─────────────────────── */
+@font-face {
+  font-family: "CustomCategoryFont";
+  src: url("/fonts/bpg_nino_mtavruli_normal.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ── 1. RESET & BASE ──────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -666,7 +675,7 @@ p { color: var(--clr-text-mid); }
 }
 
 .category-info h3 {
-  font-family: var(--font-heading);
+  font-family: "CustomCategoryFont", sans-serif;
   font-size: 1.25rem;
   font-weight: 500;
   color: var(--clr-text);
