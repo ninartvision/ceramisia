@@ -95,28 +95,34 @@ export default {
             },
             {
               name: 'heading',
-              title: 'Heading',
-              type: 'object',
-              fields: [
-                { name: 'ge', title: 'Main Heading (GE)', type: 'string', validation: (Rule) => Rule.required() },
-                { name: 'en', title: 'Main Heading (EN)', type: 'string' },
-              ],
+              title: 'Heading (GE)',
+              type: 'string',
+              validation: (Rule) => Rule.required(),
+            },
+            {
+              name: 'headingEn',
+              title: 'Heading (EN)',
+              type: 'string',
             },
             {
               name: 'subtext',
-              title: 'Subtext',
-              type: 'object',
-              fields: [
-                { name: 'ge', title: 'Subtitle / Label (GE)', type: 'string', description: 'Small text above the main heading' },
-                { name: 'en', title: 'Subtitle / Label (EN)', type: 'string' },
-              ],
+              title: 'Subtext (GE)',
+              type: 'text',
+              rows: 2,
+              description: 'Small text above the main heading',
+            },
+            {
+              name: 'subtextEn',
+              title: 'Subtext (EN)',
+              type: 'text',
+              rows: 2,
             },
             { name: 'buttonText', title: 'Button Text (GE)', type: 'string', description: 'Leave empty to hide the button' },
             { name: 'buttonTextEn', title: 'Button Text (EN)', type: 'string' },
             { name: 'buttonLink', title: 'Button Link / URL', type: 'string', initialValue: '/products/', description: 'Relative path (e.g. /products/) or full URL' },
           ],
           preview: {
-            select: { titleGe: 'heading.ge', titleEn: 'heading.en', media: 'image' },
+            select: { titleGe: 'heading', titleEn: 'headingEn', media: 'image' },
             prepare({ titleGe, titleEn, media }) {
               return {
                 title: titleGe || titleEn || 'Untitled Slide',
