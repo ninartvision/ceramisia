@@ -63,23 +63,7 @@ export async function renderContactPage() {
         console.warn('[Contact] Section header update failed:', headerErr);
       }
 
-      // Banner image — isolated so header errors cannot block this
-      try {
-        if (page.heroImage) {
-          var banner = document.querySelector('.page-banner');
-          if (banner) {
-            var imgUrl = sanityImageUrl(page.heroImage, 1920);
-            console.log('[Contact] banner image URL:', imgUrl);
-            if (imgUrl) banner.style.backgroundImage = "url('" + imgUrl + "')";
-          } else {
-            console.warn('[Contact] .page-banner element not found in DOM.');
-          }
-        } else {
-          console.warn('[Contact] heroImage field is empty — upload an image to the Contact page document in Sanity Studio and publish.');
-        }
-      } catch (bannerErr) {
-        console.warn('[Contact] Banner image render failed:', bannerErr);
-      }
+      // Banner image is now applied upstream in sanity-render.js (same pattern as products page)
     }
 
     if (!settings) return;

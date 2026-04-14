@@ -1000,6 +1000,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Contact page only
   else if (isContact) {
+    // Apply banner image first — same independent pattern as the products page
+    renders.push(
+      getPage('contact').then(function (page) {
+        if (page && page.heroImage) {
+          var imgUrl = sanityImageUrl(page.heroImage, 1920);
+          var banner = document.querySelector('.page-banner');
+          if (banner && imgUrl) banner.style.backgroundImage = "url('" + imgUrl + "')";
+        }
+      }).catch(function () {})
+    );
     renders.push(renderContactPage().catch(function () {}));
   }
 
