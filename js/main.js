@@ -127,7 +127,7 @@
   /* ── STATIC HERO SLIDES ──────────────────────── */
   var STATIC_SLIDES = [
     {
-      src:      'images/ceramisia-01.webp',
+      src:      'images/cover/cover1.webp',
       alt:      'Ceramisia კერამიკა',
       heading:  'კერამიკის სამყარო',
       subtext:  'ხელნაკეთი კერამიკა თქვენი სახლისთვის',
@@ -135,7 +135,7 @@
       btnLink:  '/products/',
     },
     {
-      src:      'images/ceramisia-05.webp',
+      src:      'images/cover/cover2.webp',
       alt:      'უნიკალური დიზაინი',
       heading:  'უნიკალური დიზაინი',
       subtext:  'ყოველი ნამუშევარი ინდივიდუალურია',
@@ -143,7 +143,7 @@
       btnLink:  '/products/',
     },
     {
-      src:      'images/ceramisia-16.webp',
+      src:      'images/cover/cover3.webp',
       alt:      'ეკოლოგიური მასალები',
       heading:  'ეკოლოგიური მასალები',
       subtext:  'ბუნებრივი თიხა და ორგანული საღებავები',
