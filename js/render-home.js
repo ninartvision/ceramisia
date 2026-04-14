@@ -286,6 +286,8 @@ export function renderHeroSlider() {
   });
 
   if (typeof window.initHeroSlider === 'function') window.initHeroSlider();
+
+  return Promise.resolve();
 }
 
 // ── Navigation Menu ───────────────────────────────────
