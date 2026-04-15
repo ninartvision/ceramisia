@@ -1,10 +1,8 @@
 // sanity-studio/schemaTypes/siteSettings.js
 // Global site settings — singleton document
 
-import { MdSettings } from 'react-icons/md'
-
 export default {
-  icon: MdSettings,
+  icon: () => '⚙️',
   name: 'siteSettings',
   title: 'Site Settings',
   type: 'document',

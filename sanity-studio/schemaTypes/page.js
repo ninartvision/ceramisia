@@ -1,10 +1,8 @@
 // sanity-studio/schemaTypes/page.js
 // Editable page content (Home, About, Contact, etc.)
 
-import { MdDescription } from 'react-icons/md'
-
 export default {
-  icon: MdDescription,
+  icon: () => '📄',
   name: 'page',
   title: 'Page',
   type: 'document',

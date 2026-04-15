@@ -1,10 +1,8 @@
 // sanity-studio/schemaTypes/category.js
 // Category schema for product classification
 
-import { MdCategory } from 'react-icons/md'
-
 export default {
-  icon: MdCategory,
+  icon: () => '🏷️',
   name: 'category',
   title: 'Category',
   type: 'document',

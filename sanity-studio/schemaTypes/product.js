@@ -1,10 +1,8 @@
 // sanity-studio/schemaTypes/product.js
 // Product schema — full product management for Ceramisia
 
-import { MdInventory } from 'react-icons/md'
-
 export default {
-  icon: MdInventory,
+  icon: () => '📦',
   name: 'product',
   title: 'Product',
   type: 'document',
