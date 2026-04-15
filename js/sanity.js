@@ -23,22 +23,91 @@ const CDN_BASE   = _IS_LOCAL
 // Images must always use cdn.sanity.io regardless
 const IMAGE_BASE = `https://cdn.sanity.io`;
 
-// ── Image URL builder (no extra dependencies) ─────────
+// ── Image URL builder — mirrors @sanity/image-url API ─
 /**
- * Build a Sanity CDN image URL with responsive transforms.
- * - auto=format: serves WebP/AVIF to browsers that support it
- * - q=80: 80% quality — imperceptible difference, ~35% smaller files
- * - fit=max: never upscales, preserves aspect ratio
+ * Internal builder factory. Returns a chainable builder object whose
+ * .url() method constructs a Sanity CDN image URL from an asset _ref.
+ *
+ * Default transforms applied automatically:
+ *   auto=format  → serves WebP/AVIF to supporting browsers
+ *   q=80         → 80 % quality (imperceptible difference, ~35 % smaller)
+ *   fit=max      → never upscales, preserves aspect ratio
+ */
+function _imageBuilder(source, projectId, dataset) {
+  let _w       = null;
+  let _h       = null;
+  let _fit     = 'max';
+  let _quality = 80;
+  let _auto    = 'format';
+
+  const builder = {
+    width(w)    { _w = w;       return builder; },
+    height(h)   { _h = h;       return builder; },
+    fit(f)      { _fit = f;     return builder; },
+    quality(q)  { _quality = q; return builder; },
+    auto(a)     { _auto = a;    return builder; },
+
+    url() {
+      if (!source || !source.asset || !source.asset._ref) return '';
+      const parts = source.asset._ref.replace('image-', '').split('-');
+      const ext   = parts[parts.length - 1];
+      const dims  = parts[parts.length - 2];
+      const id    = parts.slice(0, parts.length - 2).join('-');
+      const base  = `${IMAGE_BASE}/images/${projectId}/${dataset}/${id}-${dims}.${ext}`;
+      const p     = [];
+      if (_w)       p.push(`w=${_w}`);
+      if (_h)       p.push(`h=${_h}`);
+      if (_fit)     p.push(`fit=${_fit}`);
+      if (_auto)    p.push(`auto=${_auto}`);
+      if (_quality !== null) p.push(`q=${_quality}`);
+      return p.length ? `${base}?${p.join('&')}` : base;
+    },
+
+    toString() { return builder.url(); },
+  };
+
+  return builder;
+}
+
+/**
+ * imageUrlBuilder — factory that mirrors the @sanity/image-url package API.
+ *
+ * Usage (identical to the npm package):
+ *   const builder = imageUrlBuilder({ projectId: '...', dataset: '...' });
+ *   function urlFor(source) { return builder.image(source); }
+ *   urlFor(product.mainImage).width(800).url()
+ */
+export function imageUrlBuilder(config) {
+  const projectId = (config && config.projectId) || SANITY_PROJECT_ID;
+  const dataset   = (config && config.dataset)   || SANITY_DATASET;
+  return {
+    image(source) { return _imageBuilder(source, projectId, dataset); },
+  };
+}
+
+// Pre-configured builder for this project — used by urlFor() below.
+const _builder = imageUrlBuilder({ projectId: SANITY_PROJECT_ID, dataset: SANITY_DATASET });
+
+/**
+ * urlFor — shorthand for urlFor(source).url() pattern.
+ *
+ * Returns a chainable builder; call .url() to get the final string.
+ *   urlFor(image).url()                    → default quality/format
+ *   urlFor(image).width(800).url()         → 800 px wide
+ *   urlFor(image).width(400).quality(90).url()
+ */
+export function urlFor(source) {
+  return _builder.image(source);
+}
+
+/**
+ * Convenience wrapper — resolves to a plain URL string.
+ * All existing render functions call this; it delegates to urlFor internally.
  */
 export function sanityImageUrl(ref, width) {
-  if (!ref || !ref.asset || !ref.asset._ref) return '';
-  const parts = ref.asset._ref.replace('image-', '').split('-');
-  const ext   = parts[parts.length - 1];
-  const dims  = parts[parts.length - 2];
-  const id    = parts.slice(0, parts.length - 2).join('-');
-  let url = `${IMAGE_BASE}/images/${SANITY_PROJECT_ID}/${SANITY_DATASET}/${id}-${dims}.${ext}`;
-  const params = width ? `w=${width}&fit=max&auto=format&q=80` : 'auto=format&q=80';
-  return url + '?' + params;
+  const b = urlFor(ref);
+  if (width) b.width(width);
+  return b.url();
 }
 
 /**
@@ -62,7 +131,7 @@ export function sanityImageDimensions(ref) {
  * @returns {string}        srcset value ready for <img srcset="...">
  */
 export function sanityImageSrcset(ref, widths) {
-  return widths.map(function (w) { return sanityImageUrl(ref, w) + ' ' + w + 'w'; }).join(', ');
+  return widths.map(function (w) { return urlFor(ref).width(w).url() + ' ' + w + 'w'; }).join(', ');
 }
 
 // ── GROQ query runner ─────────────────────────────────
@@ -202,7 +271,7 @@ export function getPage(slug) {
       heroSubtext, heroSubtextEn,
       heroSlides[] {
         _key,
-        image { _type, alt, asset->{ _ref, url } },
+        image { _type, alt, asset { _ref, _type } },
         heading,
         headingEn,
         subtext,

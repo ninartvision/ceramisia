@@ -4,7 +4,7 @@
  * Includes a Portable Text → HTML converter for rich content.
  */
 
-import { sanityImageUrl, getPage } from './sanity.js';
+import { imageUrlBuilder, urlFor, sanityImageUrl, getPage } from './sanity.js';
 
 const LANG_KEY = 'ceramisia_lang';
 function getLang() { return localStorage.getItem(LANG_KEY) || 'ge'; }

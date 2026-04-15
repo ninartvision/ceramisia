@@ -4,7 +4,7 @@
  * Static HTML remains as fallback if Sanity data is empty.
  */
 
-import { sanityImageUrl, getPage, getHomepage, getSiteSettings, getNavigation, getCategoriesFromProducts } from './sanity.js';
+import { imageUrlBuilder, urlFor, sanityImageUrl, getPage, getHomepage, getSiteSettings, getNavigation, getCategoriesFromProducts } from './sanity.js';
 import { loadStrings, tge, ten } from './ui.js';
 
 const LANG_KEY = 'ceramisia_lang';

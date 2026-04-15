@@ -9,6 +9,8 @@
  */
 
 import {
+  imageUrlBuilder,
+  urlFor,
   sanityImageUrl,
   sanityImageSrcset,
   sanityImageDimensions,
@@ -247,11 +249,7 @@ function createProductCard(p, lang, extraClass, isFirst) {
   var _descEnHtml = _blocksToHtml(_rawDescEn);
   card.dataset.descGe = _descGeHtml;
   card.dataset.descEn = _descEnHtml;
-  // ── DEBUG (remove after confirming descriptions appear in modal) ────────
-  console.log('[Sanity raw] slug:', p.slug, '| description (GE):', _rawDescGe, '| descriptionEn (EN):', _rawDescEn);
-  console.log('[HTML]       slug:', p.slug, '| GE:', _descGeHtml || '(empty)', '| EN:', _descEnHtml || '(empty)');
-  console.log('[Dataset]    slug:', p.slug, '| data-desc-ge:', card.dataset.descGe || '(empty)', '| data-desc-en:', card.dataset.descEn || '(empty)');
-  // ────────────────────────────────────────────────────────────────────────
+
 
   // Build gallery: mainImage + gallery array
   const galleryImages = [imgUrl];

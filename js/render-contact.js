@@ -4,7 +4,7 @@
  * Static HTML remains as fallback.
  */
 
-import { sanityImageUrl, getPage, getSiteSettings } from './sanity.js';
+import { imageUrlBuilder, urlFor, sanityImageUrl, getPage, getSiteSettings } from './sanity.js';
 import { updatePageSeo, injectBreadcrumbJsonLd } from './render-home.js';
 import { t } from './ui.js';
 
