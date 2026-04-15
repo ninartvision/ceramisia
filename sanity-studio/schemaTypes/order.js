@@ -1,7 +1,10 @@
 // sanity-studio/schemaTypes/order.js
 // Order / Contact form submissions
 
+import { MdShoppingCart } from 'react-icons/md'
+
 export default {
+  icon: MdShoppingCart,
   name: 'order',
   title: 'Order / Inquiry',
   type: 'document',

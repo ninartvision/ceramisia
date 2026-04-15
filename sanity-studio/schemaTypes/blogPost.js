@@ -1,7 +1,10 @@
 // sanity-studio/schemaTypes/blogPost.js
 // Blog post schema — maps to your blog cards and blog page articles
 
+import { MdArticle } from 'react-icons/md'
+
 export default {
+  icon: MdArticle,
   name: 'blogPost',
   title: 'Blog Post',
   type: 'document',

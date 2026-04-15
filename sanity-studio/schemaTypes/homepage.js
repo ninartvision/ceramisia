@@ -2,7 +2,10 @@
 // Homepage layout — controls which sections appear and in what order.
 // This is a singleton document (only one homepage document should exist).
 
+import { MdHome } from 'react-icons/md'
+
 export default {
+  icon: MdHome,
   name: 'homepage',
   title: 'Homepage',
   type: 'document',

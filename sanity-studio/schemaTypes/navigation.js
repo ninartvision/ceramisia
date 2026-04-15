@@ -1,7 +1,10 @@
 // sanity-studio/schemaTypes/navigation.js
 // Navigation & footer menus — singleton document
 
+import { MdMenu } from 'react-icons/md'
+
 export default {
+  icon: MdMenu,
   name: 'navigation',
   title: 'Navigation',
   type: 'document',
