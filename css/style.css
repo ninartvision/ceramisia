@@ -1035,6 +1035,12 @@ p { color: var(--clr-text-mid); }
 }
 
 .about-hero-image { overflow: hidden; }
+.about-hero-image--fallback {
+  background: var(--clr-bg-alt, #f5f0eb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .about-hero-image img {
   width: 100%;
   height: 100%;
@@ -1997,6 +2003,13 @@ p { color: var(--clr-text-mid); }
   color: var(--clr-text-mid);
   margin-bottom: 1.75rem;
   flex: 1;
+}
+
+.product-modal-desc {
+  font-size: 0.92rem;
+  line-height: 1.7;
+  color: var(--clr-text-mid);
+  margin: 0;
 }
 
 /* Quantity selector */

@@ -279,6 +279,15 @@ function createProductCard(p, lang, extraClass, isFirst) {
   var _descEnHtml = _blocksToHtml(_rawDescEn);
   card.dataset.descGe = _descGeHtml;
   card.dataset.descEn = _descEnHtml;
+  // Store raw Portable Text as JSON so product-modal.js can call blocksToPlainText directly
+  // This is the source of truth for modal description rendering
+  try {
+    card.dataset.descBlocksGe = _rawDescGe.length ? JSON.stringify(_rawDescGe) : '';
+    card.dataset.descBlocksEn = _rawDescEn.length ? JSON.stringify(_rawDescEn) : '';
+  } catch (_e) {
+    card.dataset.descBlocksGe = '';
+    card.dataset.descBlocksEn = '';
+  }
 
   // Plain-text excerpt for the visible card (max 100 chars)
   var _descPlain = lang === 'ge'
@@ -471,6 +480,19 @@ async function renderProductsGrid(categorySlug) {
     const cat = categorySlug || new URLSearchParams(window.location.search).get('cat') || 'all';
     const products = await getProducts(cat);
     console.log('[Ceramisia] Products loaded (' + (products ? products.length : 0) + '):', products);
+    if (products && products.length) {
+      products.forEach(function (p) {
+        console.log('[Ceramisia] Description check —', (p.name || p.nameEn || p._id || '?'), '| descGe:', p.description, '| descEn:', p.descriptionEn);
+        var _imgUrl = sanityImageUrl(p.mainImage, 600);
+        if (!_imgUrl) {
+          console.warn('[Ceramisia] Image missing for "' + (p.name || p.nameEn || p._id || '?') + '"' +
+            ' | mainImage:', p.mainImage,
+            '\n  → Upload a Main Image in Sanity Studio → Products → ' + (p.name || '?') + ' and PUBLISH.');
+        } else {
+          console.log('[Ceramisia] Image ✓ "' + (p.name || p.nameEn || '?') + '" →', _imgUrl);
+        }
+      });
+    }
     const lang = getLang();
 
     grid.innerHTML = '';
@@ -560,6 +582,18 @@ async function renderFeaturedProducts() {
     // Build all cards into a DocumentFragment — one DOM write for the clear,
     // one DOM write for the insert, zero intermediate layout recalculations.
     const lang     = getLang();
+    console.log('[Ceramisia] Featured products loaded (' + products.length + '):', products);
+    products.forEach(function (p) {
+      console.log('[Ceramisia] Featured desc check —', (p.name || p.nameEn || p._id || '?'), '| descGe:', p.description, '| descEn:', p.descriptionEn);
+      var _imgUrl = sanityImageUrl(p.mainImage, 600);
+      if (!_imgUrl) {
+        console.warn('[Ceramisia] Featured image missing for "' + (p.name || p.nameEn || p._id || '?') + '"' +
+          ' | mainImage:', p.mainImage,
+          '\n  → Upload a Main Image in Sanity Studio → Products → ' + (p.name || '?') + ' and PUBLISH.');
+      } else {
+        console.log('[Ceramisia] Featured image ✓ "' + (p.name || p.nameEn || '?') + '" →', _imgUrl);
+      }
+    });
     const fragment = document.createDocumentFragment();
     products.forEach(function (p) { fragment.appendChild(createProductCard(p, lang)); });
 
@@ -826,10 +860,19 @@ function buildSectionAbout(section, settings, lang) {
     : (section.textEn  || (settings && settings.homepageDescriptionEn)   || 'We craft handmade ceramics that unite Georgian traditions with modern design.');
   var btnText = (lang === 'ge' ? section.buttonText : section.buttonTextEn) || t('learnMore');
   var btnLink = section.buttonLink || '/about/';
-  var imgRef  = (section.image && section.image.asset) ? section.image
-              : (settings && settings.heroImage) ? settings.heroImage
+  var imgRef  = (section.image && section.image.asset && section.image.asset._ref) ? section.image
+              : (settings && settings.heroImage && settings.heroImage.asset && settings.heroImage.asset._ref) ? settings.heroImage
               : null;
-  var imgUrl = sanityImageUrl(imgRef, 800);
+  var imgUrl    = imgRef ? sanityImageUrl(imgRef, 900) : '';
+  var imgSrcset = imgRef ? [480, 700, 900].map(function (w) {
+    return sanityImageUrl(imgRef, w) + ' ' + w + 'w';
+  }).join(', ') : '';
+
+  if (imgRef) {
+    console.log('[About-strip] Image URL:', imgUrl || '(empty — check asset._ref)');
+  } else {
+    console.warn('[About-strip] No image — add one to Homepage Layout → About Section → Image in Sanity Studio.');
+  }
 
   var el = document.createElement('section');
   el.className = 'about-strip';
@@ -845,7 +888,9 @@ function buildSectionAbout(section, settings, lang) {
       '</div>' +
       (imgUrl
         ? '<div class="about-strip-image" data-reveal data-reveal-delay="150">' +
-            '<img src="' + esc(imgUrl) + '" alt="' + esc(heading) + '" loading="lazy">' +
+            '<img src="' + esc(imgUrl) + '"' +
+            (imgSrcset ? ' srcset="' + esc(imgSrcset) + '" sizes="(max-width:768px) 100vw, 45vw"' : '') +
+            ' alt="' + esc(heading) + '" loading="lazy" decoding="async">' +
           '</div>'
         : '') +
     '</div>';

@@ -24,6 +24,21 @@ const CDN_BASE   = _IS_LOCAL
 // Images must always use cdn.sanity.io regardless
 const IMAGE_BASE = `https://cdn.sanity.io`;
 
+// ── Startup config validation ─────────────────────────
+// Logged once on module load so you can verify the correct project/dataset
+// is connected. Open the browser console and look for this line first.
+console.log(
+  '[Ceramisia] Sanity client ready\n' +
+  '  projectId : ' + SANITY_PROJECT_ID + '\n' +
+  '  dataset   : ' + SANITY_DATASET + '\n' +
+  '  api ver   : ' + SANITY_API_VER + '\n' +
+  '  api base  : ' + CDN_BASE + '\n' +
+  '  img base  : ' + IMAGE_BASE + '\n' +
+  '  origin    : ' + window.location.origin + '\n' +
+  '  → If images fail, ensure this origin is in Sanity CORS allow-list at\n' +
+  '    https://sanity.io/manage → project ' + SANITY_PROJECT_ID + ' → API → CORS origins'
+);
+
 // ── Image URL builder — mirrors @sanity/image-url API ─
 /**
  * Internal builder factory. Returns a chainable builder object whose
@@ -49,7 +64,23 @@ function _imageBuilder(source, projectId, dataset) {
     auto(a)     { _auto = a;    return builder; },
 
     url() {
-      if (!source || !source.asset || !source.asset._ref) return '';
+      if (!source || !source.asset || !source.asset._ref) {
+        // Warn only when an image object was passed but lacks the CDN reference.
+        // Legitimate null/undefined fields (no image set) are skipped silently.
+        if (source && source._type === 'image' && (!source.asset || !source.asset._ref)) {
+          console.warn(
+            '[Ceramisia] Image skipped — asset._ref missing.\n' +
+            '  The image field exists in your Sanity document but has no CDN reference.\n' +
+            '  Possible causes:\n' +
+            '  1. No image was uploaded for this field in Sanity Studio\n' +
+            '  2. The uploaded image was deleted from the Sanity asset store\n' +
+            '  3. The document was never published after adding the image\n' +
+            '  Fix: open Sanity Studio, upload the image, and click Publish.\n' +
+            '  Source object received:', JSON.stringify(source)
+          );
+        }
+        return '';
+      }
       const parts = source.asset._ref.replace('image-', '').split('-');
       const ext   = parts[parts.length - 1];
       const dims  = parts[parts.length - 2];

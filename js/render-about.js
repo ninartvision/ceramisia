@@ -18,7 +18,24 @@ export async function renderAboutPage() {
 
   try {
     var lang = getLang();
-    var [page, settings] = await Promise.all([getPage('about-us'), getSiteSettings().catch(function () { return null; })]);
+    // Try slug 'about' first (recommended by schema), fallback to 'about-us'
+    // Root cause: if your Sanity document slug is 'about' but code queries 'about-us',
+    // page returns null and all image rendering is silently skipped.
+    var page = await getPage('about').catch(function () { return null; });
+    if (!page) {
+      console.warn('[About] getPage("about") returned null — trying "about-us" fallback');
+      page = await getPage('about-us').catch(function () { return null; });
+    }
+    if (!page) {
+      console.error('[About] ✗ No page document found for slugs "about" or "about-us".\n' +
+        '  → Open Sanity Studio → Pages → check that your about page exists and is PUBLISHED.\n' +
+        '  → Check its Slug field — it must be exactly "about" (all lowercase, no spaces).');
+    } else {
+      console.log('[About] ✓ Page doc loaded (slug: "' + page.slug + '")');
+      console.log('[About] heroImage:', page.heroImage || '(null — upload an image in Sanity Studio → Pages → About → Hero Image)');
+    }
+
+    var settings = await getSiteSettings().catch(function () { return null; });
 
     // ── Always attempt founder card — even without a page doc.
     // renderFounderCard() has its own fallback chain:
@@ -56,15 +73,32 @@ export async function renderAboutPage() {
     // Hero image
     var imageWrap = document.querySelector('.about-hero-image');
     if (imageWrap) {
-      if (page.heroImage) {
-        var imgUrl = sanityImageUrl(page.heroImage, 800);
+      if (page.heroImage && page.heroImage.asset && page.heroImage.asset._ref) {
+        var imgUrl    = sanityImageUrl(page.heroImage, 900);
+        var imgSrcset = [480, 700, 900].map(function (w) {
+          return sanityImageUrl(page.heroImage, w) + ' ' + w + 'w';
+        }).join(', ');
+        var imgAlt = page.heroImage.alt || esc(heading || 'Ceramisia');
+
+        console.log('[About] ✓ Hero image URL:', imgUrl);
+
         if (imgUrl) {
-          imageWrap.innerHTML = '<img src="' + esc(imgUrl) + '" alt="' + esc(heading || 'Ceramisia') + '" loading="lazy">';
+          imageWrap.innerHTML =
+            '<img src="' + esc(imgUrl) + '"' +
+            ' srcset="' + esc(imgSrcset) + '"' +
+            ' sizes="(max-width:768px) 100vw, 50vw"' +
+            ' alt="' + esc(imgAlt) + '"' +
+            ' loading="eager" decoding="async">';
         } else {
-          imageWrap.classList.add('section--hidden');
+          console.warn('[About] ✗ sanityImageUrl() returned empty string for heroImage:', page.heroImage,
+            '\n  → Check that asset._ref is a valid Sanity image ref (starts with "image-").');
+          imageWrap.classList.add('about-hero-image--fallback');
         }
       } else {
-        imageWrap.classList.add('section--hidden');
+        console.warn('[About] ✗ page.heroImage is missing or has no asset._ref.',
+          '\n  → Upload a Hero Image in Sanity Studio → Pages → About → Hero Image and PUBLISH.');
+        // Keep the container visible; CSS fallback background shows instead of blank space
+        imageWrap.classList.add('about-hero-image--fallback');
       }
     }
 

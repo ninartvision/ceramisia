@@ -43,6 +43,21 @@
   var isZoomed       = false;
   var GIFT_COST      = 5;
 
+  /* ── Plain-text converter for Portable Text (Sanity block content) ── */
+  function blocksToPlainText(blocks) {
+    if (!Array.isArray(blocks) || !blocks.length) return '';
+    return blocks
+      .filter(function (b) { return b && b._type === 'block'; })
+      .map(function (b) {
+        return (b.children || [])
+          .map(function (c) { return (c && typeof c.text === 'string') ? c.text : ''; })
+          .join('');
+      })
+      .filter(function (s) { return s.length > 0; })
+      .join(' ')
+      .trim();
+  }
+
   /* ── Extract data from a product card ────────── */
   function extractCardData(card) {
     var lang = getLang();
@@ -58,10 +73,34 @@
     var images      = gallerySrc ? gallerySrc.split(',').map(function (s) { return s.trim(); }) : [];
     if (!images.length && imgEl) images = [imgEl.src];
 
-    // Description: read pre-rendered HTML from card data attributes
-    var descText = lang === 'ge'
-      ? (card.dataset.descGe || '')
-      : (card.dataset.descEn || card.dataset.descGe || '');
+    // Description: parse raw Portable Text blocks stored as JSON, convert to plain text
+    // Falls back to legacy HTML dataset if JSON blocks are unavailable
+    var rawBlocksGe = [];
+    var rawBlocksEn = [];
+    try {
+      if (card.dataset.descBlocksGe) rawBlocksGe = JSON.parse(card.dataset.descBlocksGe);
+      if (card.dataset.descBlocksEn) rawBlocksEn = JSON.parse(card.dataset.descBlocksEn);
+    } catch (_e) {}
+    var descText;
+    if (rawBlocksGe.length || rawBlocksEn.length) {
+      // Use blocksToPlainText on raw Portable Text (preferred path)
+      descText = lang === 'ge'
+        ? blocksToPlainText(rawBlocksGe)
+        : (blocksToPlainText(rawBlocksEn) || blocksToPlainText(rawBlocksGe));
+    } else {
+      // Legacy fallback: strip HTML from pre-rendered dataset string
+      var _htmlFallback = lang === 'ge'
+        ? (card.dataset.descGe || '')
+        : (card.dataset.descEn || card.dataset.descGe || '');
+      if (_htmlFallback) {
+        var _tmp = document.createElement('div');
+        _tmp.innerHTML = _htmlFallback;
+        descText = (_tmp.textContent || '').trim();
+      } else {
+        descText = '';
+      }
+    }
+    console.log('[Ceramisia] Modal desc for card:', (nameEl && nameEl.textContent) || '?', '| raw ge blocks:', rawBlocksGe.length, '| raw en blocks:', rawBlocksEn.length, '| result:', descText || '(empty)');
 
     // Name
     var nameText = nameEl
@@ -280,10 +319,18 @@
     // Category, title, description
     category.textContent = data.category;
     title.textContent = data.name;
-    // data.description is pre-rendered HTML from blocksToHtml (Portable Text)
-    desc.innerHTML = data.description || '';
-    if (!data.description) desc.style.display = 'none';
-    else desc.style.display = '';
+    // Inject description as <p class="product-modal-desc"> (plain text, XSS-safe)
+    // EN fallback to GE is already handled in extractCardData
+    desc.innerHTML = '';
+    if (data.description) {
+      var _descEl = document.createElement('p');
+      _descEl.className = 'product-modal-desc';
+      _descEl.textContent = data.description; // textContent is XSS-safe — no innerHTML
+      desc.appendChild(_descEl);
+      desc.style.display = '';
+    } else {
+      desc.style.display = 'none';
+    }
 
     // Prices
     if (data.originalPrice) {

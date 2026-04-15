@@ -377,7 +377,10 @@ export async function renderAboutStrip() {
     var label = lang === 'ge' ? (s.label || '') : (s.labelEn || s.label || '');
     var btnText = lang === 'ge' ? (s.buttonText || '') : (s.buttonTextEn || s.buttonText || '');
     var btnLink = s.buttonLink || '/about/';
-    var imgUrl = s.image ? sanityImageUrl(s.image, 1200) : '';
+    var imgUrl = (s.image && s.image.asset && s.image.asset._ref)
+      ? sanityImageUrl(s.image, 1200)
+      : '';
+    console.log('[About Strip] Section image source:', s.image || '(null)', '| URL:', imgUrl || '(empty — no image set in Sanity section)');
 
     var textEl = section.querySelector('.about-strip-text');
     if (textEl) {
@@ -413,8 +416,9 @@ export async function renderAboutStrip() {
 
     var imageWrap = section.querySelector('.about-strip-image');
     if (imageWrap) {
-      if (!imgUrl && settings && settings.heroImage) {
+      if (!imgUrl && settings && settings.heroImage && settings.heroImage.asset && settings.heroImage.asset._ref) {
         imgUrl = sanityImageUrl(settings.heroImage, 800);
+        console.log('[About Strip] Fallback → siteSettings.heroImage URL:', imgUrl || '(empty)');
       }
       if (imgUrl) {
         imageWrap.innerHTML = '<img src="' + esc(imgUrl) + '" alt="Ceramisia Studio" loading="lazy">';
