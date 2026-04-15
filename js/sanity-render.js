@@ -251,6 +251,15 @@ function createProductCard(p, lang, extraClass, isFirst) {
   var _descEnHtml = _blocksToHtml(_rawDescEn);
   card.dataset.descGe = _descGeHtml;
   card.dataset.descEn = _descEnHtml;
+  // [DESC DIAG] — remove once confirmed working
+  var _slug = (p.slug && p.slug.current) || p._id || '?';
+  if (!_rawDescGe.length && !_rawDescEn.length) {
+    console.warn('[Desc] slug:', _slug, '— BOTH description fields are empty. Ensure the product document in Sanity Studio has content in Description (GE) and/or Description (EN).');
+  } else {
+    console.log('[Desc] slug:', _slug, '| GE blocks:', _rawDescGe.length, '| EN blocks:', _rawDescEn.length);
+    console.log('[Desc] GE HTML (first 200):', _descGeHtml.slice(0, 200) || '(empty after conversion)');
+    console.log('[Desc] EN HTML (first 200):', _descEnHtml.slice(0, 200) || '(empty after conversion)');
+  }
 
 
   // Build gallery: mainImage + gallery array

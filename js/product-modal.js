@@ -62,6 +62,8 @@
     var descText = lang === 'ge'
       ? (card.dataset.descGe || '')
       : (card.dataset.descEn || card.dataset.descGe || '');
+    // [DESC DIAG] — remove once confirmed working
+    console.log('[Modal] lang:', lang, '| descText (first 200):', descText.slice(0, 200) || '(empty)');
 
     // Name
     var nameText = nameEl
@@ -281,6 +283,8 @@
     category.textContent = data.category;
     title.textContent = data.name;
     // data.description is pre-rendered HTML from blocksToHtml (Portable Text)
+    // [DESC DIAG] — remove once confirmed working
+    console.log('[Modal] populateModal — description (first 200):', (data.description || '').slice(0, 200) || '(empty — will hide #modalDesc)');
     desc.innerHTML = data.description || '';
     if (!data.description) desc.style.display = 'none';
     else desc.style.display = '';
