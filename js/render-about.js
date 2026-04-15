@@ -17,11 +17,16 @@ export async function renderAboutPage() {
   if (!document.querySelector('.about-hero')) return;
 
   try {
-    // Slug is "about-us" in Sanity Studio — must match exactly
-    var [page, settings] = await Promise.all([getPage('about-us'), getSiteSettings().catch(function () { return null; })]);
-    if (!page) return;
-
     var lang = getLang();
+    var [page, settings] = await Promise.all([getPage('about-us'), getSiteSettings().catch(function () { return null; })]);
+
+    // ── Always attempt founder card — even without a page doc.
+    // renderFounderCard() has its own fallback chain:
+    //   teamMembers[0].photo → homepage.founderImage → static /images/tea.png
+    await renderFounderCard(page ? (page.teamMembers || []) : [], lang);
+
+    // ── Rest of page rendering requires the page doc ─────────
+    if (!page) return;
 
     // ── Per-page SEO ─────────────────────────────────
     updatePageSeo(page, settings, lang);
@@ -51,18 +56,14 @@ export async function renderAboutPage() {
     // Hero image
     var imageWrap = document.querySelector('.about-hero-image');
     if (imageWrap) {
-      console.log('[About] heroImage field:', page.heroImage);
       if (page.heroImage) {
         var imgUrl = sanityImageUrl(page.heroImage, 800);
-        console.log('[About] sanityImageUrl result:', imgUrl);
         if (imgUrl) {
           imageWrap.innerHTML = '<img src="' + esc(imgUrl) + '" alt="' + esc(heading || 'Ceramisia') + '" loading="lazy">';
         } else {
-          console.warn('[About] heroImage has no asset._ref — image URL could not be built.');
           imageWrap.classList.add('section--hidden');
         }
       } else {
-        console.warn('[About] page.heroImage is null/undefined — no image uploaded in Studio for this page.');
         imageWrap.classList.add('section--hidden');
       }
     }
@@ -71,9 +72,6 @@ export async function renderAboutPage() {
     if (page.sections && page.sections.length) {
       renderAboutSections(page.sections, lang);
     }
-
-    // ── Founder card (static .team-founder layout) ──────
-    await renderFounderCard(page.teamMembers || [], lang);
 
     // ── Team grid ────────────────────────────────
     renderTeamGrid(page.teamMembers || [], lang);

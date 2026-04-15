@@ -63,9 +63,6 @@
       ? (card.dataset.descGe || '')
       : (card.dataset.descEn || card.dataset.descGe || '');
 
-    // Debug: confirm the field is received from Sanity
-    console.log('[Modal] description HTML received (' + lang + '):', descText || '(empty — check Sanity data and GROQ query)');
-
     // Name
     var nameText = nameEl
       ? (lang === 'ge' ? (nameEl.dataset.ge || nameEl.textContent) : (nameEl.dataset.en || nameEl.textContent))

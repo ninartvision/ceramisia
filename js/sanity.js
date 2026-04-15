@@ -206,7 +206,8 @@ export async function getProducts(categorySlug) {
     mainImage { _type, alt, asset { _ref, _type } },
     gallery[] { _type, alt, asset { _ref, _type } },
     price, salePrice, badge, isFeatured, inStock,
-    description, descriptionEn,
+    description[] { _type, _key, style, listItem, level, markDefs[]{ _key, _type, href }, children[]{ _key, _type, text, marks } },
+    descriptionEn[] { _type, _key, style, listItem, level, markDefs[]{ _key, _type, href }, children[]{ _key, _type, text, marks } },
     additionalPackaging, packagingPrice, variants,
     "categoryTitle": category->title,
     "categoryTitleEn": category->titleEn,
@@ -232,7 +233,8 @@ export function getFeaturedProducts() {
         _id, name, nameEn, "slug": slug.current, mainImage { _type, alt, asset { _ref, _type } },
         gallery[] { _type, alt, asset { _ref, _type } },
         price, salePrice, badge,
-        description, descriptionEn,
+        description[] { _type, _key, style, listItem, level, markDefs[]{ _key, _type, href }, children[]{ _key, _type, text, marks } },
+        descriptionEn[] { _type, _key, style, listItem, level, markDefs[]{ _key, _type, href }, children[]{ _key, _type, text, marks } },
         "categoryTitle": category->title,
         "categoryTitleEn": category->titleEn,
         "categorySlug": category->slug.current
@@ -247,7 +249,8 @@ export async function getProduct(slug) {
   return sanityFetch(
     `*[_type == "product" && slug.current == $slug][0] {
       _id, name, nameEn, "slug": slug.current, sku,
-      description, descriptionEn,
+      description[] { _type, _key, style, listItem, level, markDefs[]{ _key, _type, href }, children[]{ _key, _type, text, marks } },
+      descriptionEn[] { _type, _key, style, listItem, level, markDefs[]{ _key, _type, href }, children[]{ _key, _type, text, marks } },
       mainImage { _type, alt, asset { _ref, _type } },
       gallery[] { _type, alt, asset { _ref, _type } },
       price, salePrice, badge, inStock, isFeatured,

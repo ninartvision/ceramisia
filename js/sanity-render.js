@@ -181,6 +181,8 @@ function _spansToHtml(children, markDefs) {
   for (var _si = 0; _si < children.length; _si++) {
     var span = children[_si];
     if (!span || typeof span !== 'object') continue;
+    // Sanity represents Shift+Enter as a hardBreak span (no text property)
+    if (span._type === 'hardBreak') { out += '<br>'; continue; }
     var text = esc(span.text || '');
     if (!span.marks || !span.marks.length) { out += text; continue; }
     for (var _mi = 0; _mi < span.marks.length; _mi++) {
