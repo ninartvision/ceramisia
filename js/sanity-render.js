@@ -334,7 +334,7 @@ function createProductCard(p, lang, extraClass, isFirst) {
     '<div class="product-info">' +
       '<p class="product-category" data-ge="' + esc(p.categoryTitle || '') + '" data-en="' + esc(p.categoryTitleEn || '') + '">' + esc(catLabel) + '</p>' +
       '<h3 class="product-name" data-ge="' + esc(p.name || '') + '" data-en="' + esc(p.nameEn || '') + '">' + esc(name) + '</h3>' +
-      (_descCard ? '<p class="product-desc">' + esc(_descCard) + '</p>' : '') +
+      '<p class="product-desc">' + esc(_descCard || 'No description available') + '</p>' +
       '<p class="product-price">' + priceHtml + '</p>' +
     '</div>';
 
@@ -1201,13 +1201,20 @@ document.addEventListener('DOMContentLoaded', function () {
           : (settings && settings.heroImage && settings.heroImage.asset && settings.heroImage.asset._ref)
             ? settings.heroImage
             : null;
+        var CONTACT_FALLBACK = '/images/cover/cover1.webp';
+        var banner = document.querySelector('.page-banner');
         if (!imageRef) {
-          console.warn('[Contact] No heroImage on page doc or siteSettings — banner keeps its CSS background.');
+          console.warn('[Contact] No heroImage on page doc or siteSettings — using local fallback image.');
+          if (banner) banner.style.backgroundImage = "url('" + CONTACT_FALLBACK + "')";
           return;
         }
         var imgUrl = sanityImageUrl(imageRef, 1920);
-        var banner = document.querySelector('.page-banner');
-        if (banner && imgUrl) banner.style.backgroundImage = "url('" + imgUrl + "')";
+        if (banner) {
+          banner.style.backgroundImage = imgUrl
+            ? "url('" + imgUrl + "')"
+            : "url('" + CONTACT_FALLBACK + "')";
+          console.log('[Contact] Banner image:', imgUrl || CONTACT_FALLBACK);
+        }
       }).catch(function () {})
     );
     renders.push(renderContactPage().catch(function () {}));
