@@ -456,7 +456,19 @@ async function renderProductsGrid(categorySlug) {
     if (typeof window.initProductModal === 'function') window.initProductModal();
 
   } catch (err) {
-    console.warn('Sanity products fetch failed:', err);
+    var isCors = err && (err.message || '').toLowerCase().includes('fetch') ||
+                 err instanceof TypeError;
+    if (isCors) {
+      console.error(
+        '[Ceramisia] Products failed to load. This is usually a CORS issue.\n' +
+        'If you are testing locally, make sure you open the site via http://localhost:PORT \n' +
+        '(not 127.0.0.1:PORT) and that localhost is listed in Sanity CORS origins at\n' +
+        'https://www.sanity.io/manage → API → CORS origins.\n' +
+        'Exact error:', err
+      );
+    } else {
+      console.error('[Ceramisia] Products failed to load. Exact error:', err);
+    }
     const lang = getLang();
     grid.innerHTML =
       '<div class="products-empty" style="grid-column:1/-1;text-align:center;padding:4rem 1rem">' +
