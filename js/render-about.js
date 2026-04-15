@@ -70,36 +70,47 @@ export async function renderAboutPage() {
       p.textContent = subtext;
     }
 
-    // Hero image
+    // Hero image — Sanity CDN with local fallback when image is missing or invalid
     var imageWrap = document.querySelector('.about-hero-image');
     if (imageWrap) {
+      var HERO_FALLBACK = '/images/tea.png'; // local file, always available
+      var imgUrl        = '';
+      var imgSrcset     = '';
+      var imgAlt        = esc(heading || 'Ceramisia');
+      var usingFallback = false;
+
       if (page.heroImage && page.heroImage.asset && page.heroImage.asset._ref) {
-        var imgUrl    = sanityImageUrl(page.heroImage, 900);
-        var imgSrcset = [480, 700, 900].map(function (w) {
-          return sanityImageUrl(page.heroImage, w) + ' ' + w + 'w';
-        }).join(', ');
-        var imgAlt = page.heroImage.alt || esc(heading || 'Ceramisia');
-
-        console.log('[About] ✓ Hero image URL:', imgUrl);
-
-        if (imgUrl) {
-          imageWrap.innerHTML =
-            '<img src="' + esc(imgUrl) + '"' +
-            ' srcset="' + esc(imgSrcset) + '"' +
-            ' sizes="(max-width:768px) 100vw, 50vw"' +
-            ' alt="' + esc(imgAlt) + '"' +
-            ' loading="eager" decoding="async">';
+        var _sanityUrl = sanityImageUrl(page.heroImage, 900);
+        if (_sanityUrl) {
+          imgUrl    = _sanityUrl;
+          imgSrcset = [480, 700, 900].map(function (w) {
+            return sanityImageUrl(page.heroImage, w) + ' ' + w + 'w';
+          }).join(', ');
+          imgAlt = page.heroImage.alt || imgAlt;
+          console.log('[About] ✓ Hero image URL (Sanity):', imgUrl);
         } else {
-          console.warn('[About] ✗ sanityImageUrl() returned empty string for heroImage:', page.heroImage,
-            '\n  → Check that asset._ref is a valid Sanity image ref (starts with "image-").');
-          imageWrap.classList.add('about-hero-image--fallback');
+          usingFallback = true;
+          console.warn('[About] ✗ sanityImageUrl() returned empty — using local fallback.',
+            '\n  heroImage received:', page.heroImage);
         }
       } else {
-        console.warn('[About] ✗ page.heroImage is missing or has no asset._ref.',
+        usingFallback = true;
+        console.warn('[About] ✗ page.heroImage missing or has no asset._ref — using local fallback.',
           '\n  → Upload a Hero Image in Sanity Studio → Pages → About → Hero Image and PUBLISH.');
-        // Keep the container visible; CSS fallback background shows instead of blank space
-        imageWrap.classList.add('about-hero-image--fallback');
       }
+
+      if (usingFallback) {
+        imgUrl = HERO_FALLBACK;
+      }
+
+      console.log('[About] Using image:', imgUrl);
+
+      imageWrap.innerHTML =
+        '<img src="' + esc(imgUrl) + '"' +
+        (imgSrcset ? ' srcset="' + esc(imgSrcset) + '" sizes="(max-width:768px) 100vw, 50vw"' : '') +
+        ' alt="' + esc(imgAlt) + '"' +
+        ' class="about-img"' +
+        ' loading="eager" decoding="async">';
     }
 
     // ── Content Sections (values, team, etc.) ────
