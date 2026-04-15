@@ -212,6 +212,55 @@ export default {
         },
       ],
     },
+
+    // ── Founder / Team ────────────────────────────────────────────────────
+    {
+      name: 'founderImage',
+      title: 'Founder Image',
+      type: 'image',
+      options: { hotspot: true },
+      description: 'Photo shown in the Team section on the About page. Falls back to the team member photo in the About page document if not set.',
+      fields: [
+        { name: 'alt', title: 'Alt Text', type: 'string', initialValue: 'თეა ჯიჯავაძე' },
+      ],
+    },
+    {
+      name: 'founderName',
+      title: 'Founder Name (Georgian)',
+      type: 'string',
+      initialValue: 'თეა ჯიჯავაძე',
+    },
+    {
+      name: 'founderNameEn',
+      title: 'Founder Name (English)',
+      type: 'string',
+      initialValue: 'Tea Jijavadze',
+    },
+    {
+      name: 'founderRole',
+      title: 'Founder Role (Georgian)',
+      type: 'string',
+      initialValue: 'დამფუძნებელი / კერამიკოსი',
+    },
+    {
+      name: 'founderRoleEn',
+      title: 'Founder Role (English)',
+      type: 'string',
+      initialValue: 'Founder / Ceramicist',
+    },
+    {
+      name: 'founderSecondary',
+      title: 'Secondary Team Member (Georgian)',
+      type: 'string',
+      initialValue: 'დიზაინერი – თიკა ჯიჯავაძე',
+      description: 'e.g. "Designer – Tika Jijavadze"',
+    },
+    {
+      name: 'founderSecondaryEn',
+      title: 'Secondary Team Member (English)',
+      type: 'string',
+      initialValue: 'Designer – Tika Jijavadze',
+    },
   ],
 
   preview: {

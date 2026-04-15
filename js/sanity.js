@@ -360,7 +360,11 @@ export function getHomepage() {
         heading, headingEn,
         buttonText, buttonTextEn, buttonLink
       }
-    }
+    },
+    founderImage { _type, alt, asset { _ref, _type } },
+    founderName, founderNameEn,
+    founderRole, founderRoleEn,
+    founderSecondary, founderSecondaryEn
   }`);
   }
   return _cache.homepage;

@@ -4,7 +4,7 @@
  * Static HTML remains as fallback.
  */
 
-import { imageUrlBuilder, urlFor, sanityImageUrl, getPage, getSiteSettings } from './sanity.js';
+import { imageUrlBuilder, urlFor, sanityImageUrl, getPage, getSiteSettings, getHomepage } from './sanity.js';
 import { updatePageSeo, injectBreadcrumbJsonLd } from './render-home.js';
 import { t } from './ui.js';
 
@@ -72,12 +72,106 @@ export async function renderAboutPage() {
       renderAboutSections(page.sections, lang);
     }
 
+    // ── Founder card (static .team-founder layout) ──────
+    await renderFounderCard(page.teamMembers || [], lang);
+
     // ── Team grid ────────────────────────────────
     renderTeamGrid(page.teamMembers || [], lang);
 
   } catch (err) {
     console.warn('About page fetch failed, keeping static HTML:', err);
   }
+}
+
+/**
+ * Populates the static .team-founder card from Sanity data.
+ *
+ * Priority:
+ *  1. page.teamMembers[0].photo  (from the "about-us" page doc in Studio)
+ *  2. homepage.founderImage      (from the Homepage Layout singleton in Studio)
+ *  3. /images/tea.png            (static fallback — always works)
+ *
+ * Text (name, role, secondary) follows the same priority:
+ *  page.teamMembers[0] → homepage.founder* → existing static HTML
+ */
+async function renderFounderCard(teamMembers, lang) {
+  var imgEl       = document.getElementById('founderImg');
+  var nameEl      = document.getElementById('founderName');
+  var roleEl      = document.getElementById('founderRole');
+  var secondaryEl = document.getElementById('founderSecondary');
+
+  if (!imgEl) return; // not on about page
+
+  // ── Resolve image source ─────────────────────
+  var photoRef = null;
+  var altText  = '';
+
+  // Priority 1 — first team member's photo
+  var m0 = Array.isArray(teamMembers) && teamMembers[0];
+  if (m0 && m0.photo && m0.photo.asset && m0.photo.asset._ref) {
+    photoRef = m0.photo;
+    altText  = (m0.photo.alt) || (lang === 'ge' ? (m0.name || '') : (m0.nameEn || m0.name || ''));
+  }
+
+  // Priority 2 — homepage.founderImage
+  if (!photoRef) {
+    try {
+      var homepage = await getHomepage();
+      if (homepage && homepage.founderImage && homepage.founderImage.asset && homepage.founderImage.asset._ref) {
+        photoRef = homepage.founderImage;
+        altText  = homepage.founderImage.alt || altText;
+
+        // Also populate text from homepage fields if not overridden by teamMembers
+        if (!m0) {
+          var founderName = lang === 'ge'
+            ? (homepage.founderName || '')
+            : (homepage.founderNameEn || homepage.founderName || '');
+          var founderRole = lang === 'ge'
+            ? (homepage.founderRole || '')
+            : (homepage.founderRoleEn || homepage.founderRole || '');
+          var founderSec = lang === 'ge'
+            ? (homepage.founderSecondary || '')
+            : (homepage.founderSecondaryEn || homepage.founderSecondary || '');
+
+          if (nameEl && founderName) nameEl.textContent = founderName;
+          if (roleEl && founderRole) {
+            roleEl.dataset.ge = homepage.founderRole || '';
+            roleEl.dataset.en = homepage.founderRoleEn || '';
+            roleEl.textContent = founderRole;
+          }
+          if (secondaryEl && founderSec) {
+            secondaryEl.dataset.ge = homepage.founderSecondary || '';
+            secondaryEl.dataset.en = homepage.founderSecondaryEn || '';
+            secondaryEl.textContent = founderSec;
+          }
+        }
+      }
+    } catch (_) { /* silent — we have a static fallback */ }
+  }
+
+  // ── Populate text from page.teamMembers[0] ───
+  if (m0) {
+    var name = lang === 'ge' ? (m0.name || '') : (m0.nameEn || m0.name || '');
+    var role = lang === 'ge' ? (m0.role || '') : (m0.roleEn || m0.role || '');
+
+    if (nameEl && name) nameEl.textContent = name;
+    if (roleEl && role) {
+      roleEl.dataset.ge = m0.role || '';
+      roleEl.dataset.en = m0.roleEn || '';
+      roleEl.textContent = role;
+    }
+  }
+
+  // ── Set image src ────────────────────────────
+  if (photoRef) {
+    var imgUrl = urlFor(photoRef).width(600).url();
+    if (imgUrl) {
+      imgEl.src = imgUrl;
+      if (altText) imgEl.alt = altText;
+    }
+    // else: src stays as the static fallback already in the HTML
+  }
+  // Priority 3 — static fallback already in HTML: src="/images/tea.png"
 }
 
 function renderAboutSections(sections, lang) {
