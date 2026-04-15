@@ -105,7 +105,8 @@ export function clearCache(key) {
 export function getCategories() {
   if (!_cache.categories) {
     _cache.categories = sanityFetch(`*[_type == "category"] | order(order asc) {
-    _id, title, titleEn, "slug": slug.current, description, descriptionEn, image
+    _id, title, titleEn, "slug": slug.current, description, descriptionEn,
+    image { _type, alt, asset { _ref, _type } }
   }`);
   }
   return _cache.categories;
@@ -120,7 +121,8 @@ export function getCategoriesFromProducts() {
   if (!_cache.categoriesFromProducts) {
     _cache.categoriesFromProducts = sanityFetch(
       `*[_type == "category" && _id in *[_type == "product" && defined(category) && inStock != false].category._ref] | order(order asc) {
-        _id, title, titleEn, "slug": slug.current, image,
+        _id, title, titleEn, "slug": slug.current,
+        image { _type, alt, asset { _ref, _type } },
         "productCount": count(*[_type == "product" && category._ref == ^._id && inStock != false])
       }`
     );
@@ -131,7 +133,9 @@ export function getCategoriesFromProducts() {
 /** Fetch products, optionally filtered by category slug */
 export async function getProducts(categorySlug) {
   const base = `
-    _id, name, nameEn, "slug": slug.current, sku, mainImage, gallery,
+    _id, name, nameEn, "slug": slug.current, sku,
+    mainImage { _type, alt, asset { _ref, _type } },
+    gallery[] { _type, alt, asset { _ref, _type } },
     price, salePrice, badge, isFeatured, inStock,
     description, descriptionEn,
     additionalPackaging, packagingPrice, variants,
@@ -156,7 +160,8 @@ export function getFeaturedProducts() {
   if (!_cache.featuredProducts) {
     _cache.featuredProducts = sanityFetch(
       `*[_type == "product" && isFeatured == true && inStock != false] | order(order asc) {
-        _id, name, nameEn, "slug": slug.current, mainImage, gallery,
+        _id, name, nameEn, "slug": slug.current, mainImage { _type, alt, asset { _ref, _type } },
+        gallery[] { _type, alt, asset { _ref, _type } },
         price, salePrice, badge,
         description, descriptionEn,
         "categoryTitle": category->title,
@@ -173,7 +178,9 @@ export async function getProduct(slug) {
   return sanityFetch(
     `*[_type == "product" && slug.current == $slug][0] {
       _id, name, nameEn, "slug": slug.current, sku,
-      description, descriptionEn, mainImage, gallery,
+      description, descriptionEn,
+      mainImage { _type, alt, asset { _ref, _type } },
+      gallery[] { _type, alt, asset { _ref, _type } },
       price, salePrice, badge, inStock, isFeatured,
       variants, additionalPackaging, packagingPrice,
       category->{ _id, title, titleEn, "slug": slug.current },
@@ -203,10 +210,12 @@ export function getPage(slug) {
         buttonText, buttonTextEn, buttonLink
       },
       sections[] {
-        _key, heading, headingEn, text, textEn, image
+        _key, heading, headingEn, text, textEn,
+        image { _type, alt, asset { _ref, _type } }
       },
       teamMembers[] {
-        _key, name, nameEn, role, roleEn, photo
+        _key, name, nameEn, role, roleEn,
+        photo { _type, alt, asset { _ref, _type } }
       },
       seo
     }`,
@@ -220,10 +229,14 @@ export function getPage(slug) {
 export function getSiteSettings() {
   if (!_cache.siteSettings) {
     _cache.siteSettings = sanityFetch(`*[_type == "siteSettings"][0] {
-    siteTitle, logo, logoDark, favicon,
+    siteTitle,
+    logo { _type, alt, asset { _ref, _type } },
+    logoDark { _type, alt, asset { _ref, _type } },
+    favicon { _type, alt, asset { _ref, _type } },
     homepageTitle, homepageTitleEn,
     homepageDescription, homepageDescriptionEn,
-    heroImage, contactEmail, phoneNumber, phoneNumber2,
+    heroImage { _type, alt, asset { _ref, _type } },
+    contactEmail, phoneNumber, phoneNumber2,
     address, addressEn, mapEmbedUrl,
     workingHours, workingHoursEn,
     footerText, footerTextEn,
@@ -268,7 +281,8 @@ export function getHomepage() {
     sections[] {
       _key, type,
       heading, headingEn, label, labelEn,
-      text, textEn, image,
+      text, textEn,
+      image { _type, alt, asset { _ref, _type } },
       buttonText, buttonTextEn, buttonLink,
       slides[] {
         _key,
@@ -290,7 +304,8 @@ export function getBlogPosts(limit = 3) {
     _cache[key] = sanityFetch(
       `*[_type == "blogPost"] | order(publishedAt desc) [0...$limit] {
         _id, title, titleEn, "slug": slug.current,
-        publishedAt, image, excerpt, excerptEn, tags
+        publishedAt, excerpt, excerptEn, tags,
+        image { _type, alt, asset { _ref, _type } }
       }`,
       { limit }
     );
@@ -303,7 +318,8 @@ export async function getBlogPost(slug) {
   return sanityFetch(
     `*[_type == "blogPost" && slug.current == $slug][0] {
       _id, title, titleEn, "slug": slug.current,
-      publishedAt, image, excerpt, excerptEn,
+      publishedAt, excerpt, excerptEn,
+      image { _type, alt, asset { _ref, _type } },
       body, bodyEn, tags
     }`,
     { slug }

@@ -1029,8 +1029,13 @@ document.addEventListener('DOMContentLoaded', function () {
         var page     = res[0];
         var settings = res[1];
         var lang     = getLang();
-        if (page && page.heroImage) {
-          var imgUrl = sanityImageUrl(page.heroImage, 1920);
+        var imageRef = (page && page.heroImage && page.heroImage.asset && page.heroImage.asset._ref)
+          ? page.heroImage
+          : (settings && settings.heroImage && settings.heroImage.asset && settings.heroImage.asset._ref)
+            ? settings.heroImage
+            : null;
+        if (imageRef) {
+          var imgUrl = sanityImageUrl(imageRef, 1920);
           var banner = document.querySelector('.page-banner');
           if (banner && imgUrl) banner.style.backgroundImage = "url('" + imgUrl + "')";
         }
@@ -1082,14 +1087,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Contact page only
   else if (isContact) {
-    // Apply banner image first — same independent pattern as the products page
+    // Apply banner image: prefer page.heroImage, fall back to siteSettings.heroImage
     renders.push(
-      getPage('contact').then(function (page) {
-        if (page && page.heroImage) {
-          var imgUrl = sanityImageUrl(page.heroImage, 1920);
-          var banner = document.querySelector('.page-banner');
-          if (banner && imgUrl) banner.style.backgroundImage = "url('" + imgUrl + "')";
+      Promise.all([
+        getPage('contact').catch(function () { return null; }),
+        getSiteSettings().catch(function () { return null; }),
+      ]).then(function (res) {
+        var page     = res[0];
+        var settings = res[1];
+        var imageRef = (page && page.heroImage && page.heroImage.asset && page.heroImage.asset._ref)
+          ? page.heroImage
+          : (settings && settings.heroImage && settings.heroImage.asset && settings.heroImage.asset._ref)
+            ? settings.heroImage
+            : null;
+        if (!imageRef) {
+          console.warn('[Contact] No heroImage on page doc or siteSettings — banner keeps its CSS background.');
+          return;
         }
+        var imgUrl = sanityImageUrl(imageRef, 1920);
+        var banner = document.querySelector('.page-banner');
+        if (banner && imgUrl) banner.style.backgroundImage = "url('" + imgUrl + "')";
       }).catch(function () {})
     );
     renders.push(renderContactPage().catch(function () {}));
