@@ -109,15 +109,28 @@ async function renderFounderCard(teamMembers, lang) {
   if (m0 && m0.photo && m0.photo.asset && m0.photo.asset._ref) {
     photoRef = m0.photo;
     altText  = (m0.photo.alt) || (lang === 'ge' ? (m0.name || '') : (m0.nameEn || m0.name || ''));
+    console.log('[Founder] ✓ Priority 1 — using teamMembers[0].photo, _ref:', photoRef.asset._ref);
+  } else {
+    console.log('[Founder] Priority 1 skipped — no teamMembers[0].photo._ref in page doc',
+      m0 ? '(member exists but photo missing)' : '(no team members)');
   }
 
   // Priority 2 — homepage.founderImage
   if (!photoRef) {
     try {
       var homepage = await getHomepage();
-      if (homepage && homepage.founderImage && homepage.founderImage.asset && homepage.founderImage.asset._ref) {
+      console.log('[Founder] Priority 2 — homepage raw:', homepage);
+
+      if (!homepage) {
+        console.warn('[Founder] ✗ getHomepage() returned null — check that a homepage document is published in Sanity Studio');
+      } else if (!homepage.founderImage) {
+        console.warn('[Founder] ✗ homepage.founderImage is null/undefined — upload an image to the Homepage Layout document in Sanity Studio (Founder Image field)');
+      } else if (!homepage.founderImage.asset || !homepage.founderImage.asset._ref) {
+        console.warn('[Founder] ✗ homepage.founderImage exists but asset._ref is missing — GROQ projection may be wrong. Received:', homepage.founderImage);
+      } else {
         photoRef = homepage.founderImage;
         altText  = homepage.founderImage.alt || altText;
+        console.log('[Founder] ✓ Priority 2 — using homepage.founderImage, _ref:', photoRef.asset._ref);
 
         // Also populate text from homepage fields if not overridden by teamMembers
         if (!m0) {
@@ -144,7 +157,24 @@ async function renderFounderCard(teamMembers, lang) {
           }
         }
       }
-    } catch (_) { /* silent — we have a static fallback */ }
+    } catch (err) {
+      console.error('[Founder] ✗ getHomepage() threw an error (likely CORS or network):', err.message || err,
+        '\n  → Fix: add', window.location.origin, 'to CORS origins at https://sanity.io/manage');
+    }
+  }
+
+  // ── Set image src ────────────────────────────
+  if (photoRef) {
+    var imgUrl = urlFor(photoRef).width(600).url();
+    console.log('[Founder] ✓ Generated CDN URL:', imgUrl);
+    if (imgUrl) {
+      imgEl.src = imgUrl;
+      if (altText) imgEl.alt = altText;
+    } else {
+      console.warn('[Founder] urlFor() returned empty string — check sanityImageUrl() builder for asset._ref format');
+    }
+  } else {
+    console.log('[Founder] ℹ Priority 3 — no Sanity image found, keeping static fallback:', imgEl.src);
   }
 
   // ── Populate text from page.teamMembers[0] ───
@@ -159,17 +189,6 @@ async function renderFounderCard(teamMembers, lang) {
       roleEl.textContent = role;
     }
   }
-
-  // ── Set image src ────────────────────────────
-  if (photoRef) {
-    var imgUrl = urlFor(photoRef).width(600).url();
-    if (imgUrl) {
-      imgEl.src = imgUrl;
-      if (altText) imgEl.alt = altText;
-    }
-    // else: src stays as the static fallback already in the HTML
-  }
-  // Priority 3 — static fallback already in HTML: src="/images/tea.png"
 }
 
 function renderAboutSections(sections, lang) {
