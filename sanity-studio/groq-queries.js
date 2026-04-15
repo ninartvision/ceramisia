@@ -28,7 +28,9 @@ export const ALL_PRODUCTS = `
     variants,
     "categoryTitle": category->title,
     "categoryTitleEn": category->titleEn,
-    "categorySlug": category->slug.current
+    "categorySlug": category->slug.current,
+    description[] { _type, _key, style, listItem, level, markDefs[]{ _key, _type, href }, children[]{ _key, _type, text, marks } },
+    descriptionEn[] { _type, _key, style, listItem, level, markDefs[]{ _key, _type, href }, children[]{ _key, _type, text, marks } }
   }
 `
 
@@ -48,7 +50,9 @@ export const PRODUCTS_BY_CATEGORY = `
     variants,
     "categoryTitle": category->title,
     "categoryTitleEn": category->titleEn,
-    "categorySlug": category->slug.current
+    "categorySlug": category->slug.current,
+    description[] { _type, _key, style, listItem, level, markDefs[]{ _key, _type, href }, children[]{ _key, _type, text, marks } },
+    descriptionEn[] { _type, _key, style, listItem, level, markDefs[]{ _key, _type, href }, children[]{ _key, _type, text, marks } }
   }
 `
 
@@ -65,7 +69,9 @@ export const FEATURED_PRODUCTS = `
     badge,
     "categoryTitle": category->title,
     "categoryTitleEn": category->titleEn,
-    "categorySlug": category->slug.current
+    "categorySlug": category->slug.current,
+    description[] { _type, _key, style, listItem, level, markDefs[]{ _key, _type, href }, children[]{ _key, _type, text, marks } },
+    descriptionEn[] { _type, _key, style, listItem, level, markDefs[]{ _key, _type, href }, children[]{ _key, _type, text, marks } }
   }
 `
 
