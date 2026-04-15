@@ -992,6 +992,17 @@ p { color: var(--clr-text-mid); }
   color: var(--clr-text);
 }
 
+.product-desc {
+  font-size: 0.82rem;
+  color: var(--clr-text-muted);
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .product-price {
   font-size: 0.95rem;
   font-weight: 600;

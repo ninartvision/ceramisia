@@ -203,12 +203,35 @@ function _spansToHtml(children, markDefs) {
   return out;
 }
 
+/**
+ * Extract plain text from a Portable Text blocks array.
+ * Used for card description previews — strips all markup, joins spans.
+ * Handles edge cases: null input, non-block types (image blocks, etc.),
+ * missing children array, missing text property.
+ */
+function _blocksToPlainText(blocks) {
+  if (!blocks || !Array.isArray(blocks) || !blocks.length) return '';
+  return blocks
+    .filter(function (b) { return b && b._type === 'block'; })
+    .map(function (b) {
+      if (!b.children || !Array.isArray(b.children)) return '';
+      return b.children
+        .filter(function (c) { return c && c._type !== 'hardBreak'; })
+        .map(function (c) { return (c && typeof c.text === 'string') ? c.text : ''; })
+        .join('');
+    })
+    .filter(function (s) { return s.length > 0; })
+    .join(' ')
+    .trim();
+}
+
 /** Build price HTML from product data */
 function buildPriceHtml(p) {
+  if (!p || (p.price == null && p.salePrice == null)) return '';
   if (p.salePrice) {
-    return '<span class="original">\u20BE ' + esc(String(p.price)) + '</span>\u20BE ' + esc(String(p.salePrice));
+    return '<span class="original">\u20BE ' + esc(String(p.price || 0)) + '</span>\u20BE ' + esc(String(p.salePrice));
   }
-  return '\u20BE ' + esc(String(p.price));
+  return '\u20BE ' + esc(String(p.price || 0));
 }
 
 /** Build badge HTML */
@@ -230,9 +253,14 @@ function buildBadge(badge) {
 
 /** Create a product card DOM element */
 function createProductCard(p, lang, extraClass, isFirst) {
+  // Guard: if product object is null/undefined, return an empty div to prevent crash
+  if (!p || typeof p !== 'object') {
+    console.error('[Ceramisia] createProductCard received invalid product:', p);
+    return document.createElement('div');
+  }
   const name     = lang === 'ge' ? (p.name || '') : (p.nameEn || p.name || '');
   const catLabel = lang === 'ge' ? (p.categoryTitle || '') : (p.categoryTitleEn || '');
-  const imgUrl   = sanityImageUrl(p.mainImage, 600);
+  const imgUrl   = p.mainImage ? sanityImageUrl(p.mainImage, 600) : '';
   const imgSrcset = p.mainImage ? sanityImageSrcset(p.mainImage, [400, 600, 900]) : '';
   const badge    = buildBadge(p.badge);
   const priceHtml = buildPriceHtml(p);
@@ -251,6 +279,20 @@ function createProductCard(p, lang, extraClass, isFirst) {
   var _descEnHtml = _blocksToHtml(_rawDescEn);
   card.dataset.descGe = _descGeHtml;
   card.dataset.descEn = _descEnHtml;
+
+  // Plain-text excerpt for the visible card (max 100 chars)
+  var _descPlain = lang === 'ge'
+    ? _blocksToPlainText(_rawDescGe)
+    : (_blocksToPlainText(_rawDescEn) || _blocksToPlainText(_rawDescGe));
+  var _descCard = _descPlain.length > 100
+    ? _descPlain.slice(0, 100).trimEnd() + '\u2026'
+    : _descPlain;
+
+  // Debug: warn if product has no description so it's easy to spot in Sanity Studio
+  if (!_descCard) {
+    console.warn('[Ceramisia] Product "' + (p.name || p.nameEn || p._id || 'unknown') +
+      '" has no description. Add it in Sanity Studio → Product → Description (GE/EN).');
+  }
 
   // Build gallery: mainImage + gallery array
   const galleryImages = [imgUrl];
@@ -283,6 +325,7 @@ function createProductCard(p, lang, extraClass, isFirst) {
     '<div class="product-info">' +
       '<p class="product-category" data-ge="' + esc(p.categoryTitle || '') + '" data-en="' + esc(p.categoryTitleEn || '') + '">' + esc(catLabel) + '</p>' +
       '<h3 class="product-name" data-ge="' + esc(p.name || '') + '" data-en="' + esc(p.nameEn || '') + '">' + esc(name) + '</h3>' +
+      (_descCard ? '<p class="product-desc">' + esc(_descCard) + '</p>' : '') +
       '<p class="product-price">' + priceHtml + '</p>' +
     '</div>';
 
@@ -427,6 +470,7 @@ async function renderProductsGrid(categorySlug) {
   try {
     const cat = categorySlug || new URLSearchParams(window.location.search).get('cat') || 'all';
     const products = await getProducts(cat);
+    console.log('[Ceramisia] Products loaded (' + (products ? products.length : 0) + '):', products);
     const lang = getLang();
 
     grid.innerHTML = '';
@@ -456,18 +500,19 @@ async function renderProductsGrid(categorySlug) {
     if (typeof window.initProductModal === 'function') window.initProductModal();
 
   } catch (err) {
-    var isCors = err && (err.message || '').toLowerCase().includes('fetch') ||
-                 err instanceof TypeError;
+    var msg = (err && err.message) ? err.message : String(err);
+    var isCors = err instanceof TypeError || msg.toLowerCase().indexOf('fetch') !== -1 ||
+                 msg.toLowerCase().indexOf('network') !== -1;
     if (isCors) {
       console.error(
-        '[Ceramisia] Products failed to load. This is usually a CORS issue.\n' +
-        'If you are testing locally, make sure you open the site via http://localhost:PORT \n' +
-        '(not 127.0.0.1:PORT) and that localhost is listed in Sanity CORS origins at\n' +
-        'https://www.sanity.io/manage → API → CORS origins.\n' +
+        '[Ceramisia] Products failed to load — likely a CORS or network error.\n' +
+        'LOCAL: open via http://localhost:PORT and add "http://localhost:PORT" to\n' +
+        'Sanity CORS origins at https://sanity.io/manage → API → CORS origins.\n' +
+        'PRODUCTION: ensure ceramisia.com is in the CORS allow-list.\n' +
         'Exact error:', err
       );
     } else {
-      console.error('[Ceramisia] Products failed to load. Exact error:', err);
+      console.error('[Ceramisia] Products failed to load. Type:', err && err.constructor && err.constructor.name, '| Message:', msg, '| Full error:', err);
     }
     const lang = getLang();
     grid.innerHTML =

@@ -197,9 +197,7 @@
     var dots      = document.querySelectorAll('.dot');
     var prevBtn   = document.getElementById('prevSlide');
     var nextBtn   = document.getElementById('nextSlide');
-    console.log('Slides count:', slides.length);
     if (!slides.length) return;
-    console.log('Slider initialized');
 
     var current  = 0;
     var total    = slides.length;
