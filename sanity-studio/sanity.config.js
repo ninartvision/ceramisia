@@ -79,11 +79,11 @@ export default defineConfig({
   },
 
   document: {
-  actions: (input, context) =>
-    singletonTypes.has(context.schemaType)
-      ? input.filter(({ action }) =>
-          action && ['publish'].includes(action)
-        )
-      : input,
-},
+    actions: (input, context) =>
+      singletonTypes.has(context.schemaType)
+        ? input.filter(({ action }) =>
+            action && ['publish', 'discardChanges', 'restore'].includes(action)
+          )
+        : input,
+  },
 })

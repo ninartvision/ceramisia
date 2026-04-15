@@ -10,9 +10,6 @@ export default {
   title: 'Homepage',
   type: 'document',
 
-  // Prevent creating multiple homepage documents
-  __experimental_actions: ['update', 'publish', 'discardDraft'],
-
   fields: [
     {
       name: 'sections',
