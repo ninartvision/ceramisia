@@ -248,19 +248,6 @@ export default {
       type: 'string',
       initialValue: 'Founder / Ceramicist',
     },
-    {
-      name: 'founderSecondary',
-      title: 'Secondary Team Member (Georgian)',
-      type: 'string',
-      initialValue: 'დიზაინერი – თიკა ჯიჯავაძე',
-      description: 'e.g. "Designer – Tika Jijavadze"',
-    },
-    {
-      name: 'founderSecondaryEn',
-      title: 'Secondary Team Member (English)',
-      type: 'string',
-      initialValue: 'Designer – Tika Jijavadze',
-    },
   ],
 
   preview: {

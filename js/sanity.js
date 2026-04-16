@@ -383,8 +383,7 @@ export function getHomepage() {
     },
     founderImage { _type, alt, asset { _ref, _type } },
     founderName, founderNameEn,
-    founderRole, founderRoleEn,
-    founderSecondary, founderSecondaryEn
+    founderRole, founderRoleEn
   }`);
   }
   return _cache.homepage;

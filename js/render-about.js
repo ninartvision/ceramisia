@@ -132,10 +132,9 @@ export async function renderAboutPage() {
  *  page.teamMembers[0] → homepage.founder* → existing static HTML
  */
 async function renderFounderCard(teamMembers, lang) {
-  var imgEl       = document.getElementById('founderImg');
-  var nameEl      = document.getElementById('founderName');
-  var roleEl      = document.getElementById('founderRole');
-  var secondaryEl = document.getElementById('founderSecondary');
+  var imgEl   = document.getElementById('founderImg');
+  var nameEl  = document.getElementById('founderName');
+  var roleEl  = document.getElementById('founderRole');
 
   if (!imgEl) return; // not on about page
 
@@ -173,20 +172,11 @@ async function renderFounderCard(teamMembers, lang) {
           var founderRole = lang === 'ge'
             ? (homepage.founderRole || '')
             : (homepage.founderRoleEn || homepage.founderRole || '');
-          var founderSec = lang === 'ge'
-            ? (homepage.founderSecondary || '')
-            : (homepage.founderSecondaryEn || homepage.founderSecondary || '');
-
           if (nameEl && founderName) nameEl.textContent = founderName;
           if (roleEl && founderRole) {
             roleEl.dataset.ge = homepage.founderRole || '';
             roleEl.dataset.en = homepage.founderRoleEn || '';
             roleEl.textContent = founderRole;
-          }
-          if (secondaryEl && founderSec) {
-            secondaryEl.dataset.ge = homepage.founderSecondary || '';
-            secondaryEl.dataset.en = homepage.founderSecondaryEn || '';
-            secondaryEl.textContent = founderSec;
           }
         }
       }
