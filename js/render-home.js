@@ -199,7 +199,9 @@ function buildSlides(container, dotsWrap, slides) {
  */
 var STATIC_SLIDES = [
   {
-    image: { asset: { _ref: null }, _staticSrc: '/images/ceramisia-01.webp', alt: 'Ceramisia კერამიკა' },
+    // _staticSrc must be at the top level — renderHeroSlider() reads s._staticSrc directly
+    _staticSrc:   '/images/ceramsia-01.webp',
+    image: { asset: { _ref: null }, alt: 'Ceramisia კერამიკა' },
     heading:    'კერამიკის სამყარო',
     headingEn:  'World of Ceramics',
     subtext:    'ხელნაკეთი კერამიკა თქვენი სახლისთვის',
@@ -209,7 +211,8 @@ var STATIC_SLIDES = [
     buttonLink:   '/products/',
   },
   {
-    image: { asset: { _ref: null }, _staticSrc: '/images/ceramisia-05.webp', alt: 'უნიკალური დიზაინი' },
+    _staticSrc:   '/images/ceramsia-05.webp',
+    image: { asset: { _ref: null }, alt: 'უნიკალური დიზაინი' },
     heading:    'უნიკალური დიზაინი',
     headingEn:  'Unique Design',
     subtext:    'ყოველი ნამუშევარი ინდივიდუალურია',
@@ -219,7 +222,8 @@ var STATIC_SLIDES = [
     buttonLink:   '/products/',
   },
   {
-    image: { asset: { _ref: null }, _staticSrc: '/images/ceramisia-16.webp', alt: 'ეკოლოგიური მასალები' },
+    _staticSrc:   '/images/ceramsia-16.webp',
+    image: { asset: { _ref: null }, alt: 'ეკოლოგიური მასალები' },
     heading:    'ეკოლოგიური მასალები',
     headingEn:  'Eco-Friendly Materials',
     subtext:    'ბუნებრივი თიხა და ორგანული საღებავები',
