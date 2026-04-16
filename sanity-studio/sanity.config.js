@@ -13,51 +13,51 @@ const deskStructure = (S) =>
     .items([
       // ── Singletons at the top ─────────────────────────
       S.listItem()
-        .title('Site Settings')
+        .title('⚙️ Site Settings')
         .id('siteSettings')
         .child(
           S.document()
             .schemaType('siteSettings')
             .documentId('siteSettings')
-            .title('Site Settings')
+            .title('⚙️ Site Settings')
         ),
       S.listItem()
-        .title('Navigation & Menus')
+        .title('🧭 Navigation & Menus')
         .id('navigation')
         .child(
           S.document()
             .schemaType('navigation')
             .documentId('navigation')
-            .title('Navigation & Menus')
+            .title('🧭 Navigation & Menus')
         ),
 
       // ── Homepage (singleton) ───────────────────────────
       S.listItem()
-        .title('Homepage Layout')
+        .title('🏠 Homepage Layout')
         .id('homepage')
         .child(
           S.document()
             .schemaType('homepage')
             .documentId('homepage')
-            .title('Homepage Layout')
+            .title('🏠 Homepage Layout')
         ),
 
       S.divider(),
 
       // ── Pages ─────────────────────────────────────────
-      S.documentTypeListItem('page').title('Pages'),
+      S.documentTypeListItem('page').title('📄 Pages'),
 
       S.divider(),
 
       // ── Content ───────────────────────────────────────
-      S.documentTypeListItem('product').title('Products'),
-      S.documentTypeListItem('category').title('Categories'),
-      S.documentTypeListItem('blogPost').title('Blog Posts'),
+      S.documentTypeListItem('product').title('🛍️ Products'),
+      S.documentTypeListItem('category').title('📂 Categories'),
+      S.documentTypeListItem('blogPost').title('📝 Blog Posts'),
 
       S.divider(),
 
       // ── Orders ────────────────────────────────────────
-      S.documentTypeListItem('order').title('Orders & Inquiries'),
+      S.documentTypeListItem('order').title('📦 Orders & Inquiries'),
     ])
 
 export default defineConfig({
