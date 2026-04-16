@@ -118,7 +118,7 @@ export async function renderDynamicPage() {
 
     // Update canonical URL
     var canonical = document.querySelector('link[rel="canonical"]');
-    if (canonical) canonical.href = 'https://ninartvision.github.io/ceramisia/' + encodeURIComponent(slug);
+    if (canonical) canonical.href = 'https://ceramisia.com/page/?slug=' + encodeURIComponent(slug);
 
     // Build page HTML
     var html = '';
@@ -126,7 +126,7 @@ export async function renderDynamicPage() {
     // Hero area (if hero heading exists)
     if (heading) {
       var heroImg = page.heroImage ? sanityImageUrl(page.heroImage, 1920) : '';
-      html += '<section class="page-hero"' + (heroImg ? ' style="background-image:url(' + heroImg + ')"' : '') + '>';
+      html += '<section class="page-hero"' + (heroImg ? ' style="background-image:url(\'' + heroImg + '\')"' : '') + '>';
       html += '<div class="container">';
       if (subtext) html += '<span class="section-label">' + esc(subtext) + '</span>';
       html += '<h1>' + esc(heading) + '</h1>';

@@ -77,7 +77,6 @@ function showHeroEmpty(container, dotsWrap) {
  */
 function validateSlides(raw, label) {
   if (!Array.isArray(raw) || raw.length === 0) {
-    console.log('[Hero]', label, '→ null or empty array returned by Sanity (field may be unpublished or not yet filled)');
     return null;
   }
   var valid = raw.filter(function (s, idx) {
@@ -92,9 +91,6 @@ function validateSlides(raw, label) {
     if (!hasImgRef) {
       console.warn('[Hero]', label, 'slide[' + idx + '] "' + (geHeading || enHeading) +
         '" — no image.asset._ref; will render with CSS gradient fallback background.');
-    } else {
-      console.log('[Hero]', label, 'slide[' + idx + '] ✓', geHeading || enHeading,
-        '| image._ref:', s.image.asset._ref);
     }
     return true; // include slide even without image — buildSlides() uses CSS gradient fallback
   });
@@ -102,7 +98,6 @@ function validateSlides(raw, label) {
     console.warn('[Hero]', label, '→ 0 valid slides after filtering (all skipped — missing heading)');
     return null;
   }
-  console.log('[Hero]', label, '→', valid.length, 'of', raw.length, 'slide(s) passed validation');
   return valid;
 }
 
@@ -384,7 +379,6 @@ export async function renderAboutStrip() {
     var imgUrl = (s.image && s.image.asset && s.image.asset._ref)
       ? sanityImageUrl(s.image, 1200)
       : '';
-    console.log('[About Strip] Section image source:', s.image || '(null)', '| URL:', imgUrl || '(empty — no image set in Sanity section)');
 
     var textEl = section.querySelector('.about-strip-text');
     if (textEl) {
@@ -422,7 +416,6 @@ export async function renderAboutStrip() {
     if (imageWrap) {
       if (!imgUrl && settings && settings.heroImage && settings.heroImage.asset && settings.heroImage.asset._ref) {
         imgUrl = sanityImageUrl(settings.heroImage, 800);
-        console.log('[About Strip] Fallback → siteSettings.heroImage URL:', imgUrl || '(empty)');
       }
       if (imgUrl) {
         imageWrap.innerHTML = '<img src="' + esc(imgUrl) + '" alt="Ceramisia Studio" loading="lazy">';

@@ -100,7 +100,6 @@
         descText = '';
       }
     }
-    console.log('[Ceramisia] Modal desc for card:', (nameEl && nameEl.textContent) || '?', '| raw ge blocks:', rawBlocksGe.length, '| raw en blocks:', rawBlocksEn.length, '| result:', descText || '(empty)');
 
     // Name
     var nameText = nameEl

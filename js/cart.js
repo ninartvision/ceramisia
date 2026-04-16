@@ -276,7 +276,7 @@
       row.className = 'cart-item';
       row.innerHTML =
         '<div class="cart-item__img">' +
-          '<img src="' + escapeHtml(item.image) + '" alt="' + escapeHtml(item.name) + '">' +
+          (item.image ? '<img src="' + escapeHtml(item.image) + '" alt="' + escapeHtml(item.name) + '">' : '') +
         '</div>' +
         '<div class="cart-item__info">' +
           '<p class="cart-item__name">' + escapeHtml(lang === 'ge' ? item.name : (item.nameEn || item.name)) + '</p>' +

@@ -24,21 +24,6 @@ const CDN_BASE   = _IS_LOCAL
 // Images must always use cdn.sanity.io regardless
 const IMAGE_BASE = `https://cdn.sanity.io`;
 
-// ── Startup config validation ─────────────────────────
-// Logged once on module load so you can verify the correct project/dataset
-// is connected. Open the browser console and look for this line first.
-console.log(
-  '[Ceramisia] Sanity client ready\n' +
-  '  projectId : ' + SANITY_PROJECT_ID + '\n' +
-  '  dataset   : ' + SANITY_DATASET + '\n' +
-  '  api ver   : ' + SANITY_API_VER + '\n' +
-  '  api base  : ' + CDN_BASE + '\n' +
-  '  img base  : ' + IMAGE_BASE + '\n' +
-  '  origin    : ' + window.location.origin + '\n' +
-  '  → If images fail, ensure this origin is in Sanity CORS allow-list at\n' +
-  '    https://sanity.io/manage → project ' + SANITY_PROJECT_ID + ' → API → CORS origins'
-);
-
 // ── Image URL builder — mirrors @sanity/image-url API ─
 /**
  * Internal builder factory. Returns a chainable builder object whose

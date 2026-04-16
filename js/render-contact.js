@@ -36,8 +36,6 @@ export async function renderContactPage() {
         'Check: (1) a "page" document with slug exactly "contact" exists, ' +
         '(2) it is PUBLISHED (not a draft), ' +
         '(3) ceramisia.com is in the CORS origins at sanity.io/manage.');
-    } else {
-      console.log('[Contact] page fetched:', page._id, '| heroImage:', page.heroImage || 'NOT SET');
     }
 
     // ── Page header ──────────────────────────────

@@ -303,8 +303,8 @@ function createProductCard(p, lang, extraClass, isFirst) {
       '" has no description. Add it in Sanity Studio → Product → Description (GE/EN).');
   }
 
-  // Build gallery: mainImage + gallery array
-  const galleryImages = [imgUrl];
+  // Build gallery: mainImage + gallery array (only include non-empty URLs to avoid <img src=""> 404s)
+  const galleryImages = imgUrl ? [imgUrl] : [];
   if (p.gallery && p.gallery.length) {
     p.gallery.forEach(function (img) {
       const url = sanityImageUrl(img, 800);
@@ -479,17 +479,11 @@ async function renderProductsGrid(categorySlug) {
   try {
     const cat = categorySlug || new URLSearchParams(window.location.search).get('cat') || 'all';
     const products = await getProducts(cat);
-    console.log('[Ceramisia] Products loaded (' + (products ? products.length : 0) + '):', products);
     if (products && products.length) {
       products.forEach(function (p) {
-        console.log('[Ceramisia] Description check —', (p.name || p.nameEn || p._id || '?'), '| descGe:', p.description, '| descEn:', p.descriptionEn);
-        var _imgUrl = sanityImageUrl(p.mainImage, 600);
-        if (!_imgUrl) {
+        if (!sanityImageUrl(p.mainImage, 600)) {
           console.warn('[Ceramisia] Image missing for "' + (p.name || p.nameEn || p._id || '?') + '"' +
-            ' | mainImage:', p.mainImage,
             '\n  → Upload a Main Image in Sanity Studio → Products → ' + (p.name || '?') + ' and PUBLISH.');
-        } else {
-          console.log('[Ceramisia] Image ✓ "' + (p.name || p.nameEn || '?') + '" →', _imgUrl);
         }
       });
     }
@@ -582,16 +576,10 @@ async function renderFeaturedProducts() {
     // Build all cards into a DocumentFragment — one DOM write for the clear,
     // one DOM write for the insert, zero intermediate layout recalculations.
     const lang     = getLang();
-    console.log('[Ceramisia] Featured products loaded (' + products.length + '):', products);
     products.forEach(function (p) {
-      console.log('[Ceramisia] Featured desc check —', (p.name || p.nameEn || p._id || '?'), '| descGe:', p.description, '| descEn:', p.descriptionEn);
-      var _imgUrl = sanityImageUrl(p.mainImage, 600);
-      if (!_imgUrl) {
+      if (!sanityImageUrl(p.mainImage, 600)) {
         console.warn('[Ceramisia] Featured image missing for "' + (p.name || p.nameEn || p._id || '?') + '"' +
-          ' | mainImage:', p.mainImage,
           '\n  → Upload a Main Image in Sanity Studio → Products → ' + (p.name || '?') + ' and PUBLISH.');
-      } else {
-        console.log('[Ceramisia] Featured image ✓ "' + (p.name || p.nameEn || '?') + '" →', _imgUrl);
       }
     });
     const fragment = document.createDocumentFragment();
@@ -868,9 +856,7 @@ function buildSectionAbout(section, settings, lang) {
     return sanityImageUrl(imgRef, w) + ' ' + w + 'w';
   }).join(', ') : '';
 
-  if (imgRef) {
-    console.log('[About-strip] Image URL:', imgUrl || '(empty — check asset._ref)');
-  } else {
+  if (!imgRef) {
     console.warn('[About-strip] No image — add one to Homepage Layout → About Section → Image in Sanity Studio.');
   }
 
@@ -1213,7 +1199,6 @@ document.addEventListener('DOMContentLoaded', function () {
           banner.style.backgroundImage = imgUrl
             ? "url('" + imgUrl + "')"
             : "url('" + CONTACT_FALLBACK + "')";
-          console.log('[Contact] Banner image:', imgUrl || CONTACT_FALLBACK);
         }
       }).catch(function () {})
     );

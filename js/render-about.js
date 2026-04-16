@@ -30,9 +30,6 @@ export async function renderAboutPage() {
       console.error('[About] ✗ No page document found for slugs "about" or "about-us".\n' +
         '  → Open Sanity Studio → Pages → check that your about page exists and is PUBLISHED.\n' +
         '  → Check its Slug field — it must be exactly "about" (all lowercase, no spaces).');
-    } else {
-      console.log('[About] ✓ Page doc loaded (slug: "' + page.slug + '")');
-      console.log('[About] heroImage:', page.heroImage || '(null — upload an image in Sanity Studio → Pages → About → Hero Image)');
     }
 
     var settings = await getSiteSettings().catch(function () { return null; });
@@ -87,7 +84,6 @@ export async function renderAboutPage() {
             return sanityImageUrl(page.heroImage, w) + ' ' + w + 'w';
           }).join(', ');
           imgAlt = page.heroImage.alt || imgAlt;
-          console.log('[About] ✓ Hero image URL (Sanity):', imgUrl);
         } else {
           usingFallback = true;
           console.warn('[About] ✗ sanityImageUrl() returned empty — using local fallback.',
@@ -102,8 +98,6 @@ export async function renderAboutPage() {
       if (usingFallback) {
         imgUrl = HERO_FALLBACK;
       }
-
-      console.log('[About] Using image:', imgUrl);
 
       imageWrap.innerHTML =
         '<img src="' + esc(imgUrl) + '"' +
@@ -154,17 +148,12 @@ async function renderFounderCard(teamMembers, lang) {
   if (m0 && m0.photo && m0.photo.asset && m0.photo.asset._ref) {
     photoRef = m0.photo;
     altText  = (m0.photo.alt) || (lang === 'ge' ? (m0.name || '') : (m0.nameEn || m0.name || ''));
-    console.log('[Founder] ✓ Priority 1 — using teamMembers[0].photo, _ref:', photoRef.asset._ref);
-  } else {
-    console.log('[Founder] Priority 1 skipped — no teamMembers[0].photo._ref in page doc',
-      m0 ? '(member exists but photo missing)' : '(no team members)');
   }
 
   // Priority 2 — homepage.founderImage
   if (!photoRef) {
     try {
       var homepage = await getHomepage();
-      console.log('[Founder] Priority 2 — homepage raw:', homepage);
 
       if (!homepage) {
         console.warn('[Founder] ✗ getHomepage() returned null — check that a homepage document is published in Sanity Studio');
@@ -175,7 +164,6 @@ async function renderFounderCard(teamMembers, lang) {
       } else {
         photoRef = homepage.founderImage;
         altText  = homepage.founderImage.alt || altText;
-        console.log('[Founder] ✓ Priority 2 — using homepage.founderImage, _ref:', photoRef.asset._ref);
 
         // Also populate text from homepage fields if not overridden by teamMembers
         if (!m0) {
@@ -211,15 +199,12 @@ async function renderFounderCard(teamMembers, lang) {
   // ── Set image src ────────────────────────────
   if (photoRef) {
     var imgUrl = urlFor(photoRef).width(600).url();
-    console.log('[Founder] ✓ Generated CDN URL:', imgUrl);
     if (imgUrl) {
       imgEl.src = imgUrl;
       if (altText) imgEl.alt = altText;
     } else {
       console.warn('[Founder] urlFor() returned empty string — check sanityImageUrl() builder for asset._ref format');
     }
-  } else {
-    console.log('[Founder] ℹ Priority 3 — no Sanity image found, keeping static fallback:', imgEl.src);
   }
 
   // ── Populate text from page.teamMembers[0] ───
