@@ -333,14 +333,11 @@
     // Product list
     cart.forEach(function (item, i) {
       var name = lang === 'ge' ? item.name : (item.nameEn || item.name);
-      lines.push(
-        (i + 1) + '. ' + name +
-        '  ×' + item.qty +
-        '  — ₾ ' + (item.price * item.qty)
-      );
+      lines.push((i + 1) + '. ' + name);
       if (item.slug) {
-        lines.push('   🔗 https://ceramisia.com/products/?id=' + encodeURIComponent(item.slug));
+        lines.push('https://ceramisia.com/products/?id=' + encodeURIComponent(item.slug));
       }
+      lines.push('  ×' + item.qty + '  — ₾ ' + (item.price * item.qty));
     });
 
     lines.push('');
