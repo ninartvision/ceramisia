@@ -375,6 +375,9 @@
     // ── Dynamic OG meta tags (helps browser social sharing) ──
     var _imgUrl = data.images && data.images.length ? data.images[0] : '';
     var _descText = data.description || '';
+    var _productUrl = data.slug
+      ? 'https://ceramisia.com/products/' + encodeURIComponent(data.slug) + '/'
+      : window.location.href;
     var _ogTags = {
       'og:title':       data.name + ' – Ceramisia',
       'og:description': _descText.slice(0, 160) || 'ხელნაკეთი კერამიკა Ceramisia-სგან.',
