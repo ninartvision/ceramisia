@@ -33,7 +33,6 @@
   var qtyMinus    = document.getElementById('qtyMinus');
   var qtyPlus     = document.getElementById('qtyPlus');
   var addCartBtn  = document.getElementById('modalAddCart');
-  var waOrderBtn  = document.getElementById('modalWhatsAppOrder');
   var giftCheckbox = document.getElementById('giftCheckbox');
 
   if (!overlay) return;
@@ -371,25 +370,6 @@
       }
       qtyWrap.style.opacity = '';
       qtyWrap.style.pointerEvents = '';
-    }
-
-    // ── WhatsApp order button ─────────────────────────
-    var _slug = data.slug || '';
-    var _productUrl = _slug
-      ? 'https://ceramisia.com/products/?id=' + encodeURIComponent(_slug)
-      : 'https://ceramisia.com/products/';
-    if (waOrderBtn) {
-      var _waMsg = lang === 'ge'
-        ? 'მინდა შევუკვეთო ეს პროდუქტი:\n' + data.name + '\n' + _productUrl
-        : 'I would like to order this product:\n' + data.name + '\n' + _productUrl;
-      waOrderBtn.href = 'https://wa.me/995597224407?text=' + encodeURIComponent(_waMsg);
-      waOrderBtn.style.display = data.status === 'soldout' ? 'none' : '';
-      var _waLabel = waOrderBtn.querySelector('span');
-      if (_waLabel) {
-        _waLabel.textContent = lang === 'ge'
-          ? (_waLabel.dataset.ge || 'WhatsApp-ით შეკვეთა')
-          : (_waLabel.dataset.en || 'Order via WhatsApp');
-      }
     }
 
     // ── Dynamic OG meta tags (helps browser social sharing) ──

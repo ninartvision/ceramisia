@@ -335,7 +335,7 @@
       var name = lang === 'ge' ? item.name : (item.nameEn || item.name);
       lines.push((i + 1) + '. ' + name);
       if (item.slug) {
-        lines.push('https://ceramisia.com/products/?id=' + encodeURIComponent(item.slug));
+        lines.push('https://ceramisia.com/products/' + encodeURIComponent(item.slug) + '/');
       }
       lines.push('  ×' + item.qty + '  — ₾ ' + (item.price * item.qty));
     });
