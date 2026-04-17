@@ -505,7 +505,10 @@
 
   /* ── Bind to product cards ───────────────────── */
   function bindProductCards() {
-    document.querySelectorAll('.product-card').forEach(function (card) {
+    // Use a data attribute to prevent adding duplicate listeners on re-renders
+    document.querySelectorAll('.product-card:not([data-modal-bound])').forEach(function (card) {
+      card.setAttribute('data-modal-bound', '1');
+
       // Click on card (but not on the add-to-cart button)
       card.addEventListener('click', function (e) {
         // Don't open modal if clicking the card's own add-to-cart button
