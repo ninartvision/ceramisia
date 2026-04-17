@@ -33,6 +33,7 @@
   var qtyMinus    = document.getElementById('qtyMinus');
   var qtyPlus     = document.getElementById('qtyPlus');
   var addCartBtn  = document.getElementById('modalAddCart');
+  var waOrderBtn  = document.getElementById('modalWhatsAppOrder');
   var giftCheckbox = document.getElementById('giftCheckbox');
 
   if (!overlay) return;
@@ -145,7 +146,8 @@
       originalPrice: originalPrice,
       description: descText,
       status: status,
-      badgeText: badgeText
+      badgeText: badgeText,
+      slug: card.dataset.slug || ''
     };
   }
 
@@ -370,6 +372,50 @@
       qtyWrap.style.opacity = '';
       qtyWrap.style.pointerEvents = '';
     }
+
+    // ── WhatsApp order button ─────────────────────────
+    var _slug = data.slug || '';
+    var _productUrl = _slug
+      ? 'https://ceramisia.com/products/?id=' + encodeURIComponent(_slug)
+      : 'https://ceramisia.com/products/';
+    if (waOrderBtn) {
+      var _waMsg = lang === 'ge'
+        ? 'მინდა შევუკვეთო ეს პროდუქტი:\n' + data.name + '\n' + _productUrl
+        : 'I would like to order this product:\n' + data.name + '\n' + _productUrl;
+      waOrderBtn.href = 'https://wa.me/995597224407?text=' + encodeURIComponent(_waMsg);
+      waOrderBtn.style.display = data.status === 'soldout' ? 'none' : '';
+      var _waLabel = waOrderBtn.querySelector('span');
+      if (_waLabel) {
+        _waLabel.textContent = lang === 'ge'
+          ? (_waLabel.dataset.ge || 'WhatsApp-ით შეკვეთა')
+          : (_waLabel.dataset.en || 'Order via WhatsApp');
+      }
+    }
+
+    // ── Dynamic OG meta tags (helps browser social sharing) ──
+    var _imgUrl = data.images && data.images.length ? data.images[0] : '';
+    var _descText = data.description || '';
+    var _ogTags = {
+      'og:title':       data.name + ' – Ceramisia',
+      'og:description': _descText.slice(0, 160) || 'ხელნაკეთი კერამიკა Ceramisia-სგან.',
+      'og:url':         _productUrl,
+      'og:image':       _imgUrl
+    };
+    Object.keys(_ogTags).forEach(function (prop) {
+      if (!_ogTags[prop]) return;
+      var el = document.querySelector('meta[property="' + prop + '"]');
+      if (el) el.setAttribute('content', _ogTags[prop]);
+    });
+    var _twTags = {
+      'twitter:title':       data.name + ' – Ceramisia',
+      'twitter:description': _descText.slice(0, 160) || 'ხელნაკეთი კერამიკა Ceramisia-სგან.',
+      'twitter:image':       _imgUrl
+    };
+    Object.keys(_twTags).forEach(function (twName) {
+      if (!_twTags[twName]) return;
+      var el = document.querySelector('meta[name="' + twName + '"]');
+      if (el) el.setAttribute('content', _twTags[twName]);
+    });
   }
 
   /* ── Open / Close ────────────────────────────── */
@@ -430,7 +476,8 @@
       name:   data.name,
       nameEn: data.name, // extracted in current lang
       price:  0,
-      image:  data.images && data.images[0] ? data.images[0] : ''
+      image:  data.images && data.images[0] ? data.images[0] : '',
+      slug:   data.slug || ''
     };
     // Parse current price number
     var priceText = price ? price.textContent.trim() : '';
@@ -450,6 +497,7 @@
         nameEn:   _modalProduct.nameEn,
         price:    _modalProduct.price,
         image:    _modalProduct.image,
+        slug:     _modalProduct.slug || '',
         giftWrap: giftCheckbox ? giftCheckbox.checked : false
       };
       if (productToAdd.giftWrap) {

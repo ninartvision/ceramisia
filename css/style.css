@@ -999,6 +999,7 @@ p { color: var(--clr-text-mid); }
   margin-bottom: 0.5rem;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -2181,6 +2182,38 @@ p { color: var(--clr-text-mid); }
   stroke: currentColor;
   stroke-width: 1.5;
   fill: none;
+}
+
+/* WhatsApp order button — sits below add-to-cart in product modal */
+.modal-whatsapp-order {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.6rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  background: #25D366;
+  color: #fff;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+.modal-whatsapp-order:hover {
+  background: #1ebe5a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(37, 211, 102, 0.35);
+}
+.modal-whatsapp-order:active {
+  transform: translateY(0);
+}
+.modal-whatsapp-order svg {
+  flex-shrink: 0;
 }
 
 /* Body scroll lock */

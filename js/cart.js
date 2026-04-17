@@ -62,6 +62,7 @@
         price:    product.price,
         image:    product.image,
         category: product.category || '',
+        slug:     product.slug || '',
         qty:      qty
       });
     }
@@ -132,12 +133,14 @@
     }
 
     var image = imgEl ? imgEl.src : '';
+    var slug  = card.dataset.slug || '';
 
     return {
       name:   name,
       nameEn: nameEn,
       price:  priceNum,
-      image:  image
+      image:  image,
+      slug:   slug
     };
   }
 
@@ -335,6 +338,9 @@
         '  ×' + item.qty +
         '  — ₾ ' + (item.price * item.qty)
       );
+      if (item.slug) {
+        lines.push('   🔗 https://ceramisia.com/products/?id=' + encodeURIComponent(item.slug));
+      }
     });
 
     lines.push('');
