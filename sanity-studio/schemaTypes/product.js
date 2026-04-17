@@ -34,7 +34,18 @@ export default {
       title: 'Slug',
       type: 'slug',
       group: 'main',
-      options: { source: 'nameEn', maxLength: 80 },
+      options: {
+        source: 'nameEn',
+        maxLength: 80,
+        slugify: (input) =>
+          input
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9\s-]/g, '')   // remove special characters
+            .replace(/[\s_]+/g, '-')         // spaces/underscores → hyphens
+            .replace(/-{2,}/g, '-')          // collapse consecutive hyphens
+            .replace(/^-+|-+$/g, ''),        // strip leading/trailing hyphens
+      },
       validation: (Rule) => Rule.required(),
     },
     {

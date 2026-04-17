@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "generate-products": "node scripts/generate-product-pages.mjs"
+  },
   "devDependencies": {
     "sharp": "^0.34.5"
   }
