@@ -171,6 +171,49 @@ async function main() {
 
   console.log(`Found ${products.length} product(s). Generating static pages…\n`);
 
+  // ── Pass 1: assign a unique safe slug to every product ──────────────────
+  // Products that share the same base safe slug get -2, -3, … appended to
+  // the second, third, … occurrence (the first keeps the base slug).
+  const usedSlugs = new Map(); // safe slug → count of products that map to it
+
+  // First, count how many products each base slug is claimed by
+  const baseSlugFor = new Map(); // product._id → base safe slug
+  for (const product of products) {
+    const slug = product.slug;
+    if (!slug) continue;
+    const base = safeSlug(slug);
+    if (!base) continue;
+    baseSlugFor.set(product._id, base);
+    usedSlugs.set(base, (usedSlugs.get(base) || 0) + 1);
+  }
+
+  // Now assign the final unique slug per product
+  const seenBase = new Map();   // base slug → how many have been assigned so far
+  const finalSlug = new Map();  // product._id → final unique safe slug
+
+  for (const product of products) {
+    const slug = product.slug;
+    if (!slug) continue;
+    const base = baseSlugFor.get(product._id);
+    if (!base) continue;
+
+    const count = usedSlugs.get(base) || 1;
+    const seen  = seenBase.get(base) || 0;
+
+    let unique;
+    if (count === 1 || seen === 0) {
+      // No collision, or first occurrence → keep base slug
+      unique = base;
+    } else {
+      // Subsequent occurrence → append -2, -3, …
+      unique = `${base}-${seen + 1}`;
+    }
+
+    finalSlug.set(product._id, unique);
+    seenBase.set(base, seen + 1);
+  }
+
+  // ── Pass 2: write one HTML file per product ─────────────────────────────
   let ok = 0;
   let skip = 0;
 
@@ -182,16 +225,16 @@ async function main() {
       continue;
     }
 
-    const safe = safeSlug(slug);
+    const safe = finalSlug.get(product._id);
     if (!safe) {
       console.warn(`  ⚠ Skipped product "${product.name || product._id}" — slug "${slug}" produces an empty safe name after sanitisation`);
       skip++;
       continue;
     }
 
-    if (safe !== slug) {
-      console.log(`  ℹ  slug sanitised: "${slug}" → "${safe}"`);
-    }
+    const base = baseSlugFor.get(product._id);
+    if (safe !== slug)   console.log(`  ℹ  slug sanitised: "${slug}" → "${safe}"`);
+    else if (safe !== base) console.log(`  ℹ  slug deduplicated: "${base}" → "${safe}"`);
 
     const dir  = join(OUT, safe);
     const file = join(dir, 'index.html');
