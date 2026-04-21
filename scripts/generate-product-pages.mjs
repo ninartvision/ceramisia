@@ -112,8 +112,8 @@ function buildHtml(product) {
   <title>${esc(name)} – Ceramisia</title>
   <meta name="description" content="${esc(desc)}">
 
-  <!-- Canonical: point to the interactive products page -->
-  <link rel="canonical" href="${esc(targetUrl)}">
+  <!-- Canonical: self-referential so WhatsApp/social scrapers use this page's OG tags -->
+  <link rel="canonical" href="${esc(pageUrl)}">
 
   <!-- Open Graph — hardcoded per-product for WhatsApp / social scrapers -->
   <meta property="og:type"        content="product">
