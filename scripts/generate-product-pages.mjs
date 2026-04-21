@@ -56,6 +56,17 @@ function blocksToText(blocks) {
     .trim();
 }
 
+// ── Sanitise Sanity slug → safe filesystem/URL path segment ─
+// Removes characters that are invalid in file names on Windows (and unusual
+// on Linux), while keeping spaces (they become %20 in URLs, which GitHub
+// Pages resolves correctly to the folder).
+function safeSlug(slug) {
+  return (slug || '')
+    .trim()
+    .replace(/[<>:"\\|?*\/\x00-\x1f]/g, '') // strip filesystem-invalid chars
+    .trim();
+}
+
 // ── Escape HTML attribute values ───────────────────────
 function esc(str) {
   return (str || '')
@@ -87,8 +98,9 @@ async function fetchProducts() {
 }
 
 // ── Generate one static HTML page per product ─────────
-function buildHtml(product) {
-  const slug      = product.slug;
+function buildHtml(product, dirSlug) {
+  const slug      = product.slug;   // original Sanity slug — used for ?id= redirect target
+  const safe      = dirSlug || safeSlug(slug); // sanitised — used for folder path & og:url
   const name      = product.name || product.nameEn || 'Ceramisia Product';
   const nameEn    = product.nameEn || name;
 
@@ -98,7 +110,7 @@ function buildHtml(product) {
                     || 'Handmade ceramic art from Ceramisia – Tbilisi, Georgia.';
 
   const imgUrl    = sanityImageUrl(product.mainImage, 1200);
-  const pageUrl   = `${SITE_BASE}/products/${encodeURIComponent(slug)}/`;
+  const pageUrl   = `${SITE_BASE}/products/${encodeURIComponent(safe)}/`;
   const targetUrl = `${SITE_BASE}/products/?id=${encodeURIComponent(slug)}`;
 
   // og:image fallback if product has no image
@@ -168,12 +180,23 @@ async function main() {
       continue;
     }
 
-    const dir  = join(OUT, slug);
+    const safe = safeSlug(slug);
+    if (!safe) {
+      console.warn(`  ⚠ Skipped product "${product.name || product._id}" — slug "${slug}" produces an empty safe name after sanitisation`);
+      skip++;
+      continue;
+    }
+
+    if (safe !== slug) {
+      console.log(`  ℹ  slug sanitised: "${slug}" → "${safe}"`);
+    }
+
+    const dir  = join(OUT, safe);
     const file = join(dir, 'index.html');
 
     await mkdir(dir, { recursive: true });
-    await writeFile(file, buildHtml(product), 'utf8');
-    console.log(`  ✓ products/${slug}/index.html`);
+    await writeFile(file, buildHtml(product, safe), 'utf8');
+    console.log(`  ✓ products/${safe}/index.html${safe !== slug ? ` (slug: "${slug}")` : ''}`);
     ok++;
   }
 
