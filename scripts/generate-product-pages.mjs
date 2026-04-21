@@ -57,14 +57,16 @@ function blocksToText(blocks) {
 }
 
 // ── Sanitise Sanity slug → safe filesystem/URL path segment ─
-// Removes characters that are invalid in file names on Windows (and unusual
-// on Linux), while keeping spaces (they become %20 in URLs, which GitHub
-// Pages resolves correctly to the folder).
+// Convert a Sanity slug into a clean, URL-safe, lowercase, hyphenated path segment.
+// Example: ' Tray "Traces of Time" ' → 'tray-traces-of-time'
+// The original Sanity slug is kept separately for the ?id= redirect target.
 function safeSlug(slug) {
   return (slug || '')
     .trim()
-    .replace(/[<>:"\\|?*\/\x00-\x1f]/g, '') // strip filesystem-invalid chars
-    .trim();
+    .toLowerCase()
+    .replace(/[^a-z0-9\u00c0-\u024f\u0400-\u04ff\u10d0-\u10ff]+/g, '-') // non-alphanum → hyphen (keeps Georgian/Cyrillic)
+    .replace(/-+/g, '-')      // collapse consecutive hyphens
+    .replace(/^-|-$/g, '');   // strip leading/trailing hyphens
 }
 
 // ── Escape HTML attribute values ───────────────────────
