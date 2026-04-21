@@ -27,8 +27,10 @@
   <meta name="twitter:description" content="A tall, rectangular white vase. The surface is detailed with embossed textures and geometric cutouts, creating an interesting play of light and shadow. Dimensio">
   <meta name="twitter:image"       content="https://cdn.sanity.io/images/uemjhi9v/production/b26cd9f2bab10027a7d459cced6a86d5f473a00e-1200x1600.jpg?w=1200&amp;fit=max&amp;auto=format&amp;q=80">
 
-  <!-- Redirect visitors immediately to the interactive page -->
-  <meta http-equiv="refresh" content="0; url=https://ceramisia.com/products/?id=Vertical%20Vase">
+  <!-- NOTE: No meta http-equiv="refresh" here — crawlers (WhatsApp/Facebook) follow
+       meta-refresh and would land on /products/?id=... reading generic OG tags.
+       The JS redirect below handles human visitors; crawlers don't execute JS
+       and stay on this page to read the correct per-product OG tags. -->
 </head>
 <body>
   <p>

@@ -27,8 +27,10 @@
   <meta name="twitter:description" content="A refined ceramic decor piece in the shape of a pomegranate, representing a synthesis of traditional symbolism and modern painting. Its vibrant surface expresse">
   <meta name="twitter:image"       content="https://cdn.sanity.io/images/uemjhi9v/production/d291dd38020c16bcb544570a719f0587b6cde59f-1200x1600.jpg?w=1200&amp;fit=max&amp;auto=format&amp;q=80">
 
-  <!-- Redirect visitors immediately to the interactive page -->
-  <meta http-equiv="refresh" content="0; url=https://ceramisia.com/products/?id=%22Pomegranate%20Emotion%22">
+  <!-- NOTE: No meta http-equiv="refresh" here — crawlers (WhatsApp/Facebook) follow
+       meta-refresh and would land on /products/?id=... reading generic OG tags.
+       The JS redirect below handles human visitors; crawlers don't execute JS
+       and stay on this page to read the correct per-product OG tags. -->
 </head>
 <body>
   <p>

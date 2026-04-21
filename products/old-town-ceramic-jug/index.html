@@ -27,8 +27,10 @@
   <meta name="twitter:description" content="A small white ceramic jug featuring a hand-painted cityscape with houses and a church. It has a charming, rustic style. Dimensions: 12 x 10 cm">
   <meta name="twitter:image"       content="https://cdn.sanity.io/images/uemjhi9v/production/987b8d2ff34875bf3c1e8c4f730ea8150ad21b43-1200x1600.jpg?w=1200&amp;fit=max&amp;auto=format&amp;q=80">
 
-  <!-- Redirect visitors immediately to the interactive page -->
-  <meta http-equiv="refresh" content="0; url=https://ceramisia.com/products/?id=%20%22Old%20Town%22%20Ceramic%20Jug">
+  <!-- NOTE: No meta http-equiv="refresh" here — crawlers (WhatsApp/Facebook) follow
+       meta-refresh and would land on /products/?id=... reading generic OG tags.
+       The JS redirect below handles human visitors; crawlers don't execute JS
+       and stay on this page to read the correct per-product OG tags. -->
 </head>
 <body>
   <p>

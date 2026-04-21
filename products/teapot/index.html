@@ -27,8 +27,10 @@
   <meta name="twitter:description" content="A magical and playful set including a teapot and sugar bowl. The pieces are hand-painted with spring meadow motifs—green grass, colorful wildflowers, and tiny b">
   <meta name="twitter:image"       content="https://cdn.sanity.io/images/uemjhi9v/production/34b54a8a7608e3d4c8b93d16438b027c2d0c3d8a-800x533.jpg?w=1200&amp;fit=max&amp;auto=format&amp;q=80">
 
-  <!-- Redirect visitors immediately to the interactive page -->
-  <meta http-equiv="refresh" content="0; url=https://ceramisia.com/products/?id=teapot">
+  <!-- NOTE: No meta http-equiv="refresh" here — crawlers (WhatsApp/Facebook) follow
+       meta-refresh and would land on /products/?id=... reading generic OG tags.
+       The JS redirect below handles human visitors; crawlers don't execute JS
+       and stay on this page to read the correct per-product OG tags. -->
 </head>
 <body>
   <p>

@@ -27,8 +27,10 @@
   <meta name="twitter:description" content="Handmade ceramic bowl with a minimalist form and a natural marble-like effect. Ideal for both decoration and everyday use.">
   <meta name="twitter:image"       content="https://cdn.sanity.io/images/uemjhi9v/production/e8c46178d1936e05f8497683dd31bbc0f5cc32b3-800x533.jpg?w=1200&amp;fit=max&amp;auto=format&amp;q=80">
 
-  <!-- Redirect visitors immediately to the interactive page -->
-  <meta http-equiv="refresh" content="0; url=https://ceramisia.com/products/?id=Vase">
+  <!-- NOTE: No meta http-equiv="refresh" here — crawlers (WhatsApp/Facebook) follow
+       meta-refresh and would land on /products/?id=... reading generic OG tags.
+       The JS redirect below handles human visitors; crawlers don't execute JS
+       and stay on this page to read the correct per-product OG tags. -->
 </head>
 <body>
   <p>

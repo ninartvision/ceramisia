@@ -27,8 +27,10 @@
   <meta name="twitter:description" content="An elegant and powerful figure that embodies freedom and energy. Refined details bring the piece to life. Dimensions: 18 × 12 cm">
   <meta name="twitter:image"       content="https://cdn.sanity.io/images/uemjhi9v/production/263ba512159bafca2838797b82302ce2de129a19-1200x1600.jpg?w=1200&amp;fit=max&amp;auto=format&amp;q=80">
 
-  <!-- Redirect visitors immediately to the interactive page -->
-  <meta http-equiv="refresh" content="0; url=https://ceramisia.com/products/?id=Sculpture%20%22White%20Stallion%22">
+  <!-- NOTE: No meta http-equiv="refresh" here — crawlers (WhatsApp/Facebook) follow
+       meta-refresh and would land on /products/?id=... reading generic OG tags.
+       The JS redirect below handles human visitors; crawlers don't execute JS
+       and stay on this page to read the correct per-product OG tags. -->
 </head>
 <body>
   <p>

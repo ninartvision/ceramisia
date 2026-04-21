@@ -147,8 +147,10 @@ function buildHtml(product, dirSlug) {
   <meta name="twitter:description" content="${esc(desc)}">
   <meta name="twitter:image"       content="${esc(ogImage)}">
 
-  <!-- Redirect visitors immediately to the interactive page -->
-  <meta http-equiv="refresh" content="0; url=${esc(targetUrl)}">
+  <!-- NOTE: No meta http-equiv="refresh" here — crawlers (WhatsApp/Facebook) follow
+       meta-refresh and would land on /products/?id=... reading generic OG tags.
+       The JS redirect below handles human visitors; crawlers don't execute JS
+       and stay on this page to read the correct per-product OG tags. -->
 </head>
 <body>
   <p>

@@ -27,8 +27,10 @@
   <meta name="twitter:description" content="Artisan soup bowl. Ideal for everyday use and serving soups or other dishes. Dimensions: 11 × 7 × 20 cm">
   <meta name="twitter:image"       content="https://cdn.sanity.io/images/uemjhi9v/production/e5be04dca9f6861086f6198a2502e04eb0b71e9b-1200x1600.jpg?w=1200&amp;fit=max&amp;auto=format&amp;q=80">
 
-  <!-- Redirect visitors immediately to the interactive page -->
-  <meta http-equiv="refresh" content="0; url=https://ceramisia.com/products/?id=bowl">
+  <!-- NOTE: No meta http-equiv="refresh" here — crawlers (WhatsApp/Facebook) follow
+       meta-refresh and would land on /products/?id=... reading generic OG tags.
+       The JS redirect below handles human visitors; crawlers don't execute JS
+       and stay on this page to read the correct per-product OG tags. -->
 </head>
 <body>
   <p>
