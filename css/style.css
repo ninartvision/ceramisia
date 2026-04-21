@@ -950,6 +950,7 @@ p { color: var(--clr-text-mid); }
   opacity: 0;
   transform: translateY(8px);
   transition: all var(--transition);
+  display: none;
 }
 
 .product-card:hover .product-actions {
@@ -2495,7 +2496,7 @@ body.modal-open {
   .product-name      { font-size: 1rem; margin-bottom: 0.3rem; }
   .product-category  { font-size: 0.65rem; margin-bottom: 0.2rem; }
   .product-price     { font-size: 0.88rem; }
-  .product-actions   { opacity: 1; transform: translateY(0); }
+  .product-actions   { display: none; }
 
   /* ── Filter bar: horizontal scroll ── */
   .filter-bar {
