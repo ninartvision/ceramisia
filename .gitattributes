@@ -1,0 +1,30 @@
+# Ensure all text files are committed in LF (Unix) line endings
+# and treated as UTF-8 by Git — prevents encoding corruption on Windows
+
+# Default: normalize all text files to LF in the repo
+* text=auto eol=lf
+
+# Explicitly mark web source files as UTF-8 text
+*.html    text eol=lf
+*.css     text eol=lf
+*.js      text eol=lf
+*.ts      text eol=lf
+*.json    text eol=lf
+*.md      text eol=lf
+*.txt     text eol=lf
+*.xml     text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+
+# True binary files — never touch their line endings
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.webp    binary
+*.ico     binary
+*.svg     text eol=lf
+*.woff    binary
+*.woff2   binary
+*.ttf     binary
+*.eot     binary

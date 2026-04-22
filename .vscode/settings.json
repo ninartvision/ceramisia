@@ -1,4 +1,10 @@
 {
+    "files.encoding": "utf8",
+    "files.autoGuessEncoding": false,
+    "[html]": { "files.encoding": "utf8" },
+    "[css]": { "files.encoding": "utf8" },
+    "[javascript]": { "files.encoding": "utf8" },
+
     "chat.tools.terminal.autoApprove": {
         "/^npm install 2>&1$/": {
             "approve": true,
