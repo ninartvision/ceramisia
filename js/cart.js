@@ -345,6 +345,7 @@
   }
 
   function payCart() {
+    console.log('[Ceramisia] payCart() fired');
     var cart  = getCart();
     if (!cart.length) return;
 
@@ -468,5 +469,8 @@
 
   // Backward compat
   window.initCart = bindCardButtons;
+
+  // Payment – exposed globally so onclick="payCart()" works from HTML
+  window.payCart = payCart;
 
 })();
