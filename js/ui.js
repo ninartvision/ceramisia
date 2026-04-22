@@ -25,6 +25,8 @@ var DEFAULTS = {
   // ── Product actions ──────────────────────────────
   addToCart:             'კალათაში',
   addToCartEn:           'Add to Cart',
+  buyNow:                'ყიდვა',
+  buyNowEn:              'Buy Now',
 
   // ── Filter bar ───────────────────────────────────
   filterAll:             'ყველა',

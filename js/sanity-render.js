@@ -28,6 +28,7 @@ import { renderHeroSlider, renderAboutStrip, renderFooter, renderNavigation, upd
 import { renderAboutPage } from './render-about.js';
 import { renderContactPage } from './render-contact.js';
 import { t, tge, ten, loadStrings } from './ui.js';
+import { buyProduct, initPaymentButtons } from './payment.js';
 
 const LANG_KEY = 'ceramisia_lang';
 
@@ -336,7 +337,22 @@ function createProductCard(p, lang, extraClass, isFirst) {
       '<h3 class="product-name" data-ge="' + esc(p.name || '') + '" data-en="' + esc(p.nameEn || '') + '">' + esc(name) + '</h3>' +
       '<p class="product-desc">' + esc(_descCard || 'No description available') + '</p>' +
       '<p class="product-price">' + priceHtml + '</p>' +
+      '<button type="button" class="btn-buy"' +
+        ' data-ge="' + tge('buyNow') + '" data-en="' + ten('buyNow') + '"' +
+        ' data-id="'    + esc(p._id   || p.slug || '') + '"' +
+        ' data-price="' + esc(String(p.salePrice || p.price || 0)) + '"' +
+        ' data-qty="1"' +
+        ' data-name="'  + esc(p.nameEn || p.name || '') + '">' +
+        t('buyNow') +
+      '</button>' +
     '</div>';
+
+  // Attach payment handler (reads all data from the button itself)
+  var buyBtn = card.querySelector('.btn-buy');
+  buyBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    buyProduct(buyBtn);
+  });
 
   return card;
 }

@@ -972,6 +972,35 @@ p { color: var(--clr-text-mid); }
 }
 .btn-add-cart:hover { background: var(--clr-red-dark); }
 
+/* ── Buy / Payment button ─────────────────────── */
+.btn-buy {
+  display: block;
+  width: 100%;
+  margin-top: 0.9rem;
+  padding: 0.7rem 1rem;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: #111;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.25s ease, transform 0.2s ease;
+}
+.btn-buy:hover:not(:disabled) {
+  background: #333;
+  transform: translateY(-1px);
+}
+.btn-buy:disabled,
+.btn-buy--loading {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .product-info {
   padding: 1.2rem 1.25rem 1.5rem;
 }
