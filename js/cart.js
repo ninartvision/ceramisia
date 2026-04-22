@@ -249,47 +249,32 @@
 
     // Installment for full cart total
     document.getElementById('cartInstallmentBtn').addEventListener('click', function () {
-      var cart = getCart();
-      if (!cart.length) return;
-      var lang = getLang();
       var total = getTotalPrice();
-      var btn = document.getElementById('cartInstallmentBtn');
-      if (window.BOG && window.BOG.Calculator) {
-        window.BOG.Calculator.open({
-          productPrice: parseFloat(total.toFixed(2)),
-          productName: lang === 'ge' ? 'Ceramisia შეკვეთა' : 'Ceramisia Order',
-          merchantId: window.BOG_CLIENT_ID || '',
-          onConfirm: function (installmentData) {
-            var originalText = btn ? btn.textContent : '';
-            if (btn) { btn.disabled = true; btn.textContent = '...'; }
-            fetch(VERCEL_API_URL, {
+      if (total === 0) {
+        alert('კალათა ცარიელია.\nCart is empty.');
+        return;
+      }
+      window.BOG.Calculator.open({
+        amount: total,
+        onConfirm: async function () {
+          try {
+            var res = await fetch('/api/pay', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ amount: parseFloat(total.toFixed(2)), installment: installmentData }),
-            })
-            .then(function (res) {
-              if (!res.ok) throw new Error('HTTP ' + res.status);
-              return res.json();
-            })
-            .then(function (data) {
-              if (!data.redirectUrl) throw new Error('No redirectUrl');
-              window.location.href = data.redirectUrl;
-            })
-            .catch(function (err) {
-              console.error('[Ceramisia] cart installment error:', err);
-              if (btn) { btn.disabled = false; btn.textContent = originalText; }
-              alert(lang === 'ge'
-                ? 'განვადება ვერ დაიწყო. გთხოვთ სცადოთ თავიდან.'
-                : 'Could not start installment. Please try again.');
+              body: JSON.stringify({ amount: total, items: getCart() }),
             });
-          },
-        });
-      } else {
-        console.warn('[Ceramisia] BOG SDK not loaded.');
-        alert(lang === 'ge'
-          ? 'განვადების სისტემა ჯერ ვერ ჩაიტვირთა.'
-          : 'Installment system is not loaded yet.');
-      }
+            var data = await res.json();
+            if (data.payment_url) {
+              window.location.href = data.payment_url;
+            } else {
+              throw new Error('No payment_url');
+            }
+          } catch (err) {
+            console.error('[Ceramisia] installment confirm error:', err);
+            alert('გადახდა ვერ დაიწყო. სცადეთ თავიდან.\nPayment could not start. Please try again.');
+          }
+        },
+      });
     });
   }
 
