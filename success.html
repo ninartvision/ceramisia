@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>გადახდა წარმატებულია — Ceramisia</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="/images/logo.webp">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #faf9f7;
+      color: #2c2c2c;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e8e2da;
+      border-radius: 4px;
+      padding: 3rem 2.5rem;
+      max-width: 460px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #e8f4ee;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+    }
+
+    .icon svg { color: #2e7d52; }
+
+    h1 {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-weight: 400;
+      font-size: 1.9rem;
+      letter-spacing: 0.01em;
+      margin-bottom: 0.75rem;
+    }
+
+    p {
+      font-size: 0.9rem;
+      color: #6b6560;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 0.75rem 2rem;
+      background: #2c2c2c;
+      color: #fff;
+      text-decoration: none;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border-radius: 2px;
+      transition: background 0.2s;
+    }
+
+    .btn:hover { background: #444; }
+
+    .lang-switch {
+      margin-top: 1.5rem;
+      font-size: 0.78rem;
+      color: #aaa;
+    }
+
+    .lang-switch button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.78rem;
+      color: #aaa;
+      padding: 0 0.25rem;
+      text-decoration: underline;
+    }
+
+    .lang-switch button:hover { color: #2c2c2c; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <div class="icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    </div>
+
+    <h1 id="title">გადახდა წარმატებულია</h1>
+    <p id="desc">თქვენი შეკვეთა მიღებულია.<br>მალე დაგიკავშირდებით.</p>
+    <a href="/" class="btn" id="btn">მაღაზიაში დაბრუნება</a>
+
+    <div class="lang-switch">
+      <button onclick="setLang('ge')">ქართული</button> /
+      <button onclick="setLang('en')">English</button>
+    </div>
+  </div>
+
+  <script>
+    // Clear cart immediately on arrival
+    localStorage.removeItem('ceramisia_cart_items');
+    localStorage.setItem('ceramisia_cart', '0');
+
+    // Bilingual labels
+    var LABELS = {
+      ge: {
+        title: 'გადახდა წარმატებულია',
+        desc:  'თქვენი შეკვეთა მიღებულია.<br>მალე დაგიკავშირდებით.',
+        btn:   'მაღაზიაში დაბრუნება',
+      },
+      en: {
+        title: 'Payment Successful',
+        desc:  'Your order has been received.<br>We will be in touch shortly.',
+        btn:   'Back to Shop',
+      }
+    };
+
+    function setLang(lang) {
+      var l = LABELS[lang] || LABELS.ge;
+      document.getElementById('title').textContent = l.title;
+      document.getElementById('desc').innerHTML   = l.desc;
+      document.getElementById('btn').textContent  = l.btn;
+      document.documentElement.lang = lang === 'ge' ? 'ka' : 'en';
+      try { localStorage.setItem('ceramisia_lang', lang); } catch(e) {}
+    }
+
+    // Apply saved language
+    (function () {
+      var lang = 'ge';
+      try { lang = localStorage.getItem('ceramisia_lang') || 'ge'; } catch(e) {}
+      setLang(lang);
+    })();
+  </script>
+
+</body>
+</html>
