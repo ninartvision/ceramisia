@@ -91,9 +91,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid amount' });
   }
 
-  const CALLBACK_URL = process.env.CALLBACK_URL || 'https://ceramisia.com/payment-callback';
-  const SUCCESS_URL  = process.env.SUCCESS_URL  || 'https://ceramisia.com/payment-success';
-  const FAIL_URL     = process.env.FAIL_URL     || 'https://ceramisia.com/payment-fail';
+  const CALLBACK_URL = process.env.CALLBACK_URL || 'https://ceramisia.com/api/callback';
+  const SUCCESS_URL  = process.env.SUCCESS_URL  || 'https://ceramisia.com/success.html';
+  const FAIL_URL     = process.env.FAIL_URL     || 'https://ceramisia.com/fail.html';
 
   const payload = {
     callback_url:      CALLBACK_URL,
