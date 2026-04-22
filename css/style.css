@@ -1672,6 +1672,33 @@ p { color: var(--clr-text-mid); }
   font-size: 0.85rem;
 }
 
+/* Card payment button – above WhatsApp button */
+.btn-cart-pay {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.6rem;
+  padding: 0.75rem 1rem;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  background: #111;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+.btn-cart-pay:hover:not(:disabled) {
+  background: #333;
+  transform: translateY(-1px);
+}
+.btn-cart-pay:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* Cart item row */
 .cart-item {
   display: flex;
