@@ -344,41 +344,37 @@
     form.submit();
   }
 
+  var VERCEL_API_URL = 'https://ceramisia.com/api/create-order';
+
   function payCart() {
-    console.log('[Ceramisia] payCart() fired');
-    var cart  = getCart();
+    var cart = getCart();
     if (!cart.length) return;
 
-    var totalAmount = parseFloat(getTotalPrice().toFixed(2));
-
-    var btn = document.getElementById('cartPayBtn');
+    var totalAmount  = parseFloat(getTotalPrice().toFixed(2));
+    var btn          = document.getElementById('cartPayBtn');
     var originalText = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
 
-    fetch('http://localhost:3000/create-payment', {
+    fetch(VERCEL_API_URL, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        product_id: 'cart-order',
-        price:      totalAmount,
-        quantity:   1,
-      }),
+      body:    JSON.stringify({ amount: totalAmount }),
     })
     .then(function (res) {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
+      if (!res.ok) throw new Error('Server error: HTTP ' + res.status);
       return res.json();
     })
     .then(function (data) {
-      if (!data.redirectUrl) throw new Error('No redirectUrl');
-      if (data.redirectUrl.indexOf('3ds') !== -1 || data.method === 'POST') {
-        redirectTo3DS(data.redirectUrl, data.params || null);
-      } else {
-        window.location.href = data.redirectUrl;
-      }
+      if (!data.redirectUrl) throw new Error('No redirectUrl in response');
+      window.location.href = data.redirectUrl;
     })
     .catch(function (err) {
       console.error('[Ceramisia] payCart error:', err);
       if (btn) { btn.disabled = false; btn.textContent = originalText; }
+      var lang = getLang();
+      alert(lang === 'ge'
+        ? 'გადახდის დაწყება ვერ მოხერხდა. გთხოვთ სცადოთ თავიდან.'
+        : 'Could not start payment. Please try again.');
     });
   }
 

@@ -2,6 +2,9 @@
   "scripts": {
     "generate-products": "node scripts/generate-product-pages.mjs"
   },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  },
   "devDependencies": {
     "sharp": "^0.34.5"
   }
