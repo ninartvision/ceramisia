@@ -972,31 +972,56 @@ p { color: var(--clr-text-mid); }
 }
 .btn-add-cart:hover { background: var(--clr-red-dark); }
 
-/* ── Buy / Payment button ─────────────────────── */
-.btn-buy {
-  display: block;
-  width: 100%;
+/* ── Buy / Payment buttons ────────────────────── */
+.product-card-actions {
+  display: flex;
+  gap: 0.5rem;
   margin-top: 0.9rem;
-  padding: 0.7rem 1rem;
+}
+
+.btn-buy,
+.btn-installment {
+  flex: 1;
+  padding: 0.65rem 0.5rem;
   font-family: var(--font-body);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  background: #111;
-  color: #fff;
   border: none;
   border-radius: var(--radius);
   cursor: pointer;
   transition: background 0.25s ease, transform 0.2s ease;
+  white-space: nowrap;
+}
+
+/* 💳 Buy – solid black */
+.btn-buy {
+  background: #111;
+  color: #fff;
 }
 .btn-buy:hover:not(:disabled) {
   background: #333;
   transform: translateY(-1px);
 }
+
+/* 💸 Installment – outlined */
+.btn-installment {
+  background: #fff;
+  color: #111;
+  border: 1.5px solid #111;
+}
+.btn-installment:hover:not(:disabled) {
+  background: #111;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
 .btn-buy:disabled,
-.btn-buy--loading {
-  opacity: 0.55;
+.btn-buy--loading,
+.btn-installment:disabled,
+.btn-installment--loading {
+  opacity: 0.5;
   cursor: not-allowed;
   transform: none;
 }

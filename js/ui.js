@@ -27,6 +27,8 @@ var DEFAULTS = {
   addToCartEn:           'Add to Cart',
   buyNow:                'ყიდვა',
   buyNowEn:              'Buy Now',
+  installment:           'განვადება',
+  installmentEn:         'Installment',
 
   // ── Filter bar ───────────────────────────────────
   filterAll:             'ყველა',

@@ -128,7 +128,11 @@ async function createBogOrder(productId, productName, unitPrice, quantity) {
     throw new Error('BOG response missing _links.redirect.href: ' + JSON.stringify(data));
   }
 
-  return redirectUrl;
+  // BOG may signal a POST 3DS redirect via _links.redirect.method
+  const method = data?._links?.redirect?.method || 'GET';
+  const params = data?._links?.redirect?.params || null;
+
+  return { redirectUrl, method, params };
 }
 
 // ── Routes ────────────────────────────────────────────────────────────────────
@@ -136,8 +140,10 @@ async function createBogOrder(productId, productName, unitPrice, quantity) {
 /**
  * POST /create-payment
  *
- * Body: { product_id, name, price, quantity }
- * Returns: { redirectUrl }
+ * Body: { product_id, name, price, quantity, installment? }
+ * Returns: { redirectUrl, method, params }
+ *   method  – 'GET' (standard) or 'POST' (3DS ACS)
+ *   params  – hidden form fields for POST 3DS (null for GET)
  */
 app.post('/create-payment', async function (req, res) {
   var { product_id, name, price, quantity } = req.body;
@@ -159,8 +165,12 @@ app.post('/create-payment', async function (req, res) {
   var productName = typeof name === 'string' ? name.slice(0, 200) : product_id;
 
   try {
-    var redirectUrl = await createBogOrder(product_id, productName, unitPrice, qty);
-    return res.json({ redirectUrl });
+    var result = await createBogOrder(product_id, productName, unitPrice, qty);
+    return res.json({
+      redirectUrl: result.redirectUrl,
+      method:      result.method,
+      params:      result.params,
+    });
   } catch (err) {
     console.error('[Payment] createBogOrder error:', err.message);
     return res.status(502).json({ error: 'Payment service unavailable. Please try again.' });
