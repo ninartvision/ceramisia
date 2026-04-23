@@ -266,7 +266,7 @@
             if (!res.ok) throw new Error('HTTP ' + res.status);
             var data = await res.json();
             if (data.payment_url) {
-              window.location.href = data.payment_url;
+              _formRedirect(data.payment_url);
             } else {
               throw new Error('No payment_url');
             }
@@ -354,7 +354,19 @@
   }
 
   /* ── Card Payment (BOG) ───────────────────────── */
-
+  function _formRedirect(url) {
+    var form = document.getElementById('bog-3ds-form');
+    if (!form) {
+      form = document.createElement('form');
+      form.id = 'bog-3ds-form';
+      form.style.display = 'none';
+      document.body.appendChild(form);
+    }
+    form.innerHTML = '';
+    form.method = 'GET';
+    form.action = url;
+    form.submit();
+  }
   function payCart() {
     var cart = getCart();
     if (!cart.length) return;
@@ -375,7 +387,7 @@
     })
     .then(function (data) {
       if (!data.payment_url) throw new Error('No payment_url in response');
-      window.location.href = data.payment_url;
+      _formRedirect(data.payment_url);
     })
     .catch(function (err) {
       console.error('[Ceramisia] payCart error:', err);

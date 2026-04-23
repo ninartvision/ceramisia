@@ -98,7 +98,7 @@ export async function buyProduct(btn) {
     var data = await res.json();
     if (!data.payment_url) throw new Error('No payment_url in response');
 
-    window.location.href = data.payment_url;
+    _redirect(data.payment_url, 'GET');
 
   } catch (err) {
     console.error('[Ceramisia] Payment error:', err);
@@ -146,7 +146,7 @@ export function openInstallment(btn) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         var data = await res.json();
         if (!data.payment_url) throw new Error('No payment_url in response');
-        window.location.href = data.payment_url;
+        _redirect(data.payment_url, 'GET');
       } catch (err) {
         console.error('[Ceramisia] Installment payment error:', err);
         _setBtnState(btn, false, originalText);
