@@ -2,7 +2,7 @@
  * Ceramisia – BOG Payment Handler (ES Module)
  *
  * Handles:
- *   • 💳 Buy  →  pay(btn)          → POST /create-payment → 3DS-safe form redirect
+ *   • 💳 Buy  →  pay(btn)          → POST /api/pay → redirect to payment_url
  *   • 💸 Installment → openInstallment(btn) → BOG.Calculator.open()
  *
  * Button data-attributes (same for both buttons):
@@ -14,7 +14,7 @@
  * Exposes window.pay() and window.openInstallment() for inline onclick use.
  */
 
-const PAYMENT_ENDPOINT = 'http://localhost:3000/create-payment';
+const PAYMENT_ENDPOINT = '/api/pay';
 
 // ── 3DS-safe redirect via hidden form ────────────────────────────────────────
 // Using a form submission instead of window.location prevents CSP issues and
@@ -82,20 +82,23 @@ export async function buyProduct(btn) {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        product_id: productId,
-        name:       name,
-        price:      price,
-        quantity:   qty,
+        amount: parseFloat((price * qty).toFixed(2)),
+        items: [
+          {
+            product_id: productId,
+            quantity:   qty,
+            unit_price: price,
+          },
+        ],
       }),
     });
 
     if (!res.ok) throw new Error('HTTP ' + res.status);
 
     var data = await res.json();
-    if (!data.redirectUrl) throw new Error('No redirectUrl in response');
+    if (!data.payment_url) throw new Error('No payment_url in response');
 
-    // 3DS-safe: use form redirect (GET for standard BOG, POST if gateway needs it)
-    _redirect(data.redirectUrl, data.method || 'GET', data.params || null);
+    window.location.href = data.payment_url;
 
   } catch (err) {
     console.error('[Ceramisia] Payment error:', err);
@@ -136,15 +139,14 @@ export function openInstallment(btn) {
             name:        name,
             price:       price,
             quantity:    1,
+            amount:      parseFloat(price.toFixed(2)),
             installment: installmentData,
           }),
         });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         var data = await res.json();
-        if (data.redirectUrl) {
-          _redirect(data.redirectUrl, data.method || 'GET', data.params || null);
-        } else {
-          throw new Error('No redirectUrl');
-        }
+        if (!data.payment_url) throw new Error('No payment_url in response');
+        window.location.href = data.payment_url;
       } catch (err) {
         console.error('[Ceramisia] Installment payment error:', err);
         _setBtnState(btn, false, originalText);

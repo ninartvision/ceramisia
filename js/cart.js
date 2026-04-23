@@ -263,6 +263,7 @@
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ amount: total, items: getCart() }),
             });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
             var data = await res.json();
             if (data.payment_url) {
               window.location.href = data.payment_url;
@@ -354,31 +355,6 @@
 
   /* ── Card Payment (BOG) ───────────────────────── */
 
-  function redirectTo3DS(url, params) {
-    var form = document.getElementById('bog-3ds-form');
-    if (!form) {
-      form = document.createElement('form');
-      form.id = 'bog-3ds-form';
-      form.style.display = 'none';
-      document.body.appendChild(form);
-    }
-    form.innerHTML = '';
-    form.method = 'POST';
-    form.action = url;
-    if (params && typeof params === 'object') {
-      Object.keys(params).forEach(function (key) {
-        var inp  = document.createElement('input');
-        inp.type  = 'hidden';
-        inp.name  = key;
-        inp.value = params[key];
-        form.appendChild(inp);
-      });
-    }
-    form.submit();
-  }
-
-  var VERCEL_API_URL = 'https://ceramisia.com/api/create-order';
-
   function payCart() {
     var cart = getCart();
     if (!cart.length) return;
@@ -388,18 +364,18 @@
     var originalText = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
 
-    fetch(VERCEL_API_URL, {
+    fetch('/api/pay', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ amount: totalAmount }),
+      body:    JSON.stringify({ amount: totalAmount, items: cart }),
     })
     .then(function (res) {
       if (!res.ok) throw new Error('Server error: HTTP ' + res.status);
       return res.json();
     })
     .then(function (data) {
-      if (!data.redirectUrl) throw new Error('No redirectUrl in response');
-      window.location.href = data.redirectUrl;
+      if (!data.payment_url) throw new Error('No payment_url in response');
+      window.location.href = data.payment_url;
     })
     .catch(function (err) {
       console.error('[Ceramisia] payCart error:', err);
