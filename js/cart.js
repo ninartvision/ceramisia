@@ -369,6 +369,7 @@
   }
   function payCart() {
     var cart = getCart();
+    console.log('[Ceramisia] payCart() called, cart items:', cart.length);
     if (!cart.length) return;
 
     var totalAmount  = parseFloat(getTotalPrice().toFixed(2));
@@ -382,10 +383,12 @@
       body:    JSON.stringify({ amount: totalAmount, items: cart }),
     })
     .then(function (res) {
+      console.log('[Ceramisia] /api/pay response status:', res.status);
       if (!res.ok) throw new Error('Server error: HTTP ' + res.status);
       return res.json();
     })
     .then(function (data) {
+      console.log('[Ceramisia] /api/pay response data:', data);
       if (!data.payment_url) throw new Error('No payment_url in response');
       _formRedirect(data.payment_url);
     })

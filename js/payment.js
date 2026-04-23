@@ -98,7 +98,11 @@ export async function buyProduct(btn) {
     var data = await res.json();
     if (!data.payment_url) throw new Error('No payment_url in response');
 
-    _redirect(data.payment_url, 'GET');
+    // Simple GET redirect — window.location preserves the full URL including
+    // query parameters. Do NOT use _redirect() with method GET here: HTML GET
+    // form submissions strip the query string from form.action and replace it
+    // with serialized input fields, which would drop BOG's orderId/token params.
+    window.location.href = data.payment_url;
 
   } catch (err) {
     console.error('[Ceramisia] Payment error:', err);
