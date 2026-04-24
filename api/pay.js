@@ -15,7 +15,10 @@ let tokenExpiresAt = 0;
 
 async function getBogToken(forceRefresh = false) {
   const now = Date.now();
-  if (!forceRefresh && cachedToken && tokenExpiresAt - now > 60_000) return cachedToken;
+
+  if (!forceRefresh && cachedToken && tokenExpiresAt - now > 60_000) {
+    return cachedToken;
+  }
 
   const credentials = Buffer.from(
     `${process.env.BOG_CLIENT_ID}:${process.env.BOG_CLIENT_SECRET}`
@@ -31,14 +34,16 @@ async function getBogToken(forceRefresh = false) {
   });
 
   if (!response.ok) {
-    throw new Error(`BOG token request failed: ${response.status}`);
+    const errorText = await response.text();
+    console.error("BOG TOKEN ERROR:", errorText);
+    throw new Error("Failed to get BOG token");
   }
 
   const data = await response.json();
-  if (!data.access_token) throw new Error("No access_token in BOG token response");
 
   cachedToken = data.access_token;
   tokenExpiresAt = now + data.expires_in * 1000;
+
   return cachedToken;
 }
 
@@ -162,7 +167,11 @@ export default async function handler(req, res) {
     };
 
     const externalOrderId = `order_${crypto.randomUUID()}`;
-
+console.log("BOG REQUEST BODY:", {
+  callback_url: process.env.CALLBACK_URL,
+  external_order_id: externalOrderId,
+  purchase_units: purchaseUnits,
+});
     console.log("BOG pay: creating order", { externalOrderId, numAmount, itemCount: items?.length ?? 0 });
 
     const orderResponse = await fetch(
