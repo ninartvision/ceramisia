@@ -335,67 +335,119 @@
 
   async function payCart() {
     console.log('PAY CLICKED');
+  
     if (_isPaying) {
       console.warn('[Ceramisia] payCart: already in progress');
       return;
     }
+  
     var totalAmount = parseFloat(getTotalPrice().toFixed(2));
+  
     console.log('[Ceramisia] Payment request started');
     console.log('[Ceramisia] payCart payload:', { amount: totalAmount });
+  
     if (!totalAmount || totalAmount <= 0) {
-      console.warn('[Ceramisia] payCart: empty/invalid amount', { amount: totalAmount });
+      alert('კალათა ცარიელია');
       return;
     }
-
-    var btn          = document.getElementById('cartPayBtn');
+  
+    var btn = document.getElementById('cartPayBtn');
     var originalText = btn ? btn.textContent : '';
-    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '...';
+    }
+  
     _isPaying = true;
-
+  
+    var timeoutId;
+    var controller = new AbortController();
+  
     try {
-      var controller = new AbortController();
-      var timeoutId = setTimeout(function () { controller.abort(); }, 20000);
-      var res = await fetch('/api/pay', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ amount: totalAmount }),
-        signal:  controller.signal,
+      timeoutId = setTimeout(function () {
+        controller.abort();
+      }, 20000);
+  
+      // 🔥 აქ არის მთავარი FIX
+      var items = getCart().map(function(item) {
+        return {
+          product_id: item.slug || item.id,
+          quantity: Number(item.qty) || 1,
+          unit_price: Number(item.price) || 0
+        };
       });
-      clearTimeout(timeoutId);
-      console.log('[Ceramisia] payCart fetch response:', { status: res.status, ok: res.ok });
+  
+      var res = await fetch('/api/pay', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          amount: totalAmount,
+          items: items
+        }),
+        signal: controller.signal
+      });
+  
+      console.log('[Ceramisia] payCart fetch response:', {
+        status: res.status,
+        ok: res.ok
+      });
+  
       var data;
+  
       try {
         data = await res.json();
-      } catch (_jsonErr) {
+      } catch (e) {
         throw new Error('Invalid JSON response from /api/pay');
       }
+  
       console.log('BOG RESPONSE:', data);
-
-      if (!res.ok) throw new Error((data && data.error) || ('Server error: HTTP ' + res.status));
-      var redirectUrl = data && ((data._links && data._links.redirect && data._links.redirect.href) || data.payment_url || data.url);
+  
+      if (!res.ok) {
+        throw new Error((data && data.error) || ('Server error: HTTP ' + res.status));
+      }
+  
+      var redirectUrl =
+        data?._links?.redirect?.href ||
+        data?.payment_url ||
+        data?.url;
+  
       if (!redirectUrl) {
         throw new Error('გადახდის ლინკი ვერ მოიძებნა');
       }
-
+  
       console.log('[Ceramisia] Redirecting to bank page...');
       console.log('[Ceramisia] payCart redirect URL:', redirectUrl);
+  
       window.location.href = redirectUrl;
+  
     } catch (err) {
       console.error('[Ceramisia] payCart error:', err);
-      if (btn) { btn.disabled = false; btn.textContent = originalText; }
+  
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+  
       var lang = getLang();
-      if (String(err && err.message).indexOf('გადახდის ლინკი ვერ მოიძებნა') !== -1) {
-        alert(lang === 'ge' ? 'გადახდის ლინკი ვერ მოიძებნა' : 'Payment URL not found');
+  
+      if (String(err.message).includes('გადახდის ლინკი ვერ მოიძებნა')) {
+        alert(lang === 'ge'
+          ? 'გადახდის ლინკი ვერ მოიძებნა'
+          : 'Payment URL not found');
       } else {
         alert(lang === 'ge'
-          ? 'გადახდის დაწყება ვერ მოხერხდა. გთხოვთ სცადოთ თავიდან.'
+          ? 'გადახდის დაწყება ვერ მოხერხდა. სცადეთ თავიდან.'
           : 'Could not start payment. Please try again.');
       }
+  
     } finally {
+      if (timeoutId) clearTimeout(timeoutId);
       _isPaying = false;
     }
   }
-
   /* ── WhatsApp Checkout ─────────────────────────── */
   var WHATSAPP_NUMBER = '995597224407';
 
