@@ -53,18 +53,26 @@ async function getBogToken(forceRefresh = false) {
 // Returns: { payment_url: string }
 // ---------------------------------------------------------------------------
 export default async function handler(req, res) {
+  function sendJson(status, payload) {
+    console.log("BOG pay: response to frontend", { status, payload });
+    return res.status(status).json(payload);
+  }
+  function sendError(status, error, details = null) {
+    return sendJson(status, { error, details });
+  }
+
   res.setHeader("Access-Control-Allow-Origin", process.env.ALLOWED_ORIGIN || "");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   if (req.method === "OPTIONS") return res.status(204).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+  if (req.method !== "POST") return sendError(405, "Method Not Allowed");
 
   try {
     // Guard required env vars early — missing URLs would silently send "undefined" to BOG
     if (!process.env.CALLBACK_URL || !process.env.SUCCESS_URL || !process.env.FAIL_URL) {
       console.error("BOG pay: missing required env vars (CALLBACK_URL / SUCCESS_URL / FAIL_URL)");
-      return res.status(500).json({ error: "Server misconfiguration" });
+      return sendError(500, "Server misconfiguration");
     }
 
     const { amount, items } = req.body ?? {};
@@ -72,19 +80,19 @@ export default async function handler(req, res) {
     // Require items — without them the catalog price check is entirely skipped,
     // allowing any client-supplied amount to pass unchallenged.
     if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ error: "items array is required" });
+      return sendError(400, "items array is required");
     }
     if (items.length > 50) {
-      return res.status(400).json({ error: "Too many items in order (max 50)" });
+      return sendError(400, "Too many items in order (max 50)");
     }
 
     // Validate amount
     if (amount === undefined || amount === null) {
-      return res.status(400).json({ error: "amount is required" });
+      return sendError(400, "amount is required");
     }
     const numAmount = Number(amount);
     if (!Number.isFinite(numAmount) || numAmount <= 0 || numAmount > 100_000) {
-      return res.status(400).json({ error: "amount must be a positive number up to 100000" });
+      return sendError(400, "amount must be a positive number up to 100000");
     }
 
     // Validate basket items when provided
@@ -93,13 +101,13 @@ export default async function handler(req, res) {
         const qty = Number(item.quantity);
         const price = Number(item.unit_price);
         if (!item.product_id) {
-          return res.status(400).json({ error: "Each item must have a product_id" });
+          return sendError(400, "Each item must have a product_id");
         }
         if (!Number.isFinite(qty) || qty <= 0 || !Number.isInteger(qty)) {
-          return res.status(400).json({ error: "Each item quantity must be a positive integer" });
+          return sendError(400, "Each item quantity must be a positive integer");
         }
         if (!Number.isFinite(price) || price <= 0) {
-          return res.status(400).json({ error: "Each item unit_price must be a positive number" });
+          return sendError(400, "Each item unit_price must be a positive number");
         }
       }
 
@@ -114,18 +122,16 @@ export default async function handler(req, res) {
       // reject rather than silently bypass, to prevent price manipulation.
       if (catalogPrices.size === 0) {
         console.error("BOG pay: product catalog returned no prices — rejecting order");
-        return res.status(500).json({ error: "Server misconfiguration" });
+        return sendError(500, "Server misconfiguration");
       }
 
       for (const item of items) {
         const catalogPrice = catalogPrices.get(String(item.product_id));
         if (catalogPrice === undefined) {
-          return res.status(400).json({ error: `Unknown product: ${item.product_id}` });
+          return sendError(400, `Unknown product: ${item.product_id}`);
         }
         if (Math.abs(Number(item.unit_price) - catalogPrice) > 0.01) {
-          return res.status(400).json({
-            error: `Price mismatch for product ${item.product_id}`,
-          });
+          return sendError(400, `Price mismatch for product ${item.product_id}`);
         }
       }
 
@@ -135,9 +141,7 @@ export default async function handler(req, res) {
         0
       );
       if (Math.abs(serverTotal - numAmount) > 0.01) {
-        return res.status(400).json({
-          error: `Submitted amount (${numAmount}) does not match catalog total (${serverTotal})`,
-        });
+        return sendError(400, `Submitted amount (${numAmount}) does not match catalog total (${serverTotal})`);
       }
 
       // Cross-check: basket sum must equal total_amount (BOG enforces this)
@@ -147,9 +151,7 @@ export default async function handler(req, res) {
       );
       // Allow 1-cent floating-point tolerance
       if (Math.abs(basketSum - numAmount) > 0.01) {
-        return res.status(400).json({
-          error: `Basket sum (${basketSum}) does not match amount (${numAmount})`,
-        });
+        return sendError(400, `Basket sum (${basketSum}) does not match amount (${numAmount})`);
       }
     }
 
@@ -242,20 +244,20 @@ console.log("BOG REQUEST BODY:", {
       });
       if (!retryResponse.ok) {
         console.error("BOG pay: order creation failed after token refresh", { status: retryResponse.status, retryData });
-        return res.status(502).json({ error: "Failed to create payment order", details: retryData });
+        return sendError(502, "Failed to create payment order", retryData);
       }
       if (!retryData?._links?.redirect?.href) {
         console.error("BOG pay: no redirect URL after retry", retryData);
-        return res.status(502).json({ error: "Failed to create payment order", details: retryData });
+        return sendError(502, "Failed to create payment order", retryData);
       }
       await savePendingOrder(retryData.id, numAmount);
       console.log("BOG pay: order created (after token refresh)", { orderId: retryData.id, numAmount });
-      return res.status(200).json({ payment_url: retryData._links.redirect.href });
+      return sendJson(200, { payment_url: retryData._links.redirect.href });
     }
 
-    if (!orderResponse.ok || !data._links?.redirect?.href) {
+    if (!orderResponse.ok || !data?._links?.redirect?.href) {
       console.error("BOG pay: order creation failed", { status: orderResponse.status, data });
-      return res.status(502).json({ error: "Failed to create payment order", details: data });
+      return sendError(502, "Failed to create payment order", data);
     }
 
     // Save to pending_orders BEFORE returning — ensures callback always finds it
@@ -263,9 +265,9 @@ console.log("BOG REQUEST BODY:", {
 
     console.log("BOG pay: order created", { orderId: data.id, numAmount });
 
-    return res.status(200).json({ payment_url: data._links.redirect.href });
+    return sendJson(200, { payment_url: data._links.redirect.href });
   } catch (err) {
     console.error("BOG pay: unhandled error:", err);
-    return res.status(500).json({ error: "Internal server error" });
+    return sendError(500, "Internal server error", err?.message || null);
   }
 }

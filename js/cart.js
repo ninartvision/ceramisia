@@ -269,7 +269,7 @@
             var data = await res.json().catch(function () { return null; });
             console.log('[Ceramisia] installment /api/pay data:', data);
             if (data.payment_url) {
-              _formRedirect(data.payment_url);
+              window.location.href = data.payment_url;
             } else {
               throw new Error('No payment_url');
             }
@@ -403,7 +403,7 @@
       console.log('[Ceramisia] /api/pay response data:', data);
       if (!res.ok) throw new Error((data && data.error) || ('Server error: HTTP ' + res.status));
       if (!data.payment_url) throw new Error('No payment_url in response');
-      _formRedirect(data.payment_url);
+      window.location.href = data.payment_url;
     } catch (err) {
       console.error('[Ceramisia] payCart error:', err);
       if (btn) { btn.disabled = false; btn.textContent = originalText; }

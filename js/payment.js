@@ -78,24 +78,29 @@ export async function buyProduct(btn) {
   _setBtnState(btn, true, '...');
 
   try {
+    var payload = {
+      amount: parseFloat((price * qty).toFixed(2)),
+      items: [
+        {
+          product_id: productId,
+          quantity:   qty,
+          unit_price: price,
+        },
+      ],
+    };
+    console.log('[Ceramisia] buyProduct /api/pay payload:', payload);
+
     var res = await fetch(PAYMENT_ENDPOINT, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount: parseFloat((price * qty).toFixed(2)),
-        items: [
-          {
-            product_id: productId,
-            quantity:   qty,
-            unit_price: price,
-          },
-        ],
-      }),
+      body: JSON.stringify(payload),
     });
+    console.log('[Ceramisia] buyProduct /api/pay status:', res.status);
 
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var data = await res.json().catch(function () { return null; });
+    console.log('[Ceramisia] buyProduct /api/pay data:', data);
+    if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
 
-    var data = await res.json();
     if (!data.payment_url) throw new Error('No payment_url in response');
 
     // Simple GET redirect — window.location preserves the full URL including
@@ -135,22 +140,30 @@ export function openInstallment(btn) {
       var originalText = btn.textContent;
       _setBtnState(btn, true, '...');
       try {
+        var payload = {
+          amount: parseFloat(price.toFixed(2)),
+          items: [
+            {
+              product_id: productId,
+              quantity: 1,
+              unit_price: price,
+            },
+          ],
+          installment: installmentData,
+        };
+        console.log('[Ceramisia] installment /api/pay payload:', payload);
+
         var res = await fetch(PAYMENT_ENDPOINT, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            product_id:  productId,
-            name:        name,
-            price:       price,
-            quantity:    1,
-            amount:      parseFloat(price.toFixed(2)),
-            installment: installmentData,
-          }),
+          body: JSON.stringify(payload),
         });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        var data = await res.json();
+        console.log('[Ceramisia] installment /api/pay status:', res.status);
+        var data = await res.json().catch(function () { return null; });
+        console.log('[Ceramisia] installment /api/pay data:', data);
+        if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
         if (!data.payment_url) throw new Error('No payment_url in response');
-        _redirect(data.payment_url, 'GET');
+        window.location.href = data.payment_url;
       } catch (err) {
         console.error('[Ceramisia] Installment payment error:', err);
         _setBtnState(btn, false, originalText);
