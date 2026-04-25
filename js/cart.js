@@ -330,16 +330,6 @@
   }
 
   /* ── Card Payment (BOG) ───────────────────────── */
-  function buildPayItems(cart) {
-    return (cart || []).map(function (item) {
-      return {
-        product_id: item.slug || item.id,
-        quantity: Number(item.qty) || 1,
-        unit_price: Number(item.price) || 0,
-      };
-    });
-  }
-
   var _isPaying = false;
 
   async function payCart() {
@@ -347,11 +337,9 @@
       console.warn('[Ceramisia] payCart: already in progress');
       return;
     }
-    var cart = getCart();
     var totalAmount = parseFloat(getTotalPrice().toFixed(2));
-    var items = buildPayItems(cart);
     console.log('[Ceramisia] Payment request started');
-    console.log('[Ceramisia] payCart payload:', { amount: totalAmount, items: items });
+    console.log('[Ceramisia] payCart payload:', { amount: totalAmount });
     if (!totalAmount || totalAmount <= 0) {
       console.warn('[Ceramisia] payCart: empty/invalid amount', { amount: totalAmount });
       return;
@@ -368,7 +356,7 @@
       var res = await fetch('/api/pay', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ amount: totalAmount, items: items }),
+        body:    JSON.stringify({ amount: totalAmount }),
         signal:  controller.signal,
       });
       clearTimeout(timeoutId);
@@ -379,12 +367,13 @@
       } catch (_jsonErr) {
         throw new Error('Invalid JSON response from /api/pay');
       }
-      console.log('FULL RESPONSE:', data);
-      console.log('[Ceramisia] Payment API response:', data);
+      console.log('BOG RESPONSE:', data);
 
       if (!res.ok) throw new Error((data && data.error) || ('Server error: HTTP ' + res.status));
-      var redirectUrl = data && (data.payment_url || data.url || (data.data && data.data.payment_url));
-      if (!redirectUrl) throw new Error('Payment URL not found');
+      var redirectUrl = data && ((data._links && data._links.redirect && data._links.redirect.href) || data.payment_url || data.url);
+      if (!redirectUrl) {
+        throw new Error('გადახდის ლინკი ვერ მოიძებნა');
+      }
 
       console.log('[Ceramisia] Redirecting to bank page...');
       console.log('[Ceramisia] payCart redirect URL:', redirectUrl);
@@ -393,9 +382,13 @@
       console.error('[Ceramisia] payCart error:', err);
       if (btn) { btn.disabled = false; btn.textContent = originalText; }
       var lang = getLang();
-      alert(lang === 'ge'
-        ? 'გადახდის დაწყება ვერ მოხერხდა. გთხოვთ სცადოთ თავიდან.'
-        : 'Could not start payment. Please try again.');
+      if (String(err && err.message).indexOf('გადახდის ლინკი ვერ მოიძებნა') !== -1) {
+        alert(lang === 'ge' ? 'გადახდის ლინკი ვერ მოიძებნა' : 'Payment URL not found');
+      } else {
+        alert(lang === 'ge'
+          ? 'გადახდის დაწყება ვერ მოხერხდა. გთხოვთ სცადოთ თავიდან.'
+          : 'Could not start payment. Please try again.');
+      }
     } finally {
       _isPaying = false;
     }
