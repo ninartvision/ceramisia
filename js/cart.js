@@ -330,22 +330,6 @@
   }
 
   /* ── Card Payment (BOG) ───────────────────────── */
-  async function parseJsonSafely(res) {
-    var raw = await res.text();
-    console.log('[Ceramisia] payCart: raw response', {
-      status: res.status,
-      ok: res.ok,
-      body: raw,
-    });
-
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw);
-    } catch (_err) {
-      throw new Error('Invalid JSON response from /api/pay');
-    }
-  }
-
   function buildPayItems(cart) {
     return (cart || []).map(function (item) {
       return {
@@ -389,12 +373,18 @@
       });
       clearTimeout(timeoutId);
       console.log('[Ceramisia] payCart fetch response:', { status: res.status, ok: res.ok });
-      var data = await parseJsonSafely(res);
+      var data;
+      try {
+        data = await res.json();
+      } catch (_jsonErr) {
+        throw new Error('Invalid JSON response from /api/pay');
+      }
+      console.log('FULL RESPONSE:', data);
       console.log('[Ceramisia] Payment API response:', data);
 
       if (!res.ok) throw new Error((data && data.error) || ('Server error: HTTP ' + res.status));
-      var redirectUrl = data && (data.payment_url || data.url);
-      if (!redirectUrl) throw new Error('No payment URL in response');
+      var redirectUrl = data && (data.payment_url || data.url || (data.data && data.data.payment_url));
+      if (!redirectUrl) throw new Error('Payment URL not found');
 
       console.log('[Ceramisia] Redirecting to bank page...');
       console.log('[Ceramisia] payCart redirect URL:', redirectUrl);
