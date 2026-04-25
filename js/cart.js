@@ -258,13 +258,16 @@
         amount: total,
         onConfirm: async function () {
           try {
+            var items = buildBogItems(getCart());
             var res = await fetch('/api/pay', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ amount: total, items: getCart() }),
+              body: JSON.stringify({ amount: total, items: items }),
             });
+            console.log('[Ceramisia] installment /api/pay status:', res.status);
             if (!res.ok) throw new Error('HTTP ' + res.status);
-            var data = await res.json();
+            var data = await res.json().catch(function () { return null; });
+            console.log('[Ceramisia] installment /api/pay data:', data);
             if (data.payment_url) {
               _formRedirect(data.payment_url);
             } else {
@@ -367,39 +370,48 @@
     form.action = url;
     form.submit();
   }
-  function payCart() {
+  function buildBogItems(cart) {
+    return (cart || []).map(function (item) {
+      return {
+        product_id: item.slug || item.id,
+        quantity: Number(item.qty) || 1,
+        unit_price: Number(item.price) || 0,
+      };
+    });
+  }
+  async function payCart() {
     var cart = getCart();
     console.log('[Ceramisia] payCart() called, cart items:', cart.length);
     if (!cart.length) return;
 
     var totalAmount  = parseFloat(getTotalPrice().toFixed(2));
+    var bogItems     = buildBogItems(cart);
     var btn          = document.getElementById('cartPayBtn');
     var originalText = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
 
-    fetch('/api/pay', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ amount: totalAmount, items: cart }),
-    })
-    .then(function (res) {
+    console.log('[Ceramisia] /api/pay request payload:', { amount: totalAmount, items: bogItems });
+
+    try {
+      var res = await fetch('/api/pay', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ amount: totalAmount, items: bogItems }),
+      });
       console.log('[Ceramisia] /api/pay response status:', res.status);
-      if (!res.ok) throw new Error('Server error: HTTP ' + res.status);
-      return res.json();
-    })
-    .then(function (data) {
+      var data = await res.json().catch(function () { return null; });
       console.log('[Ceramisia] /api/pay response data:', data);
+      if (!res.ok) throw new Error((data && data.error) || ('Server error: HTTP ' + res.status));
       if (!data.payment_url) throw new Error('No payment_url in response');
       _formRedirect(data.payment_url);
-    })
-    .catch(function (err) {
+    } catch (err) {
       console.error('[Ceramisia] payCart error:', err);
       if (btn) { btn.disabled = false; btn.textContent = originalText; }
       var lang = getLang();
       alert(lang === 'ge'
         ? 'გადახდის დაწყება ვერ მოხერხდა. გთხოვთ სცადოთ თავიდან.'
         : 'Could not start payment. Please try again.');
-    });
+    }
   }
 
   /* ── WhatsApp Checkout ─────────────────────────── */

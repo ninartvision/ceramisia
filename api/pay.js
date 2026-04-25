@@ -174,6 +174,16 @@ console.log("BOG REQUEST BODY:", {
 });
     console.log("BOG pay: creating order", { externalOrderId, numAmount, itemCount: items?.length ?? 0 });
 
+    const bogOrderPayload = {
+      callback_url: process.env.CALLBACK_URL,
+      external_order_id: externalOrderId,
+      purchase_units: purchaseUnits,
+      redirect_urls: {
+        success: process.env.SUCCESS_URL,
+        fail: process.env.FAIL_URL,
+      },
+    };
+
     const orderResponse = await fetch(
       "https://api.bog.ge/payments/v1/ecommerce/orders",
       {
@@ -182,24 +192,31 @@ console.log("BOG REQUEST BODY:", {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          callback_url: process.env.CALLBACK_URL,
-          external_order_id: externalOrderId,
-          purchase_units: purchaseUnits,
-          redirect_urls: {
-            success: process.env.SUCCESS_URL,
-            fail: process.env.FAIL_URL,
-          },
-        }),
+        body: JSON.stringify(bogOrderPayload),
       }
     );
 
-    const data = await orderResponse.json();
+    const orderRaw = await orderResponse.text();
+    let data = null;
+    try {
+      data = orderRaw ? JSON.parse(orderRaw) : null;
+    } catch {
+      data = null;
+    }
+    console.log("BOG pay: create order response", {
+      status: orderResponse.status,
+      ok: orderResponse.ok,
+      hasRedirect: Boolean(data?._links?.redirect?.href),
+    });
 
     // If BOG returns 401, the cached token was invalidated server-side — retry once with a fresh token
     if (orderResponse.status === 401) {
       console.warn("BOG pay: received 401, refreshing token and retrying");
       const freshToken = await getBogToken(true);
+      const retryPayload = {
+        ...bogOrderPayload,
+        external_order_id: `order_${crypto.randomUUID()}`,
+      };
       const retryResponse = await fetch(
         "https://api.bog.ge/payments/v1/ecommerce/orders",
         {
@@ -208,26 +225,28 @@ console.log("BOG REQUEST BODY:", {
             Authorization: `Bearer ${freshToken}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            callback_url: process.env.CALLBACK_URL,
-            external_order_id: `order_${crypto.randomUUID()}`,
-            purchase_units: purchaseUnits,
-            redirect_urls: {
-              success: process.env.SUCCESS_URL,
-              fail: process.env.FAIL_URL,
-            },
-          }),
+          body: JSON.stringify(retryPayload),
         }
       );
-      if (!retryResponse.ok) {
-        const retryData = await retryResponse.json().catch(() => ({}));
-        console.error("BOG pay: order creation failed after token refresh", { status: retryResponse.status, retryData });
-        return res.status(502).json({ error: "Failed to create payment order" });
+      const retryRaw = await retryResponse.text();
+      let retryData = null;
+      try {
+        retryData = retryRaw ? JSON.parse(retryRaw) : null;
+      } catch {
+        retryData = null;
       }
-      const retryData = await retryResponse.json();
-      if (!retryData._links?.redirect?.href) {
+      console.log("BOG pay: retry response", {
+        status: retryResponse.status,
+        ok: retryResponse.ok,
+        hasRedirect: Boolean(retryData?._links?.redirect?.href),
+      });
+      if (!retryResponse.ok) {
+        console.error("BOG pay: order creation failed after token refresh", { status: retryResponse.status, retryData });
+        return res.status(502).json({ error: "Failed to create payment order", details: retryData });
+      }
+      if (!retryData?._links?.redirect?.href) {
         console.error("BOG pay: no redirect URL after retry", retryData);
-        return res.status(502).json({ error: "Failed to create payment order" });
+        return res.status(502).json({ error: "Failed to create payment order", details: retryData });
       }
       await savePendingOrder(retryData.id, numAmount);
       console.log("BOG pay: order created (after token refresh)", { orderId: retryData.id, numAmount });
@@ -236,7 +255,7 @@ console.log("BOG REQUEST BODY:", {
 
     if (!orderResponse.ok || !data._links?.redirect?.href) {
       console.error("BOG pay: order creation failed", { status: orderResponse.status, data });
-      return res.status(502).json({ error: "Failed to create payment order" });
+      return res.status(502).json({ error: "Failed to create payment order", details: data });
     }
 
     // Save to pending_orders BEFORE returning — ensures callback always finds it
