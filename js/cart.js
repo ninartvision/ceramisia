@@ -249,6 +249,7 @@
     if (payBtn && !payBtn._payBound) {
       payBtn._payBound = true;
       payBtn.addEventListener('click', payCart);
+      console.log('[Ceramisia] Pay button listener bound:', '#cartPayBtn');
     }
 
     // Installment button is intentionally not bound here.
@@ -333,6 +334,7 @@
   var _isPaying = false;
 
   async function payCart() {
+    console.log('PAY CLICKED');
     if (_isPaying) {
       console.warn('[Ceramisia] payCart: already in progress');
       return;
@@ -353,7 +355,7 @@
     try {
       var controller = new AbortController();
       var timeoutId = setTimeout(function () { controller.abort(); }, 20000);
-      var res = await fetch('/api/pay', {
+      var res = await fetch('https://ceramisia.com/api/pay', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ amount: totalAmount }),
