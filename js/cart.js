@@ -355,7 +355,7 @@
     try {
       var controller = new AbortController();
       var timeoutId = setTimeout(function () { controller.abort(); }, 20000);
-      var res = await fetch('https://ceramisia.com/api/pay', {
+      var res = await fetch('/api/pay', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ amount: totalAmount }),
