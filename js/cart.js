@@ -346,10 +346,28 @@
     }
   }
 
+  function buildPayItems(cart) {
+    return (cart || []).map(function (item) {
+      return {
+        product_id: item.slug || item.id,
+        quantity: Number(item.qty) || 1,
+        unit_price: Number(item.price) || 0,
+      };
+    });
+  }
+
+  var _isPaying = false;
+
   async function payCart() {
+    if (_isPaying) {
+      console.warn('[Ceramisia] payCart: already in progress');
+      return;
+    }
+    var cart = getCart();
     var totalAmount = parseFloat(getTotalPrice().toFixed(2));
-    console.log('PAY START');
-    console.log('[Ceramisia] payCart payload:', { amount: totalAmount });
+    var items = buildPayItems(cart);
+    console.log('[Ceramisia] Payment request started');
+    console.log('[Ceramisia] payCart payload:', { amount: totalAmount, items: items });
     if (!totalAmount || totalAmount <= 0) {
       console.warn('[Ceramisia] payCart: empty/invalid amount', { amount: totalAmount });
       return;
@@ -358,22 +376,27 @@
     var btn          = document.getElementById('cartPayBtn');
     var originalText = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
+    _isPaying = true;
 
     try {
+      var controller = new AbortController();
+      var timeoutId = setTimeout(function () { controller.abort(); }, 20000);
       var res = await fetch('/api/pay', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ amount: totalAmount }),
+        body:    JSON.stringify({ amount: totalAmount, items: items }),
+        signal:  controller.signal,
       });
+      clearTimeout(timeoutId);
       console.log('[Ceramisia] payCart fetch response:', { status: res.status, ok: res.ok });
       var data = await parseJsonSafely(res);
-      console.log('RESPONSE:', data);
+      console.log('[Ceramisia] Payment API response:', data);
 
       if (!res.ok) throw new Error((data && data.error) || ('Server error: HTTP ' + res.status));
       var redirectUrl = data && (data.payment_url || data.url);
       if (!redirectUrl) throw new Error('No payment URL in response');
 
-      console.log('REDIRECTING...');
+      console.log('[Ceramisia] Redirecting to bank page...');
       console.log('[Ceramisia] payCart redirect URL:', redirectUrl);
       window.location.href = redirectUrl;
     } catch (err) {
@@ -383,6 +406,8 @@
       alert(lang === 'ge'
         ? 'გადახდის დაწყება ვერ მოხერხდა. გთხოვთ სცადოთ თავიდან.'
         : 'Could not start payment. Please try again.');
+    } finally {
+      _isPaying = false;
     }
   }
 
