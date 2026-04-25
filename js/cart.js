@@ -377,7 +377,13 @@
           unit_price: Number(item.price) || 0
         };
       });
-  
+      items = items.filter(function (i) {
+        return i.product_id && i.quantity > 0 && i.unit_price > 0;
+      });
+      
+      if (!items.length) {
+        throw new Error('Invalid cart items');
+      }
       var res = await fetch('/api/pay', {
         method: 'POST',
         headers: {
@@ -410,9 +416,10 @@
       }
   
       var redirectUrl =
-        data?._links?.redirect?.href ||
-        data?.payment_url ||
-        data?.url;
+      data?._links?.redirect?.href ||
+      data?.payment_url ||
+      data?.data?.payment_url || // 🔥 დამატებულია
+      data?.url;
   
       if (!redirectUrl) {
         throw new Error('გადახდის ლინკი ვერ მოიძებნა');
