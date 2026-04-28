@@ -389,12 +389,24 @@
     var timeoutId  = setTimeout(function () { controller.abort(); }, 20000);
 
     try {
+      var requestBody = {
+        amount: totalAmount,
+        items: [
+          {
+            product_id: 'cart',
+            quantity:   1,
+            unit_price: totalAmount
+          }
+        ]
+      };
+
       console.log('PAY REQUEST:', totalAmount);
+      console.log('PAY REQUEST BODY:', requestBody);
 
       var res = await fetch(PAYMENT_ENDPOINT, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ amount: totalAmount }),
+        body:    JSON.stringify(requestBody),
         signal:  controller.signal
       });
 
