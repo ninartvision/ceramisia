@@ -244,16 +244,31 @@
     // Checkout via WhatsApp
     document.getElementById('cartCheckoutBtn').addEventListener('click', handleWhatsAppCheckout);
 
-    // Checkout via card payment (guard against duplicate bindings)
-    var payBtn = document.getElementById('cartPayBtn');
-    if (payBtn && !payBtn._payBound) {
-      payBtn._payBound = true;
-      payBtn.addEventListener('click', payCart);
-      console.log('[Ceramisia] Pay button listener bound:', '#cartPayBtn');
+    // Direct event binding for the dynamically-created payment buttons.
+    // Bind ONLY after the drawer is appended to document.body so the
+    // elements exist in DOM at the moment of attachment.
+    var payBtn         = document.getElementById('cartPayBtn');
+    var installmentBtn = document.getElementById('cartInstallmentBtn');
+
+    if (payBtn) {
+      payBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('PAY CLICKED');
+        payCart('cartPayBtn');
+      });
+      console.log('[Ceramisia] Pay button listener bound: #cartPayBtn');
     }
 
-    // Installment button is intentionally not bound here.
-    // Keep cart "Pay" flow single and predictable (no extra onConfirm handlers).
+    if (installmentBtn) {
+      installmentBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('INSTALLMENT CLICKED');
+        payCart('cartInstallmentBtn');
+      });
+      console.log('[Ceramisia] Pay button listener bound: #cartInstallmentBtn');
+    }
   }
 
   function openCartDrawer() {
@@ -350,8 +365,8 @@
     );
   }
 
-  async function payCart() {
-    console.log('[Ceramisia] PAY CLICKED');
+  async function payCart(btnId) {
+    console.log('PAY CLICKED', btnId || '');
 
     if (_isPaying) {
       console.warn('[Ceramisia] payCart: already in progress');
@@ -364,29 +379,7 @@
       return;
     }
 
-    var items = getCart()
-      .map(function (item) {
-        return {
-          product_id: item.slug || item.id,
-          quantity:   Number(item.qty)   || 1,
-          unit_price: Number(item.price) || 0
-        };
-      })
-      .filter(function (i) {
-        return i.product_id && i.quantity > 0 && i.unit_price > 0;
-      });
-
-    if (!items.length) {
-      alert(getLang() === 'ge'
-        ? 'კალათაში პროდუქტი ვერ მოიძებნა'
-        : 'No valid items in cart');
-      return;
-    }
-
-    var payload = { amount: totalAmount, items: items };
-    console.log('[Ceramisia] DEBUG /api/pay request payload:', payload);
-
-    var btn = document.getElementById('cartPayBtn');
+    var btn = document.getElementById(btnId || 'cartPayBtn');
     var originalText = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
 
@@ -396,36 +389,23 @@
     var timeoutId  = setTimeout(function () { controller.abort(); }, 20000);
 
     try {
+      console.log('PAY REQUEST:', totalAmount);
+
       var res = await fetch(PAYMENT_ENDPOINT, {
-        method:      'POST',
-        credentials: 'same-origin',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept':       'application/json'
-        },
-        body:   JSON.stringify(payload),
-        signal: controller.signal
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ amount: totalAmount }),
+        signal:  controller.signal
       });
 
-      // Read raw text first so we can log it even when the body isn't JSON
-      // (e.g. proxy/HTML error page). Then try JSON.parse.
-      var rawText = await res.text();
-      var data    = null;
-      var parseError = null;
+      var data;
       try {
-        data = rawText ? JSON.parse(rawText) : null;
-      } catch (e) {
-        parseError = e && e.message ? e.message : String(e);
+        data = await res.json();
+      } catch (_jsonErr) {
+        throw new Error('Invalid JSON response from /api/pay');
       }
 
-      console.log('[Ceramisia] DEBUG /api/pay response:', {
-        status:     res.status,
-        ok:         res.ok,
-        contentType: res.headers.get('content-type'),
-        parseError: parseError,
-        rawText:    rawText,
-        data:       data
-      });
+      console.log('FULL RESPONSE:', data);
 
       if (!res.ok) {
         var serverErr =
@@ -435,14 +415,11 @@
       }
 
       var redirectUrl = extractRedirectUrl(data);
-      console.log('[Ceramisia] DEBUG extracted redirect URL:', redirectUrl);
 
       if (!redirectUrl) {
-        console.error('[Ceramisia] No redirect URL in response. Full body:', data);
         throw new Error('NO_REDIRECT_URL');
       }
 
-      console.log('[Ceramisia] Redirecting to bank page →', redirectUrl);
       window.location.href = redirectUrl;
     } catch (err) {
       console.error('[Ceramisia] payCart error:', err);
@@ -453,8 +430,8 @@
 
       if (msg === 'NO_REDIRECT_URL') {
         alert(lang === 'ge'
-          ? 'გადახდის ლინკი ვერ მოიძებნა (იხ. console)'
-          : 'Payment URL not found (see console)');
+          ? 'გადახდის ლინკი ვერ მოიძებნა'
+          : 'Payment URL not found');
       } else if (err && err.name === 'AbortError') {
         alert(lang === 'ge'
           ? 'მოთხოვნამ ვადა გაუვიდა. სცადეთ თავიდან.'
