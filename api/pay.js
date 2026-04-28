@@ -131,6 +131,17 @@ async function getBogToken(forceRefresh = false) {
       body: "grant_type=client_credentials",
       signal,
     });
+  } catch (err) {
+    if (err?.name === "AbortError") {
+      const timeoutErr = new Error("token request timed out");
+      timeoutErr.code = "TOKEN_TIMEOUT";
+      timeoutErr.details = "Token request timed out after 15000ms";
+      throw timeoutErr;
+    }
+    const networkErr = new Error("token request network error");
+    networkErr.code = "TOKEN_REQUEST_FAILED";
+    networkErr.details = err?.message ?? String(err);
+    throw networkErr;
   } finally {
     clear();
   }
@@ -198,8 +209,8 @@ async function createBogOrder({ token, requestBody, timeoutMs = 15_000 }) {
     return { response, data, rawText: text, parseError };
   } catch (err) {
     if (err?.name === "AbortError") {
-      const timeoutError = new Error("order request failed");
-      timeoutError.code = "ORDER_REQUEST_FAILED";
+      const timeoutError = new Error("order request timed out");
+      timeoutError.code = "ORDER_TIMEOUT";
       timeoutError.details = `Order request timed out after ${timeoutMs}ms`;
       throw timeoutError;
     }
@@ -218,6 +229,11 @@ async function createBogOrder({ token, requestBody, timeoutMs = 15_000 }) {
 // Returns 200: { payment_url, redirect_url, url, order_id, _links }
 // ---------------------------------------------------------------------------
 export default async function handler(req, res) {
+  console.log("STEP 1: handler start", {
+    method: req.method,
+    origin: req.headers.origin,
+  });
+
   applyCors(req, res);
 
   if (req.method === "OPTIONS") {
@@ -355,7 +371,10 @@ export default async function handler(req, res) {
       console.log("[PAY] amount-only mode (no items provided)");
     }
 
+    console.log("STEP 2: before token request");
     const token = await getBogToken();
+
+    console.log("STEP 3: before order request");
     const externalOrderId = `order_${crypto.randomUUID()}`;
     const requestBody = {
       callback_url: process.env.CALLBACK_URL,
@@ -383,6 +402,12 @@ export default async function handler(req, res) {
 
     let { response: orderResponse, data, rawText, parseError } =
       await createBogOrder({ token, requestBody, timeoutMs: 15_000 });
+
+    console.log("STEP 4: after BOG response", {
+      status: orderResponse.status,
+      ok: orderResponse.ok,
+      parseError,
+    });
 
     if (orderResponse.status === 401) {
       console.warn("[PAY] received 401, refreshing token and retrying");
@@ -455,6 +480,8 @@ export default async function handler(req, res) {
     await savePendingOrder(orderId, numAmount);
     console.log("[PAY] order created", { orderId, numAmount, paymentUrl });
 
+    console.log("STEP 5: sending response", { orderId, paymentUrl });
+
     return sendJson(res, 200, {
       payment_url: paymentUrl,
       redirect_url: paymentUrl,
@@ -465,19 +492,27 @@ export default async function handler(req, res) {
   } catch (err) {
     console.error("[PAY] unhandled error", {
       message: err?.message,
+      name: err?.name,
       code: err?.code,
       details: err?.details,
       stack: err?.stack,
     });
+
+    if (err?.code === "TOKEN_TIMEOUT" || err?.code === "ORDER_TIMEOUT" || err?.name === "AbortError") {
+      return sendJson(res, 504, {
+        error: "Timeout contacting BOG API",
+        details: err?.details ?? err?.message ?? null,
+      });
+    }
     if (err?.code === "ORDER_REQUEST_FAILED") {
       return sendJson(res, 502, {
-        error: "Request failed or timed out",
+        error: "BOG order request failed",
         details: err?.details ?? null,
       });
     }
     if (err?.code === "TOKEN_REQUEST_FAILED") {
       return sendJson(res, 502, {
-        error: "Token request failed",
+        error: "BOG token request failed",
         details: err?.details ?? null,
       });
     }
