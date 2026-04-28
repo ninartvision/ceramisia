@@ -332,126 +332,140 @@
 
   /* ── Card Payment (BOG) ───────────────────────── */
   var _isPaying = false;
+  var PAYMENT_ENDPOINT = '/api/pay';
+
+  // Extract the redirect URL from any shape BOG / our backend may return.
+  function extractRedirectUrl(data) {
+    if (!data || typeof data !== 'object') return null;
+    return (
+      (data._links && data._links.redirect && data._links.redirect.href) ||
+      (data.links  && data.links.redirect  && data.links.redirect.href)  ||
+      data.payment_url  ||
+      data.redirect_url ||
+      data.url          ||
+      (data.data && data.data._links && data.data._links.redirect && data.data._links.redirect.href) ||
+      (data.data && data.data.payment_url) ||
+      (data.data && data.data.url) ||
+      null
+    );
+  }
 
   async function payCart() {
-    console.log('PAY CLICKED');
-  
+    console.log('[Ceramisia] PAY CLICKED');
+
     if (_isPaying) {
       console.warn('[Ceramisia] payCart: already in progress');
       return;
     }
-  
+
     var totalAmount = parseFloat(getTotalPrice().toFixed(2));
-  
-    console.log('[Ceramisia] Payment request started');
-    console.log('[Ceramisia] payCart payload:', { amount: totalAmount });
-  
     if (!totalAmount || totalAmount <= 0) {
-      alert('კალათა ცარიელია');
+      alert(getLang() === 'ge' ? 'კალათა ცარიელია' : 'Cart is empty');
       return;
     }
-  
-    var btn = document.getElementById('cartPayBtn');
-    var originalText = btn ? btn.textContent : '';
-  
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = '...';
-    }
-  
-    _isPaying = true;
-  
-    var timeoutId;
-    var controller = new AbortController();
-  
-    try {
-      timeoutId = setTimeout(function () {
-        controller.abort();
-      }, 20000);
-  
-      // 🔥 აქ არის მთავარი FIX
-      var items = getCart().map(function(item) {
+
+    var items = getCart()
+      .map(function (item) {
         return {
           product_id: item.slug || item.id,
-          quantity: Number(item.qty) || 1,
+          quantity:   Number(item.qty)   || 1,
           unit_price: Number(item.price) || 0
         };
-      });
-      items = items.filter(function (i) {
+      })
+      .filter(function (i) {
         return i.product_id && i.quantity > 0 && i.unit_price > 0;
       });
-      
-      if (!items.length) {
-        throw new Error('Invalid cart items');
-      }
-      var res = await fetch('/api/pay', {
-        method: 'POST',
+
+    if (!items.length) {
+      alert(getLang() === 'ge'
+        ? 'კალათაში პროდუქტი ვერ მოიძებნა'
+        : 'No valid items in cart');
+      return;
+    }
+
+    var payload = { amount: totalAmount, items: items };
+    console.log('[Ceramisia] DEBUG /api/pay request payload:', payload);
+
+    var btn = document.getElementById('cartPayBtn');
+    var originalText = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+
+    _isPaying = true;
+
+    var controller = new AbortController();
+    var timeoutId  = setTimeout(function () { controller.abort(); }, 20000);
+
+    try {
+      var res = await fetch(PAYMENT_ENDPOINT, {
+        method:      'POST',
+        credentials: 'same-origin',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept':       'application/json'
         },
-        body: JSON.stringify({
-          amount: totalAmount,
-          items: items
-        }),
+        body:   JSON.stringify(payload),
         signal: controller.signal
       });
-  
-      console.log('[Ceramisia] payCart fetch response:', {
-        status: res.status,
-        ok: res.ok
-      });
-  
-      var data;
-  
+
+      // Read raw text first so we can log it even when the body isn't JSON
+      // (e.g. proxy/HTML error page). Then try JSON.parse.
+      var rawText = await res.text();
+      var data    = null;
+      var parseError = null;
       try {
-        data = await res.json();
+        data = rawText ? JSON.parse(rawText) : null;
       } catch (e) {
-        throw new Error('Invalid JSON response from /api/pay');
+        parseError = e && e.message ? e.message : String(e);
       }
-  
-      console.log('BOG RESPONSE:', data);
-  
+
+      console.log('[Ceramisia] DEBUG /api/pay response:', {
+        status:     res.status,
+        ok:         res.ok,
+        contentType: res.headers.get('content-type'),
+        parseError: parseError,
+        rawText:    rawText,
+        data:       data
+      });
+
       if (!res.ok) {
-        throw new Error((data && data.error) || ('Server error: HTTP ' + res.status));
+        var serverErr =
+          (data && (data.error || (data.details && data.details.message))) ||
+          ('HTTP ' + res.status);
+        throw new Error(String(serverErr));
       }
-  
-      var redirectUrl =
-      data?._links?.redirect?.href ||
-      data?.payment_url ||
-      data?.data?.payment_url || // 🔥 დამატებულია
-      data?.url;
-  
+
+      var redirectUrl = extractRedirectUrl(data);
+      console.log('[Ceramisia] DEBUG extracted redirect URL:', redirectUrl);
+
       if (!redirectUrl) {
-        throw new Error('გადახდის ლინკი ვერ მოიძებნა');
+        console.error('[Ceramisia] No redirect URL in response. Full body:', data);
+        throw new Error('NO_REDIRECT_URL');
       }
-  
-      console.log('[Ceramisia] Redirecting to bank page...');
-      console.log('[Ceramisia] payCart redirect URL:', redirectUrl);
-  
+
+      console.log('[Ceramisia] Redirecting to bank page →', redirectUrl);
       window.location.href = redirectUrl;
-  
     } catch (err) {
       console.error('[Ceramisia] payCart error:', err);
-  
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = originalText;
-      }
-  
+      if (btn) { btn.disabled = false; btn.textContent = originalText; }
+
       var lang = getLang();
-  
-      if (String(err.message).includes('გადახდის ლინკი ვერ მოიძებნა')) {
+      var msg  = err && err.message ? String(err.message) : '';
+
+      if (msg === 'NO_REDIRECT_URL') {
         alert(lang === 'ge'
-          ? 'გადახდის ლინკი ვერ მოიძებნა'
-          : 'Payment URL not found');
+          ? 'გადახდის ლინკი ვერ მოიძებნა (იხ. console)'
+          : 'Payment URL not found (see console)');
+      } else if (err && err.name === 'AbortError') {
+        alert(lang === 'ge'
+          ? 'მოთხოვნამ ვადა გაუვიდა. სცადეთ თავიდან.'
+          : 'Request timed out. Please try again.');
       } else {
         alert(lang === 'ge'
-          ? 'გადახდის დაწყება ვერ მოხერხდა. სცადეთ თავიდან.'
-          : 'Could not start payment. Please try again.');
+          ? ('გადახდის შეცდომა: ' + msg)
+          : ('Payment error: ' + msg));
       }
-  
     } finally {
-      if (timeoutId) clearTimeout(timeoutId);
+      clearTimeout(timeoutId);
       _isPaying = false;
     }
   }

@@ -1,54 +1,20 @@
 /**
  * Ceramisia – BOG Payment Handler (ES Module)
  *
- * Handles:
- *   • 💳 Buy  →  pay(btn)          → POST /api/pay → redirect to payment_url
- *   • 💸 Installment → openInstallment(btn) → BOG.Calculator.open()
+ *   • 💳 Buy         → buyProduct(btn)      → POST /api/pay → window.location = redirect
+ *   • 💸 Installment → openInstallment(btn) → BOG.Calculator.open() → POST /api/pay
  *
- * Button data-attributes (same for both buttons):
+ * Button data-attributes:
  *   data-id    – product ID / slug
  *   data-price – unit price (number)
  *   data-qty   – quantity (number, default 1)
  *   data-name  – product display name
- *
- * Exposes window.pay() and window.openInstallment() for inline onclick use.
  */
 
 const PAYMENT_ENDPOINT = '/api/pay';
 
-// ── 3DS-safe redirect via hidden form ────────────────────────────────────────
-// Using a form submission instead of window.location prevents CSP issues and
-// is required when the payment gateway needs a POST (3DS ACS redirect).
-function _redirect(url, method, params) {
-  var form = document.getElementById('bog-3ds-form');
-  if (!form) {
-    // Fallback: build form dynamically if the static placeholder isn't in HTML
-    form = document.createElement('form');
-    form.id = 'bog-3ds-form';
-    form.style.display = 'none';
-    document.body.appendChild(form);
-  }
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
-  // Clear previous inputs
-  form.innerHTML = '';
-  form.action = url;
-  form.method = (method || 'GET').toUpperCase();
-
-  // POST 3DS case: attach hidden fields from the gateway response
-  if (form.method === 'POST' && params && typeof params === 'object') {
-    Object.keys(params).forEach(function (key) {
-      var inp  = document.createElement('input');
-      inp.type  = 'hidden';
-      inp.name  = key;
-      inp.value = params[key];
-      form.appendChild(inp);
-    });
-  }
-
-  form.submit();
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function _setBtnState(btn, loading, text) {
   btn.disabled = loading;
   btn.classList.toggle('btn-buy--loading',         loading);
@@ -56,79 +22,127 @@ function _setBtnState(btn, loading, text) {
   if (text !== undefined) btn.textContent = text;
 }
 
-// ── Buy / Pay ─────────────────────────────────────────────────────────────────
-/**
- * Initiates a BOG card payment.
- * Called by the 💳 Buy button.
- *
- * @param {HTMLButtonElement} btn
- */
-export async function buyProduct(btn) {
-  var productId = btn.dataset.id    || '';
-  var price     = parseFloat(btn.dataset.price) || 0;
-  var qty       = parseInt(btn.dataset.qty, 10) || 1;
-  var name      = btn.dataset.name  || productId;
+// Extract redirect URL from any shape BOG / our backend may return.
+function extractRedirectUrl(data) {
+  if (!data || typeof data !== 'object') return null;
+  return (
+    (data._links && data._links.redirect && data._links.redirect.href) ||
+    (data.links  && data.links.redirect  && data.links.redirect.href)  ||
+    data.payment_url  ||
+    data.redirect_url ||
+    data.url          ||
+    (data.data && data.data._links && data.data._links.redirect && data.data._links.redirect.href) ||
+    (data.data && data.data.payment_url) ||
+    (data.data && data.data.url) ||
+    null
+  );
+}
 
-  if (!productId || price <= 0) {
-    console.error('[Ceramisia] pay(): missing data-id or data-price on', btn);
-    return;
+// Single source of truth for /api/pay calls — full debug logs, raw-text
+// fallback, multi-shape redirect URL extraction, and proper async error
+// surfacing (no Promise <pending> issues).
+async function callPayApi(payload) {
+  console.log('[Ceramisia] DEBUG /api/pay request payload:', payload);
+
+  const res = await fetch(PAYMENT_ENDPOINT, {
+    method:      'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept':       'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  // Read raw text first so non-JSON responses can still be logged.
+  const rawText = await res.text();
+  let data = null;
+  let parseError = null;
+  try {
+    data = rawText ? JSON.parse(rawText) : null;
+  } catch (e) {
+    parseError = e && e.message ? e.message : String(e);
   }
 
-  var originalText = btn.textContent;
-  _setBtnState(btn, true, '...');
+  console.log('[Ceramisia] DEBUG /api/pay response:', {
+    status:      res.status,
+    ok:          res.ok,
+    contentType: res.headers.get('content-type'),
+    parseError,
+    rawText,
+    data,
+  });
 
-  try {
-    var payload = {
-      amount: parseFloat((price * qty).toFixed(2)),
-      items: [
-        {
-          product_id: productId,
-          quantity:   qty,
-          unit_price: price,
-        },
-      ],
-    };
-    console.log('[Ceramisia] buyProduct /api/pay payload:', payload);
+  if (!res.ok) {
+    const serverErr =
+      (data && (data.error || (data.details && data.details.message))) ||
+      ('HTTP ' + res.status);
+    throw new Error(String(serverErr));
+  }
 
-    var res = await fetch(PAYMENT_ENDPOINT, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    console.log('[Ceramisia] buyProduct /api/pay status:', res.status);
+  const redirectUrl = extractRedirectUrl(data);
+  console.log('[Ceramisia] DEBUG extracted redirect URL:', redirectUrl);
 
-    var data = await res.json().catch(function () { return null; });
-    console.log('[Ceramisia] buyProduct /api/pay data:', data);
-    if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
+  if (!redirectUrl) {
+    console.error('[Ceramisia] No redirect URL in response. Full body:', data);
+    const err = new Error('NO_REDIRECT_URL');
+    err.data = data;
+    throw err;
+  }
 
-    if (!data.payment_url) throw new Error('No payment_url in response');
+  return redirectUrl;
+}
 
-    // Simple GET redirect — window.location preserves the full URL including
-    // query parameters. Do NOT use _redirect() with method GET here: HTML GET
-    // form submissions strip the query string from form.action and replace it
-    // with serialized input fields, which would drop BOG's orderId/token params.
-    window.location.href = data.payment_url;
-
-  } catch (err) {
-    console.error('[Ceramisia] Payment error:', err);
-    _setBtnState(btn, false, originalText);
+function _showError(err) {
+  const msg = err && err.message ? String(err.message) : '';
+  if (msg === 'NO_REDIRECT_URL') {
+    alert('გადახდის ლინკი ვერ მოიძებნა (იხ. console)');
+  } else {
+    alert('გადახდის შეცდომა: ' + msg);
   }
 }
 
-// ── Installment ───────────────────────────────────────────────────────────────
-/**
- * Opens the BOG installment calculator overlay.
- * Requires the BOG JS SDK script to be loaded on the page.
- *
- * @param {HTMLButtonElement} btn
- */
+// ── Buy / Pay ───────────────────────────────────────────────────────────────
+
+export async function buyProduct(btn) {
+  const productId = btn.dataset.id    || '';
+  const price     = parseFloat(btn.dataset.price) || 0;
+  const qty       = parseInt(btn.dataset.qty, 10) || 1;
+
+  if (!productId || price <= 0) {
+    console.error('[Ceramisia] buyProduct: missing data-id or data-price on', btn);
+    return;
+  }
+
+  const originalText = btn.textContent;
+  _setBtnState(btn, true, '...');
+
+  try {
+    const payload = {
+      amount: parseFloat((price * qty).toFixed(2)),
+      items: [
+        { product_id: productId, quantity: qty, unit_price: price },
+      ],
+    };
+    const redirectUrl = await callPayApi(payload);
+    console.log('[Ceramisia] Redirecting to bank page →', redirectUrl);
+    window.location.href = redirectUrl;
+  } catch (err) {
+    console.error('[Ceramisia] buyProduct error:', err);
+    _setBtnState(btn, false, originalText);
+    _showError(err);
+  }
+}
+
+// ── Installment ─────────────────────────────────────────────────────────────
+
 export function openInstallment(btn) {
-  var price     = parseFloat(btn.dataset.price) || 0;
-  var productId = btn.dataset.id    || '';
-  var name      = btn.dataset.name  || productId;
+  const price     = parseFloat(btn.dataset.price) || 0;
+  const productId = btn.dataset.id    || '';
+  const name      = btn.dataset.name  || productId;
 
   if (!window.BOG || !window.BOG.Calculator) {
-    console.warn('[Ceramisia] BOG SDK not loaded. Add the BOG <script> tag before </body>.');
+    console.warn('[Ceramisia] BOG SDK not loaded.');
     return;
   }
 
@@ -137,57 +151,39 @@ export function openInstallment(btn) {
     productName:  name,
     merchantId:   window.BOG_CLIENT_ID || '',
     onConfirm: async function (installmentData) {
-      var originalText = btn.textContent;
+      const originalText = btn.textContent;
       _setBtnState(btn, true, '...');
       try {
-        var payload = {
+        const payload = {
           amount: parseFloat(price.toFixed(2)),
           items: [
-            {
-              product_id: productId,
-              quantity: 1,
-              unit_price: price,
-            },
+            { product_id: productId, quantity: 1, unit_price: price },
           ],
           installment: installmentData,
         };
-        console.log('[Ceramisia] installment /api/pay payload:', payload);
-
-        var res = await fetch(PAYMENT_ENDPOINT, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        console.log('[Ceramisia] installment /api/pay status:', res.status);
-        var data = await res.json().catch(function () { return null; });
-        console.log('[Ceramisia] installment /api/pay data:', data);
-        if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
-        if (!data.payment_url) throw new Error('No payment_url in response');
-        window.location.href = data.payment_url;
+        const redirectUrl = await callPayApi(payload);
+        console.log('[Ceramisia] Redirecting to bank page →', redirectUrl);
+        window.location.href = redirectUrl;
       } catch (err) {
-        console.error('[Ceramisia] Installment payment error:', err);
+        console.error('[Ceramisia] installment error:', err);
         _setBtnState(btn, false, originalText);
+        _showError(err);
       }
     },
   });
 }
 
-// ── Delegate listener ─────────────────────────────────────────────────────────
-/**
- * Attach once to a container to handle all .btn-buy and .btn-installment clicks.
- * Used for dynamically rendered product grids.
- *
- * @param {HTMLElement} container
- */
+// ── Delegate listener ───────────────────────────────────────────────────────
+
 export function initPaymentButtons(container) {
   (container || document.body).addEventListener('click', function (e) {
-    var buyBtn  = e.target.closest('.btn-buy');
-    var instBtn = e.target.closest('.btn-installment');
+    const buyBtn  = e.target.closest('.btn-buy');
+    const instBtn = e.target.closest('.btn-installment');
     if (buyBtn)  { e.stopPropagation(); buyProduct(buyBtn);       return; }
     if (instBtn) { e.stopPropagation(); openInstallment(instBtn); }
   });
 }
 
-// ── Globals (for onclick= usage and non-module scripts) ───────────────────────
+// ── Globals (for inline onclick= and non-module scripts) ────────────────────
 window.pay             = function (btn) { buyProduct(btn); };
 window.openInstallment = function (btn) { openInstallment(btn); };
