@@ -389,15 +389,19 @@
     var timeoutId  = setTimeout(function () { controller.abort(); }, 20000);
 
     try {
+      var cart = getCart();
+
+      var items = cart.map(function (item) {
+        return {
+          product_id: item.id,
+          quantity:   Number(item.qty) || 1,
+          unit_price: Number(item.price) || 0
+        };
+      });
+
       var requestBody = {
         amount: totalAmount,
-        items: [
-          {
-            product_id: 'cart',
-            quantity:   1,
-            unit_price: totalAmount
-          }
-        ]
+        items:  items
       };
 
       console.log('PAY REQUEST:', totalAmount);
