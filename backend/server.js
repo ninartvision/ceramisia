@@ -1,11 +1,13 @@
 ﻿/**
- * Ceramisia â€“ BOG Payment Backend
- * ES Module Â· Express Â· node-fetch
+ * Local-only Express dev server (NOT used on Vercel).
  *
- * Usage:
- *   npm install
- *   cp .env.example .env   â† fill in your BOG credentials
- *   npm start
+ * Production: serverless functions in `/api` at the repo root
+ * (`/api/pay`, `/api/payment`, `/api/callback`).
+ * Match production locally: `npx vercel dev` from repo root.
+ *
+ * Usage (legacy local):
+ *   npm install --prefix backend
+ *   cp .env.example .env && npm start --prefix backend
  */
 
 import 'dotenv/config';
