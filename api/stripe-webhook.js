@@ -5,28 +5,34 @@ export const config = {
   api: { bodyParser: false },
 };
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
 export default async function handler(req, res) {
-  const sig = req.headers["stripe-signature"];
-
-  let event;
-
   try {
+    // 🔍 DEBUG
+    console.log("KEY:", process.env.STRIPE_SECRET_KEY ? "OK" : "MISSING");
+
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error("Missing STRIPE_SECRET_KEY");
+    }
+
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+    const sig = req.headers["stripe-signature"];
+
     const rawBody = await getRawBody(req);
-    event = stripe.webhooks.constructEvent(
+
+    const event = stripe.webhooks.constructEvent(
       rawBody,
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
+
+    if (event.type === "payment_intent.succeeded") {
+      console.log("💰 გადახდა წარმატებულია");
+    }
+
+    return res.status(200).send("OK");
   } catch (err) {
-    console.log("❌ Stripe error:", err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+    console.log("❌ ERROR:", err.message);
+    return res.status(500).send("Error");
   }
-
-  if (event.type === "payment_intent.succeeded") {
-    console.log("💰 გადახდა წარმატებულია");
-  }
-
-  res.status(200).send("OK");
 }
