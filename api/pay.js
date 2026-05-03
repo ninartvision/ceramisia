@@ -5,7 +5,31 @@ import { savePendingOrder, getProductPrices } from "./_db.js";
 // ---------------------------------------------------------------------------
 // Vercel serverless — body parsing is handled by the framework automatically.
 // No raw-body needed here (only callback.js needs raw bytes for RSA verify).
+//
+// If you still have the legacy Express env name, we accept it:
+//   BOG_CLIENT_SECRET  (preferred)  |  BOG_SECRET_KEY  (alias)
 // ---------------------------------------------------------------------------
+
+function resolveBogSecret() {
+  return process.env.BOG_CLIENT_SECRET || process.env.BOG_SECRET_KEY || "";
+}
+
+function parseJsonBody(req) {
+  const raw = req.body;
+  if (raw == null) return {};
+  if (typeof raw === "string") {
+    try {
+      return raw.trim() ? JSON.parse(raw) : {};
+    } catch (e) {
+      const err = new Error("Invalid JSON body");
+      err.code = "INVALID_JSON_BODY";
+      err.details = e?.message ?? String(e);
+      throw err;
+    }
+  }
+  if (typeof raw === "object") return raw;
+  return {};
+}
 
 // Token cache — reused across warm instances to avoid redundant OAuth trips.
 let cachedToken = null;
@@ -108,8 +132,15 @@ async function getBogToken(forceRefresh = false) {
     return cachedToken;
   }
 
+  const bogSecret = resolveBogSecret();
+  if (!process.env.BOG_CLIENT_ID || !bogSecret) {
+    const err = new Error("Missing BOG_CLIENT_ID or BOG_CLIENT_SECRET (or BOG_SECRET_KEY)");
+    err.code = "BOG_ENV_MISSING";
+    throw err;
+  }
+
   const credentials = Buffer.from(
-    `${process.env.BOG_CLIENT_ID}:${process.env.BOG_CLIENT_SECRET}`
+    `${process.env.BOG_CLIENT_ID}:${bogSecret}`
   ).toString("base64");
 
   const endpoint =
@@ -261,12 +292,13 @@ export default async function handler(req, res) {
       });
     }
 
-    const body = req.body ?? {};
+    const body = parseJsonBody(req);
     const rawItems = body.items ?? body.cartItems ?? body.products;
     const hasItemsPayload = Array.isArray(rawItems);
     const items = hasItemsPayload
       ? rawItems.map((item) => ({
           product_id: item?.product_id ?? item?.productId ?? item?.id,
+          slug: item?.slug ?? item?.product_slug ?? null,
           quantity: item?.quantity ?? item?.qty,
           unit_price: item?.unit_price ?? item?.unitPrice ?? item?.price,
         }))
@@ -328,11 +360,32 @@ export default async function handler(req, res) {
         }
       }
 
-      const productIds = items.map((i) => String(i.product_id));
-      const catalogPrices = await getProductPrices(productIds);
+      const lineItemsForCatalog = items.map((i) => ({
+        client_key: String(i.product_id),
+        slug: i.slug || null,
+      }));
+
+      console.log("[PAY] resolving catalog prices", {
+        clientKeys: lineItemsForCatalog.map((r) => r.client_key),
+        slugs: lineItemsForCatalog.map((r) => r.slug).filter(Boolean),
+      });
+
+      const catalogPrices = await getProductPrices(lineItemsForCatalog);
       if (catalogPrices.size === 0) {
-        console.error("[PAY] product catalog returned no prices");
-        return sendJson(res, 500, { error: "Server misconfiguration" });
+        console.error("[PAY] CATALOG_MISMATCH", {
+          clientKeys: lineItemsForCatalog.map((r) => r.client_key),
+          slugsSent: lineItemsForCatalog.map((r) => r.slug).filter(Boolean),
+          hint:
+            "Each cart line must resolve in public.products by id OR by slug (see _db.getProductPrices).",
+        });
+        return sendJson(res, 422, {
+          error: "Product catalog mismatch",
+          details: {
+            message:
+              "No rows in products for the given product_id / slug. Align DB with storefront or send item.slug.",
+            clientKeys: lineItemsForCatalog.map((r) => r.client_key),
+          },
+        });
       }
       for (const item of items) {
         const catalogPrice = catalogPrices.get(String(item.product_id));
@@ -490,13 +543,44 @@ export default async function handler(req, res) {
       _links: { redirect: { href: paymentUrl } },
     });
   } catch (err) {
-    console.error("[PAY] unhandled error", {
+    const logPayload = {
+      ts: new Date().toISOString(),
       message: err?.message,
       name: err?.name,
       code: err?.code,
+      dbOperation: err?.dbOperation,
+      pgCode: err?.pgCode,
+      hint: err?.hint,
       details: err?.details,
-      stack: err?.stack,
-    });
+    };
+    console.error("[PAY] unhandled error", JSON.stringify(logPayload));
+    console.error("[PAY] stack", err?.stack);
+
+    if (err?.code === "INVALID_JSON_BODY") {
+      return sendJson(res, 400, { error: "Invalid JSON body", details: err.details });
+    }
+    if (err?.code === "BOG_ENV_MISSING") {
+      return sendJson(res, 500, {
+        error: "Server misconfiguration",
+        details: err.message,
+      });
+    }
+    if (err?.code === "SUPABASE_ENV_MISSING" || err?.name === "SupabaseEnvError") {
+      return sendJson(res, 500, {
+        error: "Server misconfiguration",
+        details: err.message,
+      });
+    }
+    if (err?.name === "SupabasePostgrestError") {
+      return sendJson(res, 503, {
+        error: "Database error",
+        details: {
+          operation: err.dbOperation,
+          pgCode: err.pgCode,
+          message: err.message,
+        },
+      });
+    }
 
     if (err?.code === "TOKEN_TIMEOUT" || err?.code === "ORDER_TIMEOUT" || err?.name === "AbortError") {
       return sendJson(res, 504, {

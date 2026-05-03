@@ -9,6 +9,7 @@
  *   data-price – unit price (number)
  *   data-qty   – quantity (number, default 1)
  *   data-name  – product display name
+ *   data-slug  – Sanity slug (matches `products.slug` in Supabase catalog)
  */
 
 const PAYMENT_ENDPOINT = '/api/pay';
@@ -106,6 +107,7 @@ function _showError(err) {
 
 export async function buyProduct(btn) {
   const productId = btn.dataset.id    || '';
+  const slug        = btn.dataset.slug || productId || '';
   const price     = parseFloat(btn.dataset.price) || 0;
   const qty       = parseInt(btn.dataset.qty, 10) || 1;
 
@@ -121,7 +123,7 @@ export async function buyProduct(btn) {
     const payload = {
       amount: parseFloat((price * qty).toFixed(2)),
       items: [
-        { product_id: productId, quantity: qty, unit_price: price },
+        { product_id: productId, slug: slug || undefined, quantity: qty, unit_price: price },
       ],
     };
     const redirectUrl = await callPayApi(payload);
@@ -137,9 +139,10 @@ export async function buyProduct(btn) {
 // ── Installment ─────────────────────────────────────────────────────────────
 
 export function openInstallment(btn) {
-  const price     = parseFloat(btn.dataset.price) || 0;
-  const productId = btn.dataset.id    || '';
-  const name      = btn.dataset.name  || productId;
+  const price       = parseFloat(btn.dataset.price) || 0;
+  const productId   = btn.dataset.id    || '';
+  const slug        = btn.dataset.slug || productId || '';
+  const name        = btn.dataset.name || productId;
 
   if (!window.BOG || !window.BOG.Calculator) {
     console.warn('[Ceramisia] BOG SDK not loaded.');
@@ -157,7 +160,7 @@ export function openInstallment(btn) {
         const payload = {
           amount: parseFloat(price.toFixed(2)),
           items: [
-            { product_id: productId, quantity: 1, unit_price: price },
+            { product_id: productId, slug: slug || undefined, quantity: 1, unit_price: price },
           ],
           installment: installmentData,
         };

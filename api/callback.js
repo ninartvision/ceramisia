@@ -35,7 +35,7 @@ async function verifyReceiptWithBOG(orderId, expectedAmount) {
   const now = Date.now();
   if (!_receiptToken || _receiptTokenExpiresAt - now < 60_000) {
     const credentials = Buffer.from(
-      `${process.env.BOG_CLIENT_ID}:${process.env.BOG_CLIENT_SECRET}`
+      `${process.env.BOG_CLIENT_ID}:${process.env.BOG_CLIENT_SECRET || process.env.BOG_SECRET_KEY}`
     ).toString("base64");
 
     const tokenRes = await fetch("https://api.bog.ge/oauth2/token", {

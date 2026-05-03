@@ -47,7 +47,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Invalid amount" });
   }
 
-  if (!process.env.BOG_CLIENT_ID || !process.env.BOG_CLIENT_SECRET) {
+  const bogSecret = process.env.BOG_CLIENT_SECRET || process.env.BOG_SECRET_KEY;
+  if (!process.env.BOG_CLIENT_ID || !bogSecret) {
     return res.status(500).json({ error: "Payment gateway not configured" });
   }
 
@@ -67,7 +68,7 @@ export default async function handler(req, res) {
     "https://oauth2.bog.ge/auth/realms/bog/protocol/openid-connect/token";
 
   const credentials = Buffer.from(
-    `${process.env.BOG_CLIENT_ID}:${process.env.BOG_CLIENT_SECRET}`
+    `${process.env.BOG_CLIENT_ID}:${bogSecret}`
   ).toString("base64");
 
   try {

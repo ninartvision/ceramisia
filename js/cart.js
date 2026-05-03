@@ -394,6 +394,7 @@
       var items = cart.map(function (item) {
         return {
           product_id: item.id,
+          slug: item.slug || undefined,
           quantity:   Number(item.qty) || 1,
           unit_price: Number(item.price) || 0
         };
