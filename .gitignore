@@ -20,3 +20,6 @@ scripts/node_modules/
 Thumbs.db
 .vercel
 .env*.local
+
+.vercel
+.env*.local
