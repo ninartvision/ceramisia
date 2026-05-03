@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import fetch from "node-fetch";
-import { savePendingOrder, getProductPrices } from "./_db.js";
+import { getProductPrices } from "./_db.js";
 
 // ---------------------------------------------------------------------------
 // Vercel serverless — body parsing is handled by the framework automatically.
@@ -530,7 +530,7 @@ export default async function handler(req, res) {
       });
     }
 
-    await savePendingOrder(orderId, numAmount);
+
     console.log("[PAY] order created", { orderId, numAmount, paymentUrl });
 
     console.log("STEP 5: sending response", { orderId, paymentUrl });
