@@ -129,16 +129,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Invalid amount" });
     }
 
-  
     const rawItems = body.items || [];
 
     console.log("🧾 BODY:", body);
     console.log("🛒 ITEMS:", rawItems);
-    // ✅ სუფთა basket
+
     const items = rawItems
-      .filter(
-        (i) => i.product_id && i.quantity && i.unit_price
-      )
+      .filter((i) => i.product_id && i.quantity && i.unit_price)
       .map((i) => ({
         product_id: String(i.product_id),
         quantity: Number(i.quantity),
@@ -160,35 +157,33 @@ export default async function handler(req, res) {
         fail: process.env.FAIL_URL,
       },
     };
-// 🔥 SAVE ORDER TO SANITY
-try {
-  await client.create({
-    _type: "order",
 
-    customerName: body.name || "Unknown",
-    email: body.email || "",
-    phone: body.phone || "",
+    // 🔥 SAVE ORDER TO SANITY
+    try {
+      await client.create({
+        _type: "order",
+        customerName: body.name || "Unknown",
+        email: body.email || "",
+        phone: body.phone || "",
+        message: "BOG order",
+        selectedProducts: rawItems.map((i) => ({
+          _type: "object",
+          quantity: Number(i.quantity) || 1,
+          variant:
+            i.name ||
+            i.title ||
+            i.product_name ||
+            `Product ${i.product_id}`,
+        })),
+        status: "new",
+        createdAt: new Date().toISOString(),
+      });
 
-    message: "BOG order",
+      console.log("✅ Order saved to Sanity");
+    } catch (err) {
+      console.error("❌ SANITY ERROR:", err);
+    }
 
-    selectedProducts: rawItems.map((i) => ({
-      _type: "object",
-      quantity: Number(i.quantity) || 1,
-      variant:
-        i.name ||
-        i.title ||
-        i.product_name ||
-        `Product ${i.product_id}`,
-    })),
-    status: "new",
-
-    createdAt: new Date().toISOString(),
-  });
-
-  console.log("✅ Order saved to Sanity (BOG)");
-} catch (err) {
-  console.error("❌ Sanity save error:", err.message);
-}
     const result = await createBogOrder(token, requestBody);
 
     if (!result.ok) {
@@ -211,6 +206,7 @@ try {
       payment_url: redirectUrl,
       order_id: extractOrderId(result.data),
     });
+
   } catch (err) {
     return res.status(500).json({
       error: err.message,
