@@ -1,5 +1,22 @@
 import crypto from "crypto";
 import fetch from "node-fetch";
+import { client } from "../lib/sanity.js";
+
+function logSanityError(err, context) {
+  console.error(`[Sanity] ${context}:`, err?.message || err);
+  if (err?.response?.body) {
+    console.error(
+      "[Sanity] response body:",
+      typeof err.response.body === "string"
+        ? err.response.body
+        : JSON.stringify(err.response.body, null, 2)
+    );
+  }
+  if (err?.details) {
+    console.error("[Sanity] details:", JSON.stringify(err.details, null, 2));
+  }
+  console.error("[Sanity] stack:", err?.stack || "(no stack)");
+}
 
 export default async function handler(req, res) {
   res.setHeader("Content-Type", "application/json");
@@ -74,35 +91,36 @@ export default async function handler(req, res) {
       },
     };
 
-    // 🔥 SANITY SAVE (BACKGROUND SAFE)
-    setTimeout(async () => {
-      try {
-        const { client } = await import("@/lib/sanity");
-
-        await client.create({
-          _type: "order",
-          customerName: body.name || "Unknown",
-          email: body.email || "",
-          phone: body.phone || "",
-          message: "BOG order",
-          selectedProducts: rawItems.map((i) => ({
-            _type: "object",
-            quantity: Number(i.quantity) || 1,
-            variant:
-              i.name ||
-              i.title ||
-              i.product_name ||
-              `Product ${i.product_id}`,
-          })),
-          status: "new",
-          createdAt: new Date().toISOString(),
-        });
-
-        console.log("✅ Saved to Sanity");
-      } catch (e) {
-        console.log("❌ Sanity error:", e.message);
+    // Sanity BEFORE payment redirect — must finish before response (serverless-safe)
+    try {
+      if (!process.env.SANITY_API_TOKEN?.trim()) {
+        console.error(
+          "[Sanity] SANITY_API_TOKEN is missing — orders will not persist. Set it in .env.local (root) and Vercel env."
+        );
       }
-    }, 0);
+
+      await client.create({
+        _type: "order",
+        customerName: String(body.customerName || body.name || "Unknown").trim() || "Unknown",
+        email: body.email ? String(body.email) : "",
+        phone: body.phone ? String(body.phone) : "",
+        message: body.message ? String(body.message) : "BOG order",
+        selectedProducts: rawItems.map((i) => ({
+          _key: crypto.randomUUID().replace(/-/g, ""),
+          quantity: Math.max(1, Number(i.quantity) || 1),
+          variant:
+            i.name ||
+            i.title ||
+            i.product_name ||
+            `Product ${i.product_id}`,
+        })),
+        status: "new",
+        createdAt: new Date().toISOString(),
+      });
+      console.log("[Sanity] Order document created");
+    } catch (sanityErr) {
+      logSanityError(sanityErr, "create order document");
+    }
 
     // 💳 BOG ORDER
     const bogRes = await fetch(

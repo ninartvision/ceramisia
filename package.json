@@ -4,6 +4,7 @@
     "generate-products": "node scripts/generate-product-pages.mjs"
   },
   "dependencies": {
+    "@sanity/client": "^6.29.1",
     "@supabase/supabase-js": "^2.49.4",
     "node-fetch": "^3.3.2",
     "raw-body": "^3.0.2",
