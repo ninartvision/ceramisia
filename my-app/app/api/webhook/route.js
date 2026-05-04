@@ -1,3 +1,4 @@
+console.log("KEY:", process.env.STRIPE_SECRET_KEY);
 import Stripe from "stripe";
 
 export const dynamic = "force-dynamic";
