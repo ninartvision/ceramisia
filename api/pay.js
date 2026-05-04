@@ -1,4 +1,3 @@
-import { client } from "@/lib/sanity";
 import crypto from "crypto";
 import fetch from "node-fetch";
 
@@ -53,7 +52,10 @@ export default async function handler(req, res) {
     const tokenData = await tokenRes.json();
 
     if (!tokenData.access_token) {
-      return res.status(500).json({ error: "Token error", data: tokenData });
+      return res.status(500).json({
+        error: "Token error",
+        data: tokenData,
+      });
     }
 
     const token = tokenData.access_token;
@@ -72,28 +74,35 @@ export default async function handler(req, res) {
       },
     };
 
-    // 🔥 SANITY SAFE SAVE
-    client
-      .create({
-        _type: "order",
-        customerName: body.name || "Unknown",
-        email: body.email || "",
-        phone: body.phone || "",
-        message: "BOG order",
-        selectedProducts: rawItems.map((i) => ({
-          _type: "object",
-          quantity: Number(i.quantity) || 1,
-          variant:
-            i.name ||
-            i.title ||
-            i.product_name ||
-            `Product ${i.product_id}`,
-        })),
-        status: "new",
-        createdAt: new Date().toISOString(),
-      })
-      .then(() => console.log("✅ Saved to Sanity"))
-      .catch((e) => console.log("❌ Sanity error:", e));
+    // 🔥 SANITY SAVE (BACKGROUND SAFE)
+    setTimeout(async () => {
+      try {
+        const { client } = await import("@/lib/sanity");
+
+        await client.create({
+          _type: "order",
+          customerName: body.name || "Unknown",
+          email: body.email || "",
+          phone: body.phone || "",
+          message: "BOG order",
+          selectedProducts: rawItems.map((i) => ({
+            _type: "object",
+            quantity: Number(i.quantity) || 1,
+            variant:
+              i.name ||
+              i.title ||
+              i.product_name ||
+              `Product ${i.product_id}`,
+          })),
+          status: "new",
+          createdAt: new Date().toISOString(),
+        });
+
+        console.log("✅ Saved to Sanity");
+      } catch (e) {
+        console.log("❌ Sanity error:", e.message);
+      }
+    }, 0);
 
     // 💳 BOG ORDER
     const bogRes = await fetch(
@@ -115,7 +124,7 @@ export default async function handler(req, res) {
       data = JSON.parse(text);
     } catch {
       return res.status(500).json({
-        error: "BOG returned non-JSON",
+        error: "BOG არაა JSON",
         raw: text,
       });
     }
@@ -132,9 +141,12 @@ export default async function handler(req, res) {
       });
     }
 
+    console.log("✅ Redirecting to BOG");
+
     return res.status(200).json({
       payment_url: redirectUrl,
     });
+
   } catch (err) {
     console.error("❌ FATAL:", err);
 
