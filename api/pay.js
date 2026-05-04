@@ -1,4 +1,3 @@
-import { client } from "@/lib/sanity";
 import crypto from "crypto";
 import fetch from "node-fetch";
 
@@ -12,11 +11,7 @@ function parseJsonBody(req) {
   const raw = req.body;
   if (!raw) return {};
   if (typeof raw === "string") {
-    try {
-      return JSON.parse(raw);
-    } catch {
-      throw new Error("Invalid JSON body");
-    }
+    return JSON.parse(raw);
   }
   return raw;
 }
@@ -41,14 +36,7 @@ function extractOrderId(payload) {
 }
 
 // ---------------- TOKEN ----------------
-let cachedToken = null;
-let tokenExpiresAt = 0;
-
 async function getBogToken() {
-  if (cachedToken && tokenExpiresAt > Date.now()) {
-    return cachedToken;
-  }
-
   const credentials = Buffer.from(
     `${process.env.BOG_CLIENT_ID}:${resolveBogSecret()}`
   ).toString("base64");
@@ -71,54 +59,18 @@ async function getBogToken() {
     throw new Error("Failed to get BOG token");
   }
 
-  cachedToken = data.access_token;
-  tokenExpiresAt = Date.now() + data.expires_in * 1000;
-
-  return cachedToken;
-}
-
-// ---------------- ORDER ----------------
-async function createBogOrder(token, body) {
-  const res = await fetch(
-    "https://api.bog.ge/payments/v1/ecommerce/orders",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    }
-  );
-
-  const text = await res.text();
-
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = null;
-  }
-
-  return { ok: res.ok, data, raw: text };
+  return data.access_token;
 }
 
 // ---------------- HANDLER ----------------
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Use POST" });
   }
 
   try {
+    console.log("🚀 API HIT");
+
     const body = parseJsonBody(req);
 
     const amount = toFiniteNumber(
@@ -131,16 +83,11 @@ export default async function handler(req, res) {
 
     const rawItems = body.items || [];
 
-    console.log("🧾 BODY:", body);
-    console.log("🛒 ITEMS:", rawItems);
-
-    const items = rawItems
-      .filter((i) => i.product_id && i.quantity && i.unit_price)
-      .map((i) => ({
-        product_id: String(i.product_id),
-        quantity: Number(i.quantity),
-        unit_price: Number(i.unit_price),
-      }));
+    const items = rawItems.map((i) => ({
+      product_id: String(i.product_id),
+      quantity: Number(i.quantity),
+      unit_price: Number(i.unit_price),
+    }));
 
     const token = await getBogToken();
 
@@ -158,56 +105,34 @@ export default async function handler(req, res) {
       },
     };
 
-    // 🔥 SAVE ORDER TO SANITY
-    try {
-      await client.create({
-        _type: "order",
-        customerName: body.name || "Unknown",
-        email: body.email || "",
-        phone: body.phone || "",
-        message: "BOG order",
-        selectedProducts: rawItems.map((i) => ({
-          _type: "object",
-          quantity: Number(i.quantity) || 1,
-          variant:
-            i.name ||
-            i.title ||
-            i.product_name ||
-            `Product ${i.product_id}`,
-        })),
-        status: "new",
-        createdAt: new Date().toISOString(),
-      });
+    const bogRes = await fetch(
+      "https://api.bog.ge/payments/v1/ecommerce/orders",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      }
+    );
 
-      console.log("✅ Order saved to Sanity");
-    } catch (err) {
-      console.error("❌ SANITY ERROR:", err);
-    }
+    const data = await bogRes.json();
 
-    const result = await createBogOrder(token, requestBody);
-
-    if (!result.ok) {
-      return res.status(500).json({
-        error: "BOG error",
-        details: result.raw,
-      });
-    }
-
-    const redirectUrl = extractRedirectUrl(result.data);
+    const redirectUrl = extractRedirectUrl(data);
 
     if (!redirectUrl) {
-      return res.status(500).json({
-        error: "No payment URL",
-        data: result.data,
-      });
+      return res.status(500).json({ error: "No payment URL" });
     }
+
+    console.log("✅ Redirecting to BOG");
 
     return res.status(200).json({
       payment_url: redirectUrl,
-      order_id: extractOrderId(result.data),
     });
 
   } catch (err) {
+    console.error("❌ ERROR:", err);
     return res.status(500).json({
       error: err.message,
     });
