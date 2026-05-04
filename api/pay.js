@@ -2,65 +2,9 @@ import { client } from "@/lib/sanity";
 import crypto from "crypto";
 import fetch from "node-fetch";
 
-// ---------------- CONFIG ----------------
-function resolveBogSecret() {
-  return process.env.BOG_CLIENT_SECRET || process.env.BOG_SECRET_KEY || "";
-}
-
-// ---------------- HELPERS ----------------
-function parseJsonBody(req) {
-  const raw = req.body;
-  if (!raw) return {};
-  if (typeof raw === "string") {
-    return JSON.parse(raw);
-  }
-  return raw;
-}
-
-function toFiniteNumber(value) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
-
-function extractRedirectUrl(payload) {
-  return (
-    payload?._links?.redirect?.href ||
-    payload?.payment_url ||
-    payload?.url ||
-    payload?.redirect_url ||
-    null
-  );
-}
-
-// ---------------- TOKEN ----------------
-async function getBogToken() {
-  const credentials = Buffer.from(
-    `${process.env.BOG_CLIENT_ID}:${resolveBogSecret()}`
-  ).toString("base64");
-
-  const res = await fetch(
-    "https://oauth2.bog.ge/auth/realms/bog/protocol/openid-connect/token",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${credentials}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: "grant_type=client_credentials",
-    }
-  );
-
-  const data = await res.json();
-
-  if (!data.access_token) {
-    throw new Error("Failed to get BOG token");
-  }
-
-  return data.access_token;
-}
-
-// ---------------- HANDLER ----------------
 export default async function handler(req, res) {
+  res.setHeader("Content-Type", "application/json");
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Use POST" });
   }
@@ -68,9 +12,12 @@ export default async function handler(req, res) {
   try {
     console.log("🚀 API HIT");
 
-    const body = parseJsonBody(req);
+    let body = req.body;
+    if (typeof body === "string") {
+      body = JSON.parse(body);
+    }
 
-    const amount = toFiniteNumber(
+    const amount = Number(
       body.amount || body.total_amount || body.totalAmount
     );
 
@@ -86,7 +33,30 @@ export default async function handler(req, res) {
       unit_price: Number(i.unit_price),
     }));
 
-    const token = await getBogToken();
+    // 🔐 TOKEN
+    const credentials = Buffer.from(
+      `${process.env.BOG_CLIENT_ID}:${process.env.BOG_CLIENT_SECRET}`
+    ).toString("base64");
+
+    const tokenRes = await fetch(
+      "https://oauth2.bog.ge/auth/realms/bog/protocol/openid-connect/token",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${credentials}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: "grant_type=client_credentials",
+      }
+    );
+
+    const tokenData = await tokenRes.json();
+
+    if (!tokenData.access_token) {
+      return res.status(500).json({ error: "Token error", data: tokenData });
+    }
+
+    const token = tokenData.access_token;
 
     const requestBody = {
       callback_url: process.env.CALLBACK_URL,
@@ -102,34 +72,30 @@ export default async function handler(req, res) {
       },
     };
 
-    // 🔥 SAVE ORDER TO SANITY (უსაფრთხო)
-    (async () => {
-      try {
-        await client.create({
-          _type: "order",
-          customerName: body.name || "Unknown",
-          email: body.email || "",
-          phone: body.phone || "",
-          message: "BOG order",
-          selectedProducts: rawItems.map((i) => ({
-            _type: "object",
-            quantity: Number(i.quantity) || 1,
-            variant:
-              i.name ||
-              i.title ||
-              i.product_name ||
-              `Product ${i.product_id}`,
-          })),
-          status: "new",
-          createdAt: new Date().toISOString(),
-        });
+    // 🔥 SANITY SAFE SAVE
+    client
+      .create({
+        _type: "order",
+        customerName: body.name || "Unknown",
+        email: body.email || "",
+        phone: body.phone || "",
+        message: "BOG order",
+        selectedProducts: rawItems.map((i) => ({
+          _type: "object",
+          quantity: Number(i.quantity) || 1,
+          variant:
+            i.name ||
+            i.title ||
+            i.product_name ||
+            `Product ${i.product_id}`,
+        })),
+        status: "new",
+        createdAt: new Date().toISOString(),
+      })
+      .then(() => console.log("✅ Saved to Sanity"))
+      .catch((e) => console.log("❌ Sanity error:", e));
 
-        console.log("✅ Order saved to Sanity");
-      } catch (err) {
-        console.error("❌ Sanity ERROR:", err);
-      }
-    })();
-
+    // 💳 BOG ORDER
     const bogRes = await fetch(
       "https://api.bog.ge/payments/v1/ecommerce/orders",
       {
@@ -142,31 +108,39 @@ export default async function handler(req, res) {
       }
     );
 
-    const data = await bogRes.json();
+    const text = await bogRes.text();
 
-    const redirectUrl = extractRedirectUrl(data);
-
-    if (!redirectUrl) {
-      return res.status(500).json({ error: "No payment URL" });
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return res.status(500).json({
+        error: "BOG returned non-JSON",
+        raw: text,
+      });
     }
 
-    console.log("✅ Redirecting to BOG");
+    const redirectUrl =
+      data?._links?.redirect?.href ||
+      data?.payment_url ||
+      data?.redirect_url;
+
+    if (!redirectUrl) {
+      return res.status(500).json({
+        error: "No payment URL",
+        data,
+      });
+    }
 
     return res.status(200).json({
       payment_url: redirectUrl,
     });
-
   } catch (err) {
-    console.error("❌ ERROR:", err);
+    console.error("❌ FATAL:", err);
+
     return res.status(500).json({
-      error: err.message,
+      error: "Server crash",
+      message: err.message,
     });
   }
 }
-
-// ---------------- NEXT CONFIG ----------------
-export const config = {
-  api: {
-    bodyParser: true,
-  },
-};
