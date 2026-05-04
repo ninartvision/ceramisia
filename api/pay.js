@@ -10,14 +10,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log("🚀 API START");
+    console.log("🚀 API HIT");
 
     let body = req.body;
     if (typeof body === "string") {
       body = JSON.parse(body);
     }
-
-    console.log("📦 BODY:", body);
 
     const amount = Number(
       body.amount || body.total_amount || body.totalAmount
@@ -35,11 +33,7 @@ export default async function handler(req, res) {
       unit_price: Number(i.unit_price),
     }));
 
-    console.log("🛒 ITEMS:", items);
-
-    // ---------------- TOKEN ----------------
-    console.log("🔐 STEP 1: Getting token");
-
+    // 🔐 TOKEN
     const credentials = Buffer.from(
       `${process.env.BOG_CLIENT_ID}:${process.env.BOG_CLIENT_SECRET}`
     ).toString("base64");
@@ -56,30 +50,29 @@ export default async function handler(req, res) {
       }
     );
 
-    const tokenText = await tokenRes.text();
-
-    let tokenData;
-    try {
-      tokenData = JSON.parse(tokenText);
-    } catch {
-      return res.status(500).json({
-        error: "Token არაა JSON",
-        raw: tokenText,
-      });
-    }
-
-    console.log("🔐 TOKEN:", tokenData);
+    const tokenData = await tokenRes.json();
 
     if (!tokenData.access_token) {
-      return res.status(500).json({
-        error: "Token error",
-        data: tokenData,
-      });
+      return res.status(500).json({ error: "Token error", data: tokenData });
     }
 
     const token = tokenData.access_token;
 
-    // ---------------- SANITY (SAFE) ----------------
+    const requestBody = {
+      callback_url: process.env.CALLBACK_URL,
+      external_order_id: `order_${crypto.randomUUID()}`,
+      purchase_units: {
+        currency: "GEL",
+        total_amount: amount,
+        basket: items,
+      },
+      redirect_urls: {
+        success: process.env.SUCCESS_URL,
+        fail: process.env.FAIL_URL,
+      },
+    };
+
+    // 🔥 SANITY SAFE SAVE
     client
       .create({
         _type: "order",
@@ -102,23 +95,7 @@ export default async function handler(req, res) {
       .then(() => console.log("✅ Saved to Sanity"))
       .catch((e) => console.log("❌ Sanity error:", e));
 
-    // ---------------- ORDER ----------------
-    console.log("💳 STEP 2: Creating order");
-
-    const requestBody = {
-      callback_url: process.env.CALLBACK_URL,
-      external_order_id: `order_${crypto.randomUUID()}`,
-      purchase_units: {
-        currency: "GEL",
-        total_amount: amount,
-        basket: items,
-      },
-      redirect_urls: {
-        success: process.env.SUCCESS_URL,
-        fail: process.env.FAIL_URL,
-      },
-    };
-
+    // 💳 BOG ORDER
     const bogRes = await fetch(
       "https://api.bog.ge/payments/v1/ecommerce/orders",
       {
@@ -138,12 +115,10 @@ export default async function handler(req, res) {
       data = JSON.parse(text);
     } catch {
       return res.status(500).json({
-        error: "BOG არაა JSON",
+        error: "BOG returned non-JSON",
         raw: text,
       });
     }
-
-    console.log("💳 ORDER RESPONSE:", data);
 
     const redirectUrl =
       data?._links?.redirect?.href ||
@@ -157,14 +132,11 @@ export default async function handler(req, res) {
       });
     }
 
-    console.log("✅ SUCCESS");
-
     return res.status(200).json({
       payment_url: redirectUrl,
     });
-
   } catch (err) {
-    console.error("❌ FATAL ERROR:", err);
+    console.error("❌ FATAL:", err);
 
     return res.status(500).json({
       error: "Server crash",
