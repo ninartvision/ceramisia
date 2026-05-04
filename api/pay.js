@@ -1,3 +1,4 @@
+import { client } from "@/lib/sanity";
 import crypto from "crypto";
 import fetch from "node-fetch";
 
@@ -128,8 +129,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Invalid amount" });
     }
 
+  
     const rawItems = body.items || [];
 
+    console.log("🧾 BODY:", body);
+    console.log("🛒 ITEMS:", rawItems);
     // ✅ სუფთა basket
     const items = rawItems
       .filter(
@@ -156,7 +160,35 @@ export default async function handler(req, res) {
         fail: process.env.FAIL_URL,
       },
     };
+// 🔥 SAVE ORDER TO SANITY
+try {
+  await client.create({
+    _type: "order",
 
+    customerName: body.name || "Unknown",
+    email: body.email || "",
+    phone: body.phone || "",
+
+    message: "BOG order",
+
+    selectedProducts: rawItems.map((i) => ({
+      _type: "object",
+      quantity: Number(i.quantity) || 1,
+      variant:
+        i.name ||
+        i.title ||
+        i.product_name ||
+        `Product ${i.product_id}`,
+    })),
+    status: "new",
+
+    createdAt: new Date().toISOString(),
+  });
+
+  console.log("✅ Order saved to Sanity (BOG)");
+} catch (err) {
+  console.error("❌ Sanity save error:", err.message);
+}
     const result = await createBogOrder(token, requestBody);
 
     if (!result.ok) {
