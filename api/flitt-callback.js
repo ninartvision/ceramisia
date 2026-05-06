@@ -5,6 +5,15 @@ import {
 } from "./_db.js";
 import { verifyFlittPayload } from "./_flittSignature.js";
 
+/** Match flitt-pay.js env handling — avoids verify failures from BOM/quotes. */
+function normalizeEnvValue(v) {
+  if (v == null) return "";
+  return String(v)
+    .replace(/^\uFEFF/, "")
+    .trim()
+    .replace(/^['"]|['"]$/g, "");
+}
+
 /** Match pending order ids created by /api/flitt-pay */
 const FLITT_ORDER_ID_RE = /^flt_[0-9a-f-]{36}$/i;
 
@@ -56,7 +65,7 @@ export default async function handler(req, res) {
       return ok();
     }
 
-    const secret = process.env.FLITT_PRIVATE_KEY?.trim();
+    const secret = normalizeEnvValue(process.env.FLITT_PRIVATE_KEY);
     if (!secret) {
       console.error("[flitt-callback] FLITT_PRIVATE_KEY not configured");
       return ok();

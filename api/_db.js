@@ -7,20 +7,33 @@ import { createClient } from "@supabase/supabase-js";
 // ---------------------------------------------------------------------------
 let _supabase = null;
 
+/** Trim BOM/quotes — fixes common copy-paste issues in Vercel/hosting env. */
+function normalizeEnvString(v) {
+  if (v == null) return "";
+  return String(v)
+    .replace(/^\uFEFF/, "")
+    .trim()
+    .replace(/^["']|["']$/g, "");
+}
+
 function wrapDb(operation, error) {
   const e = new Error(error?.message ?? "Supabase error");
   e.name = "SupabasePostgrestError";
   e.dbOperation = operation;
-  e.pgCode = error?.code ?? null;
+  const code = error?.code ?? null;
+  e.code = code;
+  e.pgCode = code;
   e.hint = error?.hint ?? null;
+  if (error?.details != null) e.details = error.details;
   return e;
 }
 
 function getSupabase() {
   if (_supabase) return _supabase;
 
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  let url = normalizeEnvString(process.env.SUPABASE_URL);
+  const key = normalizeEnvString(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  while (url.endsWith("/")) url = url.slice(0, -1);
   if (!url || !key) {
     const e = new Error(
       !url && !key
@@ -31,6 +44,13 @@ function getSupabase() {
     );
     e.name = "SupabaseEnvError";
     e.code = "SUPABASE_ENV_MISSING";
+    throw e;
+  }
+
+  if (!/^https?:\/\//i.test(url)) {
+    const e = new Error("SUPABASE_URL must start with http:// or https://");
+    e.name = "SupabaseEnvError";
+    e.code = "SUPABASE_URL_INVALID";
     throw e;
   }
 
@@ -109,15 +129,42 @@ export async function savePendingOrder(
   paymentType = "card"
 ) {
   const supabase = getSupabase();
-  const { error } = await supabase.from("pending_orders").insert({
-    order_id: orderId,
-    amount,
+  const amountNum = parseFloat(Number(amount).toFixed(2));
+  if (!Number.isFinite(amountNum) || amountNum <= 0) {
+    const e = new Error("savePendingOrder: invalid amount");
+    e.name = "SupabasePostgrestError";
+    e.dbOperation = "savePendingOrder.validate";
+    e.pgCode = "CLIENT_VALIDATION";
+    throw e;
+  }
+
+  const payload = {
+    order_id: String(orderId),
+    amount: amountNum,
     status: "pending",
-    provider,
-    payment_type: paymentType,
+    provider: String(provider),
+    payment_type: String(paymentType),
+  };
+
+  console.log("[savePendingOrder] inserting pending_orders", {
+    order_id: payload.order_id,
+    amount: payload.amount,
+    provider: payload.provider,
+    payment_type: payload.payment_type,
   });
 
-  if (error) throw wrapDb("savePendingOrder.insert", error);
+  const { error } = await supabase.from("pending_orders").insert(payload);
+
+  if (error) {
+    console.error("[savePendingOrder] Supabase insert failed", {
+      order_id: payload.order_id,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+    throw wrapDb("savePendingOrder.insert", error);
+  }
 }
 
 /**

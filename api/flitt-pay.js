@@ -418,13 +418,21 @@ export default async function handler(req, res) {
         order_id: orderId,
         message: dbErr?.message,
         code: dbErr?.code ?? dbErr?.pgCode,
+        hint: dbErr?.hint,
+        details: dbErr?.details,
+        name: dbErr?.name,
       });
+      const isEnv = dbErr?.name === "SupabaseEnvError";
       return res.status(502).json({
         error: "Order tracking unavailable",
-        details:
-          dbErr?.name === "SupabaseEnvError"
-            ? "Supabase not configured"
-            : undefined,
+        details: isEnv
+          ? "Supabase is not configured: set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY for this environment (Production / Preview)."
+          : {
+              message: dbErr?.message,
+              code: dbErr?.pgCode ?? dbErr?.code,
+              hint: dbErr?.hint,
+              dbOperation: dbErr?.dbOperation,
+            },
       });
     }
 
