@@ -1618,16 +1618,47 @@ p { color: var(--clr-text-mid); }
   font-size: 0.85rem;
 }
 
-/* Card payment button – above WhatsApp button */
-.btn-cart-pay {
-  display: block;
+/* Cart drawer — payment row (icon + label), shared sizing */
+.cart-pay-btn__row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
   width: 100%;
+  min-height: 2.75rem;
+}
+.cart-pay-btn__icon {
+  flex: 0 0 auto;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cart-pay-btn__icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.cart-pay-btn__label {
+  flex: 1 1 auto;
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* Card payment — BOG */
+.btn-cart-pay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 3rem;
   margin-bottom: 0.6rem;
-  padding: 0.75rem 1rem;
+  padding: 0.65rem 0.9rem;
   font-family: var(--font-body);
   font-size: 0.85rem;
   font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   background: #111;
   color: #fff;
   border: none;
@@ -1645,16 +1676,19 @@ p { color: var(--clr-text-mid); }
   transform: none;
 }
 
-/* Flitt Checkout — cart drawer */
+/* Flitt / card checkout — cart drawer */
 .btn-cart-flitt {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
+  min-height: 3rem;
   margin-bottom: 0.6rem;
-  padding: 0.75rem 1rem;
+  padding: 0.65rem 0.9rem;
   font-family: var(--font-body);
   font-size: 0.85rem;
   font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   background: #005a9c;
   color: #fff;
   border: none;
@@ -1672,32 +1706,55 @@ p { color: var(--clr-text-mid); }
   transform: none;
 }
 
-/* 💸 Installment button in cart drawer */
+/* Installment — cart drawer */
 .btn-cart-installment {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
+  min-height: 3rem;
   margin-bottom: 0.6rem;
-  padding: 0.75rem 1rem;
+  padding: 0.65rem 0.9rem;
   font-family: var(--font-body);
   font-size: 0.85rem;
   font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   background: #fff;
   color: #111;
   border: 1.5px solid #111;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease,
+    border-color 0.2s ease;
 }
 .btn-cart-installment:hover:not(:disabled) {
   background: #111;
   color: #fff;
+  border-color: #111;
   transform: translateY(-1px);
 }
 .btn-cart-installment:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+}
+
+@media (max-width: 480px) {
+  .cart-pay-btn__row {
+    gap: 0.5rem;
+    min-height: 2.85rem;
+  }
+  .cart-pay-btn__icon {
+    width: 1.65rem;
+    height: 1.65rem;
+  }
+  .btn-cart-pay,
+  .btn-cart-flitt,
+  .btn-cart-installment {
+    min-height: 3.05rem;
+    font-size: 0.82rem;
+    padding: 0.6rem 0.75rem;
+  }
 }
 
 /* Cart item row */
