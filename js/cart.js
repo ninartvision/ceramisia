@@ -195,11 +195,11 @@
 
     var lang = getLang();
 
-    /* Payment method icons (decorative — button logic unchanged). */
+    /* Lightweight brand-style marks (approximation — not official assets). */
     var icoBog =
-      '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#FF6319"/><path fill="#fff" fill-opacity=".95" d="M7 12h18v2.5H7zm0 6h13v2.5H7z"/></svg>';
+      '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><defs><linearGradient id="cartPayBogOr" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FF934A"/><stop offset="1" stop-color="#D64500"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#cartPayBogOr)"/><path fill="#fff" d="M17.8 7H11v18h8.6c4.2 0 6.5-2.3 6.5-5.8 0-2.6-1.4-4.5-3.9-5.3l3.2-3.2h-4l-2.1 2.1H16V7h1.8zm-1.3 9.4h2.2c1.8 0 2.8 1 2.8 2.6 0 1.7-1 2.6-2.8 2.6h-2.2v-5.2z"/></svg>';
     var icoTbcFlitt =
-      '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="icoTbf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#009ede"/><stop offset="1" stop-color="#5b41d9"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#icoTbf)"/><path fill="#fff" fill-opacity=".92" d="M9 11.5h14v3H9zm0 6.5h10v3H9z"/></svg>';
+      '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><defs><linearGradient id="cartPayTbcBl" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#1AD3FF"/><stop offset="1" stop-color="#0068C9"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#cartPayTbcBl)"/><path fill="#fff" d="M7.5 7.5h17v3.4H18.2v13.6h-4.4V10.9H7.5V7.5z"/><rect x="20.5" y="5" width="8.5" height="8.5" rx="2" fill="#7C3AED"/><path fill="#F5F3FF" d="M25 7.2l2 2.1-2 2-1.9-2z"/></svg>';
     var icoInstallment =
       '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path stroke="currentColor" stroke-width="1.65" stroke-linejoin="round" d="M4.5 8h6.75v11H4.5zM12.75 8h6.75v11h-6.75z"/><path stroke="currentColor" stroke-width="1.65" stroke-linecap="round" d="M11.625 12h.75"/></svg>';
 
