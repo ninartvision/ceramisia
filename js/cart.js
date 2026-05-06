@@ -213,10 +213,13 @@
           '<span data-ge="ჯამი" data-en="Total">' + (lang === 'ge' ? 'ჯამი' : 'Total') + '</span>' +
           '<strong id="cartDrawerTotal">₾ 0</strong>' +
         '</div>' +
-        '<button type="button" class="btn-cart-pay" id="cartPayBtn" data-ge="გადახდა ბარათით" data-en="Pay by Card">' +
-          '💳 ' + (lang === 'ge' ? 'გადახდა ბარათით' : 'Pay by Card') +
+        '<button type="button" class="btn-cart-pay" id="cartPayBtn" data-ge="ბარათით გადახდა" data-en="Pay by card">' +
+          '💳 ' + (lang === 'ge' ? 'ბარათით გადახდა' : 'Pay by card') +
         '</button>' +
-        '<button type="button" class="btn-cart-installment" id="cartInstallmentBtn" data-ge="განვადება" data-en="Installment">' +
+        '<button type="button" class="btn-cart-flitt" id="cartFlittPayBtn" data-ge="გადახდა Flitt" data-en="Pay with Flitt">' +
+          '🏦 ' + (lang === 'ge' ? 'გადახდა Flitt' : 'Pay with Flitt') +
+        '</button>' +
+        '<button type="button" class="btn-cart-installment" id="cartInstallmentBtn" data-ge="განვადება" data-en="Installment" data-installment-month="6" data-installment-type="STANDARD">' +
           '💸 ' + (lang === 'ge' ? 'განვადება' : 'Installment') +
         '</button>' +
         '<button type="button" class="btn btn-primary cart-drawer__checkout" id="cartCheckoutBtn" data-ge="შეკვეთა WhatsApp-ით" data-en="Order via WhatsApp">' +
@@ -248,6 +251,7 @@
     // Bind ONLY after the drawer is appended to document.body so the
     // elements exist in DOM at the moment of attachment.
     var payBtn         = document.getElementById('cartPayBtn');
+    var flittPayBtn    = document.getElementById('cartFlittPayBtn');
     var installmentBtn = document.getElementById('cartInstallmentBtn');
 
     if (payBtn) {
@@ -260,14 +264,24 @@
       console.log('[Ceramisia] Pay button listener bound: #cartPayBtn');
     }
 
+    if (flittPayBtn) {
+      flittPayBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('FLITT PAY CLICKED');
+        payWithFlitt('cartFlittPayBtn');
+      });
+      console.log('[Ceramisia] Flitt Pay button listener bound: #cartFlittPayBtn');
+    }
+
     if (installmentBtn) {
       installmentBtn.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
         console.log('INSTALLMENT CLICKED');
-        payCart('cartInstallmentBtn');
+        payWithInstallment('cartInstallmentBtn');
       });
-      console.log('[Ceramisia] Pay button listener bound: #cartInstallmentBtn');
+      console.log('[Ceramisia] Installment button bound: #cartInstallmentBtn');
     }
   }
 
@@ -348,10 +362,18 @@
   /* ── Card Payment (BOG) ───────────────────────── */
   var _isPaying = false;
   var PAYMENT_ENDPOINT = '/api/pay';
+  var FLITT_PAYMENT_ENDPOINT = '/api/flitt-pay';
+  var BOG_INSTALLMENT_ENDPOINT = '/api/bog-installment';
 
   // Extract the redirect URL from any shape BOG / our backend may return.
   function extractRedirectUrl(data) {
     if (!data || typeof data !== 'object') return null;
+    if (Array.isArray(data.links)) {
+      var tgt = data.links.find(function (l) {
+        return l && l.rel === 'target' && l.href;
+      });
+      if (tgt && tgt.href) return tgt.href;
+    }
     return (
       (data._links && data._links.redirect && data._links.redirect.href) ||
       (data.links  && data.links.redirect  && data.links.redirect.href)  ||
@@ -365,11 +387,11 @@
     );
   }
 
-  async function payCart(btnId) {
-    console.log('PAY CLICKED', btnId || '');
+  async function submitPayment(paymentEndpoint, btnId, jsonErrorLabel, extraFields) {
+    console.log('[Ceramisia] submitPayment', jsonErrorLabel, btnId || '');
 
     if (_isPaying) {
-      console.warn('[Ceramisia] payCart: already in progress');
+      console.warn('[Ceramisia] submitPayment: already in progress');
       return;
     }
 
@@ -379,7 +401,7 @@
       return;
     }
 
-    var btn = document.getElementById(btnId || 'cartPayBtn');
+    var btn = document.getElementById(btnId);
     var originalText = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
 
@@ -392,12 +414,16 @@
       var cart = getCart();
 
       var items = cart.map(function (item) {
-        return {
+        var row = {
           product_id: item.id,
           slug: item.slug || undefined,
           quantity:   Number(item.qty) || 1,
           unit_price: Number(item.price) || 0
         };
+        if (item.name) row.name = item.name;
+        if (item.nameEn) row.nameEn = item.nameEn;
+        if (item.image) row.image = item.image;
+        return row;
       });
 
       var requestBody = {
@@ -405,10 +431,18 @@
         items:  items
       };
 
-      console.log('PAY REQUEST:', totalAmount);
+      if (extraFields && typeof extraFields === 'object') {
+        Object.keys(extraFields).forEach(function (k) {
+          if (extraFields[k] !== undefined) {
+            requestBody[k] = extraFields[k];
+          }
+        });
+      }
+
+      console.log('PAY REQUEST:', totalAmount, jsonErrorLabel);
       console.log('PAY REQUEST BODY:', requestBody);
 
-      var res = await fetch(PAYMENT_ENDPOINT, {
+      var res = await fetch(paymentEndpoint, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(requestBody),
@@ -419,7 +453,7 @@
       try {
         data = await res.json();
       } catch (_jsonErr) {
-        throw new Error('Invalid JSON response from /api/pay');
+        throw new Error('Invalid JSON response from ' + jsonErrorLabel);
       }
 
       console.log('FULL RESPONSE:', data);
@@ -439,7 +473,7 @@
 
       window.location.href = redirectUrl;
     } catch (err) {
-      console.error('[Ceramisia] payCart error:', err);
+      console.error('[Ceramisia] submitPayment error:', err);
       if (btn) { btn.disabled = false; btn.textContent = originalText; }
 
       var lang = getLang();
@@ -462,6 +496,42 @@
       clearTimeout(timeoutId);
       _isPaying = false;
     }
+  }
+
+  async function payCart(btnId) {
+    return submitPayment(PAYMENT_ENDPOINT, btnId || 'cartPayBtn', '/api/pay');
+  }
+
+  async function payWithFlitt(btnId) {
+    return submitPayment(
+      FLITT_PAYMENT_ENDPOINT,
+      btnId || 'cartFlittPayBtn',
+      '/api/flitt-pay'
+    );
+  }
+
+  async function payWithInstallment(btnId) {
+    var id = btnId || 'cartInstallmentBtn';
+    var b = document.getElementById(id);
+    var month = b && b.dataset.installmentMonth
+      ? Number(b.dataset.installmentMonth)
+      : NaN;
+    var typ = b && b.dataset.installmentType
+      ? String(b.dataset.installmentType).trim()
+      : '';
+    var extra = {};
+    if (Number.isFinite(month) && month > 0) {
+      extra.installment_month = month;
+    }
+    if (typ) {
+      extra.installment_type = typ;
+    }
+    return submitPayment(
+      BOG_INSTALLMENT_ENDPOINT,
+      id,
+      '/api/bog-installment',
+      extra
+    );
   }
   /* ── WhatsApp Checkout ─────────────────────────── */
   var WHATSAPP_NUMBER = '995597224407';
@@ -551,7 +621,9 @@
   // Backward compat
   window.initCart = bindCardButtons;
 
-  // Payment – exposed globally so onclick="payCart()" works from HTML
+  // Payment – exposed globally
   window.payCart = payCart;
+  window.payWithFlitt = payWithFlitt;
+  window.payWithInstallment = payWithInstallment;
 
 })();

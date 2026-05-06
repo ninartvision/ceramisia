@@ -102,29 +102,57 @@ export async function getProductPrices(lineItems) {
   return priceByClientKey;
 }
 
-export async function savePendingOrder(orderId, amount) {
+export async function savePendingOrder(
+  orderId,
+  amount,
+  provider = "bog",
+  paymentType = "card"
+) {
   const supabase = getSupabase();
-  const { error } = await supabase
-    .from("pending_orders")
-    .insert({ order_id: orderId, amount, status: "pending" });
+  const { error } = await supabase.from("pending_orders").insert({
+    order_id: orderId,
+    amount,
+    status: "pending",
+    provider,
+    payment_type: paymentType,
+  });
 
   if (error) throw wrapDb("savePendingOrder.insert", error);
 }
 
-export async function getExpectedAmount(orderId) {
+/**
+ * @returns {Promise<{ amount: number, provider: string, payment_type: string } | null>}
+ */
+export async function getPendingOrder(orderId) {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("pending_orders")
-    .select("amount")
+    .select("amount, provider, payment_type")
     .eq("order_id", orderId)
     .single();
 
   if (error) {
     if (error.code === "PGRST116") return null;
-    throw wrapDb("getExpectedAmount.select", error);
+    throw wrapDb("getPendingOrder.select", error);
   }
 
-  return data?.amount ?? null;
+  if (!data) return null;
+  const amount = data.amount != null ? Number(data.amount) : null;
+  if (!Number.isFinite(amount)) return null;
+  const provider =
+    typeof data.provider === "string" && data.provider.trim() !== ""
+      ? data.provider.trim()
+      : "bog";
+  const paymentType =
+    typeof data.payment_type === "string" && data.payment_type.trim() !== ""
+      ? data.payment_type.trim()
+      : "card";
+  return { amount, provider, payment_type: paymentType };
+}
+
+export async function getExpectedAmount(orderId) {
+  const row = await getPendingOrder(orderId);
+  return row?.amount ?? null;
 }
 
 export async function saveOrderToDB({
@@ -134,6 +162,8 @@ export async function saveOrderToDB({
   customerName,
   phone,
   payload,
+  provider = "bog",
+  payment_type = "card",
 }) {
   const supabase = getSupabase();
   const { error } = await supabase.from("completed_orders").insert({
@@ -143,6 +173,8 @@ export async function saveOrderToDB({
     customer_name: customerName,
     phone,
     payload,
+    provider,
+    payment_type,
   });
 
   if (error) {

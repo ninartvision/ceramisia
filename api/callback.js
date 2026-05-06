@@ -2,13 +2,15 @@ import crypto from "crypto";
 import fetch from "node-fetch";
 import getRawBody from "raw-body";
 import {
-  getExpectedAmount,
+  getPendingOrder,
   saveOrderToDB,
   updatePendingOrderStatus,
 } from "./_db.js";
+import { fetchInstallmentCheckoutDetails } from "./_bogInstallmentApi.js";
 
 // Regex for BOG order IDs — used to sanitize before DB queries and API calls
 const BOG_ORDER_ID_RE = /^[a-zA-Z0-9_-]{1,64}$/;
+const BOG_INSTALL_ORDER_ID_RE = /^[a-zA-Z0-9._-]{8,128}$/;
 
 // Token cache shared by verifyReceiptWithBOG — avoids a fresh OAuth round-trip on every callback.
 let _receiptToken = null;
@@ -96,13 +98,154 @@ export const config = {
 };
 
 // ---------------------------------------------------------------------------
+// BOG Installment callback (no RSA signature — often same URL as ecommerce)
+// ---------------------------------------------------------------------------
+/**
+ * @returns {null | { status: string, order_id: string, shop_order_id?: string }}
+ */
+function tryParseInstallmentCallback(rawBody) {
+  const text = rawBody.toString("utf8").trim();
+  if (!text) return null;
+
+  if (text.startsWith("{")) {
+    let j;
+    try {
+      j = JSON.parse(text);
+    } catch {
+      return null;
+    }
+    if (j.event === "order_payment") return null;
+    const pm = String(j.payment_method || "")
+      .trim()
+      .toUpperCase()
+      .replace(/-/g, "_");
+    if (pm !== "BOG_LOAN") return null;
+    if (!j.order_id || !j.status) return null;
+    return {
+      status: String(j.status),
+      order_id: String(j.order_id),
+      shop_order_id: j.shop_order_id != null ? String(j.shop_order_id) : "",
+    };
+  }
+
+  const params = new URLSearchParams(text);
+  const pm = String(params.get("payment_method") || "")
+    .trim()
+    .toUpperCase()
+    .replace(/-/g, "_");
+  if (pm !== "BOG_LOAN") return null;
+  const order_id = params.get("order_id");
+  const status = params.get("status");
+  if (!order_id || !status) return null;
+  return {
+    status: String(status),
+    order_id: String(order_id),
+    shop_order_id: params.get("shop_order_id") || "",
+  };
+}
+
+async function processBogInstallmentCallback({ status, order_id, shop_order_id }) {
+  console.log("[bog-installment] callback inbound", {
+    status,
+    order_id,
+    shop_order_id,
+  });
+
+  if (!order_id || !BOG_INSTALL_ORDER_ID_RE.test(order_id)) {
+    console.error("[bog-installment] callback invalid order_id");
+    return;
+  }
+
+  const pending = await getPendingOrder(order_id);
+  if (!pending) {
+    console.error("[bog-installment] callback unknown order_id", order_id);
+    return;
+  }
+  if (pending.provider !== "bog" || pending.payment_type !== "installment") {
+    console.error("[bog-installment] callback pending row mismatch", {
+      order_id,
+      pending,
+    });
+    return;
+  }
+
+  if (status === "reverse_success") {
+    await updatePendingOrderStatus(order_id, "failed").catch((err) =>
+      console.error("[bog-installment] pending update:", err?.message)
+    );
+    return;
+  }
+
+  if (status === "error") {
+    await updatePendingOrderStatus(order_id, "failed").catch((err) =>
+      console.error("[bog-installment] pending update:", err?.message)
+    );
+    return;
+  }
+
+  if (status !== "success") {
+    console.log("[bog-installment] callback non-success status — ignored", status);
+    return;
+  }
+
+  let details;
+  try {
+    details = await fetchInstallmentCheckoutDetails(order_id);
+  } catch (err) {
+    console.error("[bog-installment] details API error — will retry", err?.message);
+    throw err;
+  }
+
+  if (details.status !== "success" || details.installment_status !== "success") {
+    console.error("[bog-installment] details not fully successful", {
+      order_id,
+      status: details.status,
+      installment_status: details.installment_status,
+    });
+    return;
+  }
+
+  const expectedAmount = pending.amount;
+
+  try {
+    console.log("[bog-installment] saving completed_orders", {
+      order_id,
+      amount: expectedAmount,
+    });
+    await saveOrderToDB({
+      orderId: order_id,
+      status: details.status,
+      amount: expectedAmount,
+      customerName: undefined,
+      phone: undefined,
+      payload: {
+        callback: { status, order_id, shop_order_id },
+        details,
+      },
+      provider: "bog",
+      payment_type: "installment",
+    });
+    await updatePendingOrderStatus(order_id, "success").catch((err) =>
+      console.error("[bog-installment] pending success update:", err?.message)
+    );
+    console.log("[bog-installment] completed_orders insert ok", { order_id });
+  } catch (dbErr) {
+    if (dbErr.code === "23505" || dbErr.code === "DUPLICATE") {
+      console.log("[bog-installment] duplicate completed order ignored", {
+        order_id,
+      });
+    } else {
+      console.error("[bog-installment] DB error", dbErr?.message);
+      throw dbErr;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // isValidSignature
 // ---------------------------------------------------------------------------
 // BOG signs the exact raw request body bytes with RSA-SHA256 (SHA256withRSA).
-// The signature is base64-encoded and sent in the request header.
-//
 // Set BOG_PUBLIC_KEY in Vercel → Project → Settings → Environment Variables.
-// The value is the PEM-formatted RSA public key provided by BOG.
 // ---------------------------------------------------------------------------
 function isValidSignature(rawBody, signatureHeader) {
   const publicKey = process.env.BOG_PUBLIC_KEY;
@@ -146,7 +289,17 @@ export default async function handler(req, res) {
       return res.status(200).send("OK");
     }
 
-    // 2. Validate RSA-SHA256 signature BEFORE parsing JSON
+    const installmentPayload = tryParseInstallmentCallback(rawBody);
+    if (installmentPayload) {
+      try {
+        await processBogInstallmentCallback(installmentPayload);
+      } catch (err) {
+        console.error("[bog-installment] callback unhandled:", err);
+      }
+      return res.status(200).send("OK");
+    }
+
+    // 2. E-commerce card: RSA-SHA256 signature on raw JSON body
     const signatureHeader =
       req.headers["x-bog-signature"] || req.headers["x-signature"];
 
@@ -208,16 +361,31 @@ export default async function handler(req, res) {
       return res.status(200).send("OK");
     }
 
-    console.log("BOG callback received:", { order_id, statusKey, amount });
+    console.log("[callback] BOG callback received:", { order_id, statusKey, amount });
 
     // 5. Amount validation — fetch stored amount and compare
-    const expectedAmount = await getExpectedAmount(order_id);
+    const pendingRow = await getPendingOrder(order_id);
 
-    if (expectedAmount === null) {
+    if (!pendingRow) {
       // Order not found in pending_orders — could be a forged or stale callback.
-      console.error("BOG callback: unknown order_id:", order_id);
+      console.error("[callback] unknown order_id (no pending_orders row):", order_id);
       return res.status(200).send("OK");
     }
+
+    if (pendingRow.payment_type !== "card") {
+      console.log("[callback] skip ecommerce handler — not card pending", {
+        order_id,
+        payment_type: pendingRow.payment_type,
+      });
+      return res.status(200).send("OK");
+    }
+
+    const expectedAmount = pendingRow.amount;
+
+    console.log("[callback] pending_orders matched", {
+      order_id,
+      expectedAmount,
+    });
 
     // Guard against NaN: Number(undefined) = NaN, and NaN > 0.01 = false,
     // which would silently bypass the mismatch check.
@@ -255,15 +423,31 @@ export default async function handler(req, res) {
       }
 
       if (!receiptConfirmed) {
-        console.error("BOG callback: receipt not confirmed by BOG API — skipping save", { order_id });
+        console.error(
+          "[callback] receipt not confirmed by BOG API — skipping completed_orders",
+          { order_id }
+        );
         return res.status(200).send("OK");
       }
 
       try {
+        console.log("[callback] saving completed_orders", {
+          order_id,
+          amount: expectedAmount,
+        });
         // Store expectedAmount (our DB value, confirmed by receipt) rather than the
         // callback payload amount — it is the most authoritative figure and cannot
         // be undefined (we validated it above).
-        await saveOrderToDB({ orderId: order_id, status: statusKey, amount: expectedAmount, customerName, phone, payload: body });
+        await saveOrderToDB({
+          orderId: order_id,
+          status: statusKey,
+          amount: expectedAmount,
+          customerName,
+          phone,
+          payload: body,
+          provider: "bog",
+          payment_type: "card",
+        });
         // Non-critical — update pending_orders status for record-keeping.
         await updatePendingOrderStatus(order_id, "success").catch((err) =>
           console.error("BOG callback: failed to update pending status:", err)
