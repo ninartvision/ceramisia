@@ -313,8 +313,10 @@ export default async function handler(req, res) {
         status: flittRes.status,
       });
       return res.status(502).json({
+        failure_stage: "flitt_non_json",
         error: "Flitt invalid response",
         raw: rawText.slice(0, 400),
+        flitt_http_status: flittRes.status,
       });
     }
 
@@ -351,8 +353,24 @@ export default async function handler(req, res) {
     }
 
     if (resp?.response_status !== "success") {
+      const flittMsg =
+        resp?.error_message != null && String(resp.error_message).trim() !== ""
+          ? String(resp.error_message).trim()
+          : "";
+      const flittCode =
+        resp?.error_code !== undefined &&
+        resp?.error_code !== null &&
+        String(resp.error_code).trim() !== ""
+          ? String(resp.error_code).trim()
+          : "";
+      const errorSummary =
+        flittMsg && flittCode
+          ? `${flittMsg} (${flittCode})`
+          : flittMsg || flittCode || "Flitt declined request";
+
       return res.status(502).json({
-        error: "Flitt declined request",
+        failure_stage: "flitt_checkout_rejected",
+        error: errorSummary,
         /** Mirrors Flitt `response` — use for support tickets / portal checks */
         flitt_response: resp,
         flitt_error_summary: {
@@ -384,6 +402,7 @@ export default async function handler(req, res) {
     if (!checkoutHref) {
       console.error("[flitt-pay] missing checkout_url", resp);
       return res.status(502).json({
+        failure_stage: "flitt_missing_checkout_url",
         error: "No checkout URL",
         details: resp,
       });
@@ -408,6 +427,7 @@ export default async function handler(req, res) {
       });
       const isEnv = dbErr?.name === "SupabaseEnvError";
       return res.status(502).json({
+        failure_stage: "pending_order_db",
         error: "Order tracking unavailable",
         details: isEnv
           ? "Supabase is not configured: set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY for this environment (Production / Preview)."

@@ -488,6 +488,38 @@
         var serverErr =
           (data && (data.error || (data.details && data.details.message))) ||
           ('HTTP ' + res.status);
+        var fs = data && data.flitt_error_summary;
+        if (
+          fs &&
+          (fs.error_message ||
+            (fs.error_code != null && String(fs.error_code) !== ''))
+        ) {
+          var genericErr =
+            !data.error || String(data.error) === 'Flitt declined request';
+          if (genericErr) {
+            var parts = [];
+            if (fs.error_message) parts.push(String(fs.error_message));
+            if (
+              fs.error_code != null &&
+              String(fs.error_code) !== ''
+            ) {
+              parts.push('(' + String(fs.error_code) + ')');
+            }
+            if (parts.length) serverErr = parts.join(' ');
+          }
+        }
+        var flittReqId =
+          fs &&
+          fs.request_id != null &&
+          String(fs.request_id).trim() !== ''
+            ? String(fs.request_id).trim()
+            : '';
+        if (flittReqId) {
+          serverErr +=
+            getLang() === 'ge'
+              ? ' (მხარდაჭერის კოდი: ' + flittReqId + ')'
+              : ' (support ref: ' + flittReqId + ')';
+        }
         throw new Error(String(serverErr));
       }
 
