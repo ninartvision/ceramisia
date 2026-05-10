@@ -1629,7 +1629,9 @@ p { color: var(--clr-text-mid); }
 }
 .cart-pay-btn__icon {
   flex: 0 0 auto;
-  width: 1.75rem;
+  width: auto;
+  min-width: 1.75rem;
+  max-width: 42%;
   height: 1.75rem;
   display: flex;
   align-items: center;
@@ -1641,13 +1643,70 @@ p { color: var(--clr-text-mid); }
   display: block;
   shape-rendering: geometricPrecision;
 }
-.cart-pay-btn__label {
-  flex: 0 1 auto;
-  text-align: left;
-  line-height: 1.3;
+.cart-pay-btn__logo-img {
+  height: 1.45rem;
+  width: auto;
+  max-width: 5.75rem;
+  object-fit: contain;
+  object-position: left center;
+  display: block;
+}
+/* სრული ბრენდ ლოგო PNG — ცენტრირება, უჯრის სიმაღლის იძულება არა */
+.cart-pay-btn__row--bog-brand .cart-pay-btn__icon,
+.cart-pay-btn__row--tbc-brand .cart-pay-btn__icon,
+.cart-pay-btn__row--split-brand .cart-pay-btn__icon {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  min-height: 0;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+}
+/* გადახდის ლოგოები — საერთო რენდერი; BOG რეფერენსული ზომა, TBC/ნაწილ-ნაწილი პატარა ბალანსისთვის */
+.cart-pay-btn__logo-img--bog-full,
+.cart-pay-btn__logo-img--tbc-full,
+.cart-pay-btn__logo-img--split-brand {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  object-fit: contain;
+  object-position: center center;
+  border-radius: 6px;
+  image-rendering: auto;
+  image-rendering: -webkit-optimize-contrast;
+}
+.cart-pay-btn__logo-img--bog-full {
+  max-height: 2.05rem;
+}
+.cart-pay-btn__logo-img--tbc-full,
+.cart-pay-btn__logo-img--split-brand {
+  max-height: 2.06rem;
+}
+.cart-pay-btn__row--bog-brand,
+.cart-pay-btn__row--tbc-brand,
+.cart-pay-btn__row--split-brand {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: auto;
+  width: 100%;
 }
 
-/* Card payment — BOG */
+.cart-pay-btn--waiting {
+  cursor: wait;
+}
+.cart-pay-btn--waiting .cart-pay-btn__icon {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* Card payment — BOG (თეთრი ფონი + სრული ბრენდ ლოგო) */
 .btn-cart-pay {
   display: flex;
   align-items: center;
@@ -1660,15 +1719,16 @@ p { color: var(--clr-text-mid); }
   font-size: 0.85rem;
   font-weight: 600;
   letter-spacing: 0.03em;
-  background: #111;
-  color: #fff;
-  border: none;
+  background: #fff;
+  color: #222;
+  border: 1.5px solid #e0e0e0;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.15s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
 }
 .btn-cart-pay:hover:not(:disabled) {
-  background: #333;
+  background: #fafafa;
+  border-color: #ccc;
   transform: translateY(-1px);
 }
 .btn-cart-pay:disabled {
@@ -1677,7 +1737,7 @@ p { color: var(--clr-text-mid); }
   transform: none;
 }
 
-/* Flitt / card checkout — cart drawer */
+/* Card checkout via Flitt — secondary CTA (outline) */
 .btn-cart-flitt {
   display: flex;
   align-items: center;
@@ -1690,24 +1750,35 @@ p { color: var(--clr-text-mid); }
   font-size: 0.85rem;
   font-weight: 600;
   letter-spacing: 0.03em;
-  background: #005a9c;
-  color: #fff;
-  border: none;
+  background: #fff;
+  color: #005a9c;
+  border: 1.5px solid #005a9c;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.15s ease;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease,
+    border-color 0.2s ease;
 }
 .btn-cart-flitt:hover:not(:disabled) {
-  background: #004478;
+  background: rgba(0, 90, 156, 0.08);
+  color: #004478;
+  border-color: #004478;
   transform: translateY(-1px);
+}
+.btn-cart-flitt.cart-pay-btn--tbc-brand {
+  background: #fff;
+  color: #222;
+  border: 1.5px solid #e0e0e0;
+}
+.btn-cart-flitt.cart-pay-btn--tbc-brand:hover:not(:disabled) {
+  background: #fafafa;
+  border-color: #ccc;
+  color: #222;
 }
 .btn-cart-flitt:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
 }
-
-/* Installment — cart drawer */
 .btn-cart-installment {
   display: flex;
   align-items: center;
@@ -1721,17 +1792,15 @@ p { color: var(--clr-text-mid); }
   font-weight: 600;
   letter-spacing: 0.03em;
   background: #fff;
-  color: #111;
-  border: 1.5px solid #111;
+  color: #222;
+  border: 1.5px solid #e0e0e0;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease,
-    border-color 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
 }
 .btn-cart-installment:hover:not(:disabled) {
-  background: #111;
-  color: #fff;
-  border-color: #111;
+  background: #fafafa;
+  border-color: #ccc;
   transform: translateY(-1px);
 }
 .btn-cart-installment:disabled {
@@ -1746,8 +1815,35 @@ p { color: var(--clr-text-mid); }
     min-height: 2.85rem;
   }
   .cart-pay-btn__icon {
-    width: 1.65rem;
+    width: auto;
+    min-width: 1.65rem;
+    max-width: 46%;
     height: 1.65rem;
+  }
+  .cart-pay-btn__logo-img {
+    height: 1.38rem;
+    max-width: 5.25rem;
+  }
+  .cart-pay-btn__logo-img--bog-full {
+    max-height: 1.78rem;
+    border-radius: 5px;
+  }
+  .cart-pay-btn__logo-img--tbc-full,
+  .cart-pay-btn__logo-img--split-brand {
+    max-height: 1.82rem;
+    border-radius: 5px;
+  }
+  .cart-pay-btn__row--bog-brand .cart-pay-btn__icon,
+  .cart-pay-btn__row--tbc-brand .cart-pay-btn__icon,
+  .cart-pay-btn__row--split-brand .cart-pay-btn__icon {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    min-height: 0;
+    align-self: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .btn-cart-pay,
   .btn-cart-flitt,

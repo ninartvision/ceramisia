@@ -195,16 +195,23 @@
 
     var lang = getLang();
 
-    /* Brand-inspired vector marks only (not official copyrighted logos). */
-    var icoBog =
-      '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><defs><linearGradient id="cartPayBogBg" x1="6" y1="4" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#FFC48A"/><stop offset=".28" stop-color="#F47A24"/><stop offset=".62" stop-color="#E04E00"/><stop offset="1" stop-color="#9C2D00"/></linearGradient><linearGradient id="cartPayBogHl" x1="16" y1="2" x2="16" y2="32" gradientUnits="userSpaceOnUse"><stop stop-color="#fff" stop-opacity=".2"/><stop offset=".35" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#1a0500" stop-opacity=".14"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#cartPayBogBg)"/><rect width="32" height="32" rx="8" fill="url(#cartPayBogHl)"/><path fill="#fff" fill-rule="evenodd" d="M17.4 7.6H11.4V24h6.45c3.8 0 6.2-2.1 6.2-5.45 0-2.55-1.35-4.35-3.6-5.15L23.5 10.05h-3.9l-2.55 2.55H15.5V7.6h1.9zm-1.05 9h2.05c1.65 0 2.6.85 2.6 2.25s-.95 2.25-2.6 2.25h-2.05v-4.5z"/></svg>';
-    var icoTbcFlitt =
-      '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><defs><linearGradient id="cartPayTbcBg" x1="16" y1="1.5" x2="16" y2="30.5" gradientUnits="userSpaceOnUse"><stop stop-color="#4AE8FF"/><stop offset=".4" stop-color="#00A8DE"/><stop offset="1" stop-color="#005A8F"/></linearGradient><linearGradient id="cartPayFltAc" x1="20.5" y1="5" x2="29.5" y2="14" gradientUnits="userSpaceOnUse"><stop stop-color="#EDE9FE"/><stop offset=".4" stop-color="#A78BFA"/><stop offset="1" stop-color="#5B21B6"/></linearGradient><radialGradient id="cartPayFltGl" cx="70%" cy="25%" r="55%"><stop stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><rect width="32" height="32" rx="8" fill="url(#cartPayTbcBg)"/><path fill="#fff" d="M4.75 6.6h22.5v5.1H18.3V25.4h-4.6V11.7H4.75V6.6z"/><rect x="18.85" y="3.85" width="10.35" height="10.35" rx="3.2" fill="url(#cartPayFltAc)"/><rect x="18.85" y="3.85" width="10.35" height="10.35" rx="3.2" fill="url(#cartPayFltGl)"/><circle cx="24.05" cy="9.05" r="1.45" fill="#FAF5FF" opacity=".96"/></svg>';
-    var icoInstallment =
-      '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path stroke="currentColor" stroke-width="1.65" stroke-linejoin="round" d="M4.5 8h6.75v11H4.5zM12.75 8h6.75v11h-6.75z"/><path stroke="currentColor" stroke-width="1.65" stroke-linecap="round" d="M11.625 12h.75"/></svg>';
+    var payImgV = '24';
+    /* საქართველოს ბანკი — სრული ჰორიზონტალური ლოგო (შავი ფონი PNG; ღილაკი თეთრი) */
+    var imgBog =
+      '<img class="cart-pay-btn__logo-img cart-pay-btn__logo-img--bog-full" src="/images/payment/bog-full.png?v=' + payImgV + '" alt="" width="280" height="56" decoding="async" draggable="false">';
+    /* თიბისი ბანკი — სრული ჰორიზონტალური ლოგო */
+    var imgTbc =
+      '<img class="cart-pay-btn__logo-img cart-pay-btn__logo-img--tbc-full" src="/images/payment/tbc-full.png?v=' + payImgV + '" alt="" width="280" height="56" decoding="async" draggable="false">';
+    /* ნაწილ-ნაწილ — საქ ბანკის მარკა */
+    var imgSplitPay =
+      '<img class="cart-pay-btn__logo-img cart-pay-btn__logo-img--split-brand" src="/images/payment/bog-split-brand.png?v=' + payImgV + '" alt="" width="280" height="64" decoding="async" draggable="false">';
 
-    var payLabel = lang === 'ge' ? 'გადახდა' : 'Pay';
-    var installmentLabel = lang === 'ge' ? 'ნაწილ-ნაწილ' : 'Installment';
+    var ariaPayBog =
+      lang === 'ge' ? 'საქართველოს ბანკით ბარათით' : 'Bank of Georgia card checkout';
+    var ariaPayTbc =
+      lang === 'ge' ? 'თიბისი ბანკით ბარათით' : 'TBC Bank card checkout';
+    var ariaInstall =
+      lang === 'ge' ? 'ნაწილ-ნაწილი საქართველოს ბანკით' : 'Bank of Georgia installments';
 
     drawer.innerHTML =
       '<div class="cart-drawer__header">' +
@@ -224,22 +231,19 @@
           '<span data-ge="ჯამი" data-en="Total">' + (lang === 'ge' ? 'ჯამი' : 'Total') + '</span>' +
           '<strong id="cartDrawerTotal">₾ 0</strong>' +
         '</div>' +
-        '<button type="button" class="btn-cart-pay" id="cartPayBtn" data-ge="გადახდა" data-en="Pay">' +
-          '<span class="cart-pay-btn__row">' +
-            '<span class="cart-pay-btn__icon" aria-hidden="true">' + icoBog + '</span>' +
-            '<span class="cart-pay-btn__label">' + payLabel + '</span>' +
+        '<button type="button" class="btn-cart-pay cart-pay-btn--bog-brand" id="cartPayBtn" aria-label="' + escapeAttr(ariaPayBog) + '">' +
+          '<span class="cart-pay-btn__row cart-pay-btn__row--bog-brand">' +
+            '<span class="cart-pay-btn__icon" aria-hidden="true">' + imgBog + '</span>' +
           '</span>' +
         '</button>' +
-        '<button type="button" class="btn-cart-flitt" id="cartFlittPayBtn" data-ge="გადახდა" data-en="Pay">' +
-          '<span class="cart-pay-btn__row">' +
-            '<span class="cart-pay-btn__icon" aria-hidden="true">' + icoTbcFlitt + '</span>' +
-            '<span class="cart-pay-btn__label">' + payLabel + '</span>' +
+        '<button type="button" class="btn-cart-flitt cart-pay-btn--tbc-brand" id="cartFlittPayBtn" aria-label="' + escapeAttr(ariaPayTbc) + '">' +
+          '<span class="cart-pay-btn__row cart-pay-btn__row--tbc-brand">' +
+            '<span class="cart-pay-btn__icon" aria-hidden="true">' + imgTbc + '</span>' +
           '</span>' +
         '</button>' +
-        '<button type="button" class="btn-cart-installment" id="cartInstallmentBtn" data-ge="ნაწილ-ნაწილ" data-en="Installment" data-installment-month="6" data-installment-type="STANDARD">' +
-          '<span class="cart-pay-btn__row">' +
-            '<span class="cart-pay-btn__icon" aria-hidden="true">' + icoInstallment + '</span>' +
-            '<span class="cart-pay-btn__label">' + installmentLabel + '</span>' +
+        '<button type="button" class="btn-cart-installment cart-pay-btn--split-brand" id="cartInstallmentBtn" data-installment-month="6" data-installment-type="STANDARD" aria-label="' + escapeAttr(ariaInstall) + '">' +
+          '<span class="cart-pay-btn__row cart-pay-btn__row--split-brand">' +
+            '<span class="cart-pay-btn__icon" aria-hidden="true">' + imgSplitPay + '</span>' +
           '</span>' +
         '</button>' +
         '<button type="button" class="btn btn-primary cart-drawer__checkout" id="cartCheckoutBtn" data-ge="შეკვეთა WhatsApp-ით" data-en="Order via WhatsApp">' +
@@ -422,8 +426,10 @@
     }
 
     var btn = document.getElementById(btnId);
-    var originalText = btn ? btn.textContent : '';
-    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add('cart-pay-btn--waiting');
+    }
 
     _isPaying = true;
 
@@ -494,7 +500,10 @@
       window.location.href = redirectUrl;
     } catch (err) {
       console.error('[Ceramisia] submitPayment error:', err);
-      if (btn) { btn.disabled = false; btn.textContent = originalText; }
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('cart-pay-btn--waiting');
+      }
 
       var lang = getLang();
       var msg  = err && err.message ? String(err.message) : '';
