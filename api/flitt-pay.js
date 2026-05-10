@@ -210,8 +210,8 @@ export default async function handler(req, res) {
 
     /**
      * Request shape aligned with Flitt docs + `flittpayments/node-js-sdk` (`lib/util.js`):
-     * JSON wrapper `{ "request": { ... } }`, signature = SHA1(secret + "|" + sorted values),
-     * same filter as SDK: `params[key] !== ''` (only exclude empty string, not null — matches SDK).
+     * JSON wrapper `{ "request": { ... } }`, signature = SHA1(secret + "|" + sorted values).
+     * Signing matches official Node SDK: skip only `''`; excludes signature keys.
      *
      * `version` defaults to 1.0.1 per https://docs.flitt.com/api/order-parameters/ — same as
      * official curl examples; override with FLITT_REQUEST_VERSION.
@@ -269,7 +269,8 @@ export default async function handler(req, res) {
       signature: {
         length: signature.length,
         prefix: signature.slice(0, 8),
-        algorithm: "sha1 (node-js-sdk genSignature): secret|…values sorted by key|null/undefined→'' in join",
+        algorithm:
+          "sha1 (node-js-sdk genSignature): secret|…values sorted by key; join maps null/undefined to empty segment",
       },
       sign_sorted_keys: signDbg.sorted_keys,
       sign_value_types: signDbg.types,
@@ -368,7 +369,11 @@ export default async function handler(req, res) {
           ? `${flittMsg} (${flittCode})`
           : flittMsg || flittCode || "Flitt declined request";
 
-      return res.status(502).json({
+      const isSignatureError =
+        String(flittCode) === "1014" ||
+        /invalid\s*signature/i.test(String(flittMsg || ""));
+
+      const payloadBase = {
         failure_stage: "flitt_checkout_rejected",
         error: errorSummary,
         /** Mirrors Flitt `response` — use for support tickets / portal checks */
@@ -393,7 +398,25 @@ export default async function handler(req, res) {
           hint:
             "Request uses version 1.0.1 by default (docs / curl). Override with FLITT_REQUEST_VERSION. For sandbox use FLITT_SANDBOX=1. FLITT_LANG=ka for Georgian checkout. Compare OUTBOUND signature plaintext log with Flitt response_signature_string.",
         },
-      });
+      };
+
+      if (isSignatureError) {
+        payloadBase.signature_debug = {
+          algorithm:
+            "SHA1( UTF-8 bytes of: secret + '|' + pipe_joined_values ) → lowercase hex",
+          field_order:
+            "Alphabetical by parameter name (ASCII sort). Exclude signature, response_signature_string, empty strings, null/undefined.",
+          sorted_keys_in_signature: signDbg.sorted_keys,
+          /** Must match the tail of Flitt `response_signature_string` after `**********|` */
+          values_pipe_joined_after_secret: signDbg.values_joined_after_secret,
+          /** Hex we sent on this request (verify secret used at runtime) */
+          outbound_signature_hex: signature,
+          compare_hint:
+            "If values_pipe_joined_after_secret matches Flitt tail but 1014 persists → wrong FLITT_PRIVATE_KEY (sandbox vs prod). If tails differ → extra/missing params (version, lang, cancel_url, reservation_data), whitespace in URLs, or wrong amount/currency.",
+        };
+      }
+
+      return res.status(502).json(payloadBase);
     }
 
     const checkoutHref =

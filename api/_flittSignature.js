@@ -1,12 +1,13 @@
 import crypto from "crypto";
 
 /**
- * Mirrors flittpayments/node-js-sdk `lib/util.js` `genSignature` exactly:
- * - Sort keys lexicographically
- * - Include a key iff `params[key] !== ''` and key is not signature / response_signature_string
- * - Plaintext: `secret + '|' + Object.values(ordered).join('|')` (join uses JS ToString;
- *   null/undefined values become empty segments, same as SDK)
- * - SHA1 digest, hex, lowercase
+ * Byte-for-byte same rules as flittpayments/node-js-sdk `genSignature` (`lib/util.js`):
+ * - Sort keys with default `Array.prototype.sort` (lexicographic by UTF-16 code unit).
+ * - Include key iff `params[key] !== ''` and key is not `signature` / `response_signature_string`.
+ *   Note: `null` / `undefined` pass this check; `Object.values(...).join('|')` turns them into
+ *   empty segments (still distinct from omitting the key). Keep payloads free of those keys.
+ * - Plaintext: `secret + '|' + Object.values(ordered).join('|')`
+ * - SHA1 UTF-8, hex lowercase
  *
  * @see https://docs.flitt.com/api/building-signature/
  * @see https://github.com/flittpayments/node-js-sdk/blob/main/lib/util.js
