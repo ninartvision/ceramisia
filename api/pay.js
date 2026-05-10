@@ -1,26 +1,11 @@
 import crypto from "crypto";
 import fetch from "node-fetch";
 import { client } from "../lib/sanity.js";
+import { trySanityCreateOrder } from "../lib/sanityOrderSync.js";
 import { savePendingOrder } from "./_db.js";
 
 // Same pattern as api/callback.js — BOG order id must match before DB / callback handling.
 const BOG_ORDER_ID_RE = /^[a-zA-Z0-9_-]{1,64}$/;
-
-function logSanityError(err, context) {
-  console.error(`[Sanity] ${context}:`, err?.message || err);
-  if (err?.response?.body) {
-    console.error(
-      "[Sanity] response body:",
-      typeof err.response.body === "string"
-        ? err.response.body
-        : JSON.stringify(err.response.body, null, 2)
-    );
-  }
-  if (err?.details) {
-    console.error("[Sanity] details:", JSON.stringify(err.details, null, 2));
-  }
-  console.error("[Sanity] stack:", err?.stack || "(no stack)");
-}
 
 export default async function handler(req, res) {
   res.setHeader("Content-Type", "application/json");
@@ -111,17 +96,13 @@ export default async function handler(req, res) {
       },
     };
 
-    // Sanity BEFORE payment redirect — must finish before response (serverless-safe)
-    try {
-      if (!process.env.SANITY_API_TOKEN?.trim()) {
-        console.error(
-          "[Sanity] SANITY_API_TOKEN is missing — orders will not persist. Set it in .env.local (root) and Vercel env."
-        );
-      }
-
-      await client.create({
+    await trySanityCreateOrder(
+      client,
+      {
         _type: "order",
-        customerName: String(body.customerName || body.name || "Unknown").trim() || "Unknown",
+        customerName:
+          String(body.customerName || body.name || "Unknown").trim() ||
+          "Unknown",
         email: body.email ? String(body.email) : "",
         phone: body.phone ? String(body.phone) : "",
         message: body.message ? String(body.message) : "BOG order",
@@ -136,11 +117,9 @@ export default async function handler(req, res) {
         })),
         status: "new",
         createdAt: new Date().toISOString(),
-      });
-      console.log("[Sanity] Order document created");
-    } catch (sanityErr) {
-      logSanityError(sanityErr, "create order document");
-    }
+      },
+      "pay"
+    );
 
     console.log("[pay] creating BOG ecommerce order", {
       external_order_id: requestBody.external_order_id,

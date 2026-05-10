@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import fetch from "node-fetch";
 import { client } from "../lib/sanity.js";
+import { trySanityCreateOrder } from "../lib/sanityOrderSync.js";
 import { savePendingOrder } from "./_db.js";
 import {
   describeFlittSignInputs,
@@ -43,22 +44,6 @@ function safeUrlParts(label, url) {
   } catch {
     return { label, href: url, parse_error: true };
   }
-}
-
-function logSanityError(err, context) {
-  console.error(`[Sanity] ${context}:`, err?.message || err);
-  if (err?.response?.body) {
-    console.error(
-      "[Sanity] response body:",
-      typeof err.response.body === "string"
-        ? err.response.body
-        : JSON.stringify(err.response.body, null, 2)
-    );
-  }
-  if (err?.details) {
-    console.error("[Sanity] details:", JSON.stringify(err.details, null, 2));
-  }
-  console.error("[Sanity] stack:", err?.stack || "(no stack)");
 }
 
 /** GEL: amount in tetri (integer) for Flitt API. */
@@ -121,6 +106,21 @@ export default async function handler(req, res) {
       );
     }
 
+    // Signing uses ONLY FLITT_PRIVATE_KEY (payment secret). Never put the public key here.
+    if (secret && publicKey && secret === publicKey) {
+      console.error(
+        "[flitt-pay] FLITT_PRIVATE_KEY and FLITT_PUBLIC_KEY are identical — paste Payment secret from Flitt merchant portal into FLITT_PRIVATE_KEY only"
+      );
+    }
+
+    console.log("[flitt-pay] deployment / secrets profile", {
+      VERCEL_ENV: process.env.VERCEL_ENV ?? null,
+      NODE_ENV: process.env.NODE_ENV ?? null,
+      merchant_id: merchantId,
+      FLITT_private_key_length: secret.length,
+      FLITT_public_key_configured: Boolean(publicKey),
+    });
+
     const responseUrl = firstEnvTrimmed(
       "FLITT_RESPONSE_URL",
       "TBC_SUCCESS_URL",
@@ -175,11 +175,9 @@ export default async function handler(req, res) {
       itemCount: Array.isArray(rawItems) ? rawItems.length : 0,
     });
 
-    try {
-      if (!process.env.SANITY_API_TOKEN?.trim()) {
-        console.error("[Sanity] SANITY_API_TOKEN is missing");
-      }
-      await client.create({
+    await trySanityCreateOrder(
+      client,
+      {
         _type: "order",
         customerName:
           String(body.customerName || body.name || "Unknown").trim() ||
@@ -198,11 +196,9 @@ export default async function handler(req, res) {
         })),
         status: "new",
         createdAt: new Date().toISOString(),
-      });
-      console.log("[flitt-pay] Sanity order document created");
-    } catch (sanityErr) {
-      logSanityError(sanityErr, "create order document (Flitt)");
-    }
+      },
+      "flitt-pay"
+    );
 
     const orderDesc = normalizeEnvValue(
       String(body.order_desc || body.orderDesc || "Ceramisia").slice(0, 1024)
@@ -405,7 +401,18 @@ export default async function handler(req, res) {
           algorithm:
             "SHA1( UTF-8 bytes of: secret + '|' + pipe_joined_values ) → lowercase hex",
           field_order:
-            "Alphabetical by parameter name (ASCII sort). Exclude signature, response_signature_string, empty strings, null/undefined.",
+            "Alphabetical by parameter name (ASCII sort). Exclude signature & response_signature_string & empty-string values (official Node SDK rule).",
+          deployment_context: {
+            VERCEL_ENV: process.env.VERCEL_ENV ?? null,
+            flitt_checkout_host: (() => {
+              try {
+                return new URL(checkoutUrl).host;
+              } catch {
+                return null;
+              }
+            })(),
+            sandbox_mode: sandbox,
+          },
           sorted_keys_in_signature: signDbg.sorted_keys,
           /** Must match the tail of Flitt `response_signature_string` after `**********|` */
           values_pipe_joined_after_secret: signDbg.values_joined_after_secret,

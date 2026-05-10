@@ -1,29 +1,27 @@
 import crypto from "crypto";
 import fetch from "node-fetch";
 import { client } from "../lib/sanity.js";
+import { trySanityCreateOrder } from "../lib/sanityOrderSync.js";
 import { savePendingOrder } from "./_db.js";
 import {
   getInstallmentAccessToken,
   getInstallmentApiBase,
   getInstallmentCredentials,
+  getInstallmentCredentialSourceLabel,
 } from "./_bogInstallmentApi.js";
 
 const INSTALL_ORDER_ID_RE = /^[a-zA-Z0-9._-]{8,128}$/;
 
-function logSanityError(err, context) {
-  console.error(`[Sanity] ${context}:`, err?.message || err);
-  if (err?.response?.body) {
-    console.error(
-      "[Sanity] response body:",
-      typeof err.response.body === "string"
-        ? err.response.body
-        : JSON.stringify(err.response.body, null, 2)
-    );
+function stringifyBogInstallError(data) {
+  if (data == null || typeof data !== "object") return "";
+  if (typeof data.message === "string") return data.message;
+  if (typeof data.error === "string") return data.error;
+  if (typeof data.error_description === "string") return data.error_description;
+  try {
+    return JSON.stringify(data).slice(0, 1200);
+  } catch {
+    return "";
   }
-  if (err?.details) {
-    console.error("[Sanity] details:", JSON.stringify(err.details, null, 2));
-  }
-  console.error("[Sanity] stack:", err?.stack || "(no stack)");
 }
 
 function extractInstallmentRedirect(links) {
@@ -92,6 +90,13 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Installment gateway not configured" });
     }
 
+    console.log("[bog-installment] credential profile", {
+      client_id_source: getInstallmentCredentialSourceLabel(),
+      client_id_length: String(clientId).length,
+      installment_api_base: getInstallmentApiBase(),
+      VERCEL_ENV: process.env.VERCEL_ENV ?? null,
+    });
+
     const successUrl =
       process.env.BOG_INSTALL_SUCCESS_URL || process.env.SUCCESS_URL;
     const failUrl =
@@ -139,11 +144,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "items array required" });
     }
 
-    try {
-      if (!process.env.SANITY_API_TOKEN?.trim()) {
-        console.error("[Sanity] SANITY_API_TOKEN is missing");
-      }
-      await client.create({
+    await trySanityCreateOrder(
+      client,
+      {
         _type: "order",
         customerName:
           String(body.customerName || body.name || "Unknown").trim() ||
@@ -162,11 +165,9 @@ export default async function handler(req, res) {
         })),
         status: "new",
         createdAt: new Date().toISOString(),
-      });
-      console.log("[bog-installment] Sanity order document created");
-    } catch (sanityErr) {
-      logSanityError(sanityErr, "create order document (installment)");
-    }
+      },
+      "bog-installment"
+    );
 
     const shopOrderId = `shp_${crypto.randomUUID()}`;
 
@@ -243,9 +244,24 @@ export default async function handler(req, res) {
     });
 
     if (!apiRes.ok) {
+      const flatMsg = stringifyBogInstallError(data);
+      const merchantUnknown =
+        /merchant.*not found|client_id.*not found/i.test(flatMsg) ||
+        /merchant.*not found|client_id.*not found/i.test(apiText);
+      console.error("[bog-installment] create checkout rejected", {
+        httpStatus: apiRes.status,
+        client_id_source: getInstallmentCredentialSourceLabel(),
+        message_sample: flatMsg.slice(0, 400),
+      });
       return res.status(502).json({
+        failure_stage: merchantUnknown
+          ? "bog_install_merchant_not_found"
+          : "bog_install_api_error",
         error: "Installment order creation failed",
         details: data,
+        hint: merchantUnknown
+          ? "Online Installment API expects client_id + secret from bonline.bog.ge (Installment Loan registration), not the ecommerce Payments API pair. Set BOG_INSTALL_CLIENT_ID and BOG_INSTALL_SECRET_KEY in Vercel Production to the installment credentials; ensure BOG_INSTALLMENT_BASE_URL matches the environment the bank gave you."
+          : undefined,
       });
     }
 

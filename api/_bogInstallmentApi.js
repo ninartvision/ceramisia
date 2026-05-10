@@ -3,20 +3,40 @@ import fetch from "node-fetch";
 let _installToken = null;
 let _installTokenExpiresAt = 0;
 
+/** Trim BOM/quotes — same idea as flitt-pay / _db (Vercel copy-paste). */
+function trimEnv(v) {
+  if (v == null) return "";
+  return String(v)
+    .replace(/^\uFEFF/, "")
+    .trim()
+    .replace(/^['"]|['"]$/g, "");
+}
+
 export function getInstallmentApiBase() {
   const raw =
     process.env.BOG_INSTALLMENT_BASE_URL || "https://installment.bog.ge/v1";
   return String(raw).replace(/\/+$/, "");
 }
 
+/**
+ * Installment Loan API uses merchant credentials issued for **Online Installment**
+ * (bonline.bog.ge registration), not necessarily the ecommerce Payments API pair.
+ */
+export function getInstallmentCredentialSourceLabel() {
+  return trimEnv(process.env.BOG_INSTALL_CLIENT_ID)
+    ? "BOG_INSTALL_CLIENT_ID"
+    : "BOG_CLIENT_ID_fallback";
+}
+
 export function getInstallmentCredentials() {
   const clientId =
-    process.env.BOG_INSTALL_CLIENT_ID || process.env.BOG_CLIENT_ID;
+    trimEnv(process.env.BOG_INSTALL_CLIENT_ID) ||
+    trimEnv(process.env.BOG_CLIENT_ID);
   const secret =
-    process.env.BOG_INSTALL_SECRET_KEY ||
-    process.env.BOG_INSTALL_CLIENT_SECRET ||
-    process.env.BOG_CLIENT_SECRET ||
-    process.env.BOG_SECRET_KEY;
+    trimEnv(process.env.BOG_INSTALL_SECRET_KEY) ||
+    trimEnv(process.env.BOG_INSTALL_CLIENT_SECRET) ||
+    trimEnv(process.env.BOG_CLIENT_SECRET) ||
+    trimEnv(process.env.BOG_SECRET_KEY);
   return { clientId, secret };
 }
 
