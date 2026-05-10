@@ -2,7 +2,10 @@ import crypto from "crypto";
 import fetch from "node-fetch";
 import { client } from "../lib/sanity.js";
 import { savePendingOrder } from "./_db.js";
-import { signFlittPayload } from "./_flittSignature.js";
+import {
+  describeFlittSignInputs,
+  signFlittPayload,
+} from "./_flittSignature.js";
 
 const DEFAULT_CHECKOUT_URL = "https://pay.flitt.com/api/checkout/url";
 /** Test / sandbox host per Flitt integration docs (override with FLITT_CHECKOUT_URL). */
@@ -23,31 +26,6 @@ function firstEnvTrimmed(...names) {
     if (v) return v;
   }
   return "";
-}
-
-/** Mirror _flittSignature filtering — logs only, no secret. */
-function describeSignInputs(requestCoreNoSig) {
-  const filtered = {};
-  for (const [k, v] of Object.entries(requestCoreNoSig)) {
-    if (k === "signature" || k === "response_signature_string") continue;
-    if (v === null || v === undefined) continue;
-    if (typeof v === "string" && v === "") continue;
-    filtered[k] = v;
-  }
-  const sortedKeys = Object.keys(filtered).sort();
-  const valuesOnly = sortedKeys.map((k) => String(filtered[k]));
-  return {
-    sorted_keys: sortedKeys,
-    values_joined_after_secret: valuesOnly.join("|"),
-    types: sortedKeys.reduce((acc, k) => {
-      acc[k] = Array.isArray(filtered[k])
-        ? "array"
-        : filtered[k] === null
-          ? "null"
-          : typeof filtered[k];
-      return acc;
-    }, {}),
-  };
 }
 
 function safeUrlParts(label, url) {
@@ -231,10 +209,12 @@ export default async function handler(req, res) {
     );
 
     /**
-     * Request shape aligned with Flitt docs + official @flittpayments/node-js-sdk:
-     * wrapper `{ "request": { ... } }`, no `signature` in signing set.
-     * SDK does not inject `version` / `lang` by default — omit unless env overrides
-     * so signature matches typical merchant / portal setups.
+     * Request shape aligned with Flitt docs + `flittpayments/node-js-sdk` (`lib/util.js`):
+     * JSON wrapper `{ "request": { ... } }`, signature = SHA1(secret + "|" + sorted values),
+     * same filter as SDK: `params[key] !== ''` (only exclude empty string, not null — matches SDK).
+     *
+     * `version` defaults to 1.0.1 per https://docs.flitt.com/api/order-parameters/ — same as
+     * official curl examples; override with FLITT_REQUEST_VERSION.
      */
     const requestCore = {
       merchant_id: merchantId,
@@ -246,10 +226,8 @@ export default async function handler(req, res) {
       server_callback_url: serverCallbackUrl,
     };
 
-    const ver = normalizeEnvValue(process.env.FLITT_REQUEST_VERSION);
-    if (ver) {
-      requestCore.version = ver;
-    }
+    const verOverride = normalizeEnvValue(process.env.FLITT_REQUEST_VERSION);
+    requestCore.version = verOverride || "1.0.1";
 
     const lang = normalizeEnvValue(process.env.FLITT_LANG);
     if (lang) {
@@ -279,7 +257,9 @@ export default async function handler(req, res) {
     const signature = signFlittPayload(secret, requestCore);
     const requestPayload = { ...requestCore, signature };
 
-    const signDbg = describeSignInputs(requestCore);
+    const signDbg = describeFlittSignInputs(requestCore);
+    const redactedSha1Input =
+      `***SECRET(len=${secret.length})***|${signDbg.values_joined_after_secret}`;
     console.log("[flitt-pay] request summary (pre-Flitt)", {
       checkoutUrl,
       sandbox_mode: sandbox,
@@ -289,13 +269,17 @@ export default async function handler(req, res) {
       signature: {
         length: signature.length,
         prefix: signature.slice(0, 8),
-        algorithm: "sha1 pipe-sorted values after secret",
+        algorithm: "sha1 (node-js-sdk genSignature): secret|…values sorted by key|null/undefined→'' in join",
       },
       sign_sorted_keys: signDbg.sorted_keys,
       sign_value_types: signDbg.types,
     });
     console.log(
-      "[flitt-pay] signature debug: values after secret (pipe-joined, NO secret) — compare to Flitt 'Invalid signature' / response_signature_string hints:",
+      "[flitt-pay] OUTBOUND signature plaintext (redacted secret, full pipe string for SHA1):",
+      redactedSha1Input
+    );
+    console.log(
+      "[flitt-pay] signature debug: data segment only (pipe-joined values after secret — compare to Flitt error response_signature_string tail):",
       signDbg.values_joined_after_secret
     );
 
@@ -389,7 +373,7 @@ export default async function handler(req, res) {
           server_callback_url: serverCallbackUrl,
           sorted_request_keys: Object.keys(requestCore).sort(),
           hint:
-            "If test merchant (e.g. 1549901 / secret 'test'): set FLITT_SANDBOX=1 or FLITT_CHECKOUT_URL to sandbox host. For Georgian UI set FLITT_LANG=ka. To match docs sample with version use FLITT_REQUEST_VERSION=1.0.1",
+            "Request uses version 1.0.1 by default (docs / curl). Override with FLITT_REQUEST_VERSION. For sandbox use FLITT_SANDBOX=1. FLITT_LANG=ka for Georgian checkout. Compare OUTBOUND signature plaintext log with Flitt response_signature_string.",
         },
       });
     }
