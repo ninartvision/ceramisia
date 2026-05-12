@@ -141,8 +141,13 @@ export default async function handler(req, res) {
     // Signing uses ONLY FLITT_PRIVATE_KEY (payment secret). Never put the public key here.
     if (secret && publicKey && secret === publicKey) {
       console.error(
-        "[flitt-pay] FLITT_PRIVATE_KEY and FLITT_PUBLIC_KEY are identical — paste Payment secret from Flitt merchant portal into FLITT_PRIVATE_KEY only"
+        "[flitt-pay] FLITT_PRIVATE_KEY and FLITT_PUBLIC_KEY are identical — misconfiguration; refusing checkout"
       );
+      return res.status(500).json({
+        error: "Flitt misconfigured",
+        details:
+          "FLITT_PRIVATE_KEY must be the payment secret from Flitt portal; FLITT_PUBLIC_KEY must differ (or leave PUBLIC empty). Same value in both produces Invalid signature (1014).",
+      });
     }
 
     console.log("[flitt-pay] deployment / secrets profile", {
@@ -244,12 +249,12 @@ export default async function handler(req, res) {
     );
 
     /**
-     * Request shape aligned with Flitt docs + `flittpayments/node-js-sdk` (`lib/util.js`):
-     * JSON wrapper `{ "request": { ... } }`, signature = SHA1(secret + "|" + sorted values).
-     * Signing matches official Node SDK: skip only `''`; excludes signature keys.
+     * Request shape: JSON `{ "request": { ...fields..., signature } }`.
+     * Signature = SHA1( UTF-8: secret + "|" + values ), values = sorted keys alphabetically,
+     * omitting '', null, undefined; excluding signature / response_signature_string.
+     * @see https://docs.flitt.com/api/building-signature/
      *
-     * `version` defaults to 1.0.1 per https://docs.flitt.com/api/order-parameters/ — same as
-     * official curl examples; override with FLITT_REQUEST_VERSION.
+     * `version` defaults to 1.0.1 (order-parameters); override with FLITT_REQUEST_VERSION.
      */
     const requestCore = {
       merchant_id: merchantId,
@@ -278,6 +283,20 @@ export default async function handler(req, res) {
     if (resData) {
       requestCore.reservation_data = resData;
     }
+
+    const signingPreview = describeFlittSignInputs(requestCore);
+    console.log("[flitt-pay] signing_contract", {
+      version_sent: requestCore.version,
+      FLITT_REQUEST_VERSION_env: verOverride || null,
+      signing_sorted_keys: signingPreview.sorted_keys,
+      signing_note:
+        "SHA1 input = secret + '|' + values in signing_sorted_keys order; HTTP JSON key order is irrelevant.",
+      optional_fields_active: {
+        lang: Boolean(lang),
+        cancel_url: Boolean(cancelU),
+        reservation_data: Boolean(resData),
+      },
+    });
 
     const sandbox =
       normalizeEnvValue(process.env.FLITT_SANDBOX) === "1" ||
