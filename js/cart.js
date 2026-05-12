@@ -608,8 +608,8 @@
     }
 
     var cid = window.BOG_CLIENT_ID;
-    if (!cid || cid === 'YOUR_CLIENT_ID') {
-      console.warn('[Ceramisia] BOG_CLIENT_ID placeholder — replace in HTML');
+    if (!cid || String(cid).trim() === '') {
+      console.warn('[Ceramisia] BOG_CLIENT_ID missing — set window.__BOG_MERCHANT_CLIENT_ID__ in HTML');
     }
 
     var items = cart.map(function (item) {
@@ -638,15 +638,12 @@
       }
     }
 
-    var bnplFlag =
-      typeof window.__BOG_INSTALLMENT_BNPL__ === 'boolean'
-        ? window.__BOG_INSTALLMENT_BNPL__
-        : false;
+    var bnplForCalculator = false;
 
-    console.log('[Ceramisia] BOG.Calculator.open (cart)', {
+    console.log('[Ceramisia] BOG.Calculator.open (cart) — see [Ceramisia][BOG] BOG.Calculator.open #…', {
       amount: loanAmount,
       amountType: typeof loanAmount,
-      bnpl: bnplFlag,
+      bnpl: bnplForCalculator,
       itemCount: items.length,
       defaultInstallmentType: defaultType,
       bog_client_id_length: String(window.BOG_CLIENT_ID || '').length
@@ -656,7 +653,7 @@
 
     window.BOG.Calculator.open({
       amount: loanAmount,
-      bnpl: bnplFlag,
+      bnpl: bnplForCalculator,
       onClose: function () {
         console.log('[Ceramisia] BOG Calculator onClose');
         setCalcBusy(false);

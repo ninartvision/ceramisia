@@ -142,10 +142,11 @@ export function openInstallment(btn) {
     return;
   }
 
-  console.log('[Ceramisia][BOG] openInstallment SDK check', {
+  console.log('[Ceramisia][BOG] openInstallment — see window.__CeramisiaBOG.state & intercepted Calculator.open', {
     BOG_loaded: !!window.BOG,
     Calculator_loaded: !!(window.BOG && window.BOG.Calculator),
     client_id_length: String(window.BOG_CLIENT_ID || '').length,
+    sdk_debug_state: window.__CeramisiaBOG && window.__CeramisiaBOG.state,
     amount: loanAmount,
     typeof_amount: typeof loanAmount,
   });
@@ -161,8 +162,8 @@ export function openInstallment(btn) {
   }
 
   const cid = window.BOG_CLIENT_ID;
-  if (!cid || cid === 'YOUR_CLIENT_ID') {
-    console.warn('[Ceramisia] BOG_CLIENT_ID placeholder — replace in HTML');
+  if (!cid || String(cid).trim() === '') {
+    console.warn('[Ceramisia] BOG_CLIENT_ID missing — set window.__BOG_MERCHANT_CLIENT_ID__ in HTML');
   }
 
   /** Cart total for loan; NOT selected.amount from modal (that is monthly payment per BOG docs). */
@@ -185,13 +186,9 @@ export function openInstallment(btn) {
     _setBtnState(btn, false, originalText);
   }
 
-  console.log('[Ceramisia] BOG.Calculator.open', {
+  console.log('[Ceramisia] installment → Calculator.open (details in [Ceramisia][BOG] intercept)', {
     amount: loanAmount,
-    amountType: typeof loanAmount,
     bnpl: false,
-    itemsLen: items.length,
-    defaultInstallmentType: defaultType,
-    bog_client_id_length: String(window.BOG_CLIENT_ID || '').length,
   });
 
   _setBtnState(btn, true, '...');
