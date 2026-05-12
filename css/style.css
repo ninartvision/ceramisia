@@ -1810,10 +1810,10 @@ p { color: var(--clr-text-mid); }
 }
 
 @media (max-width: 480px) {
-  /* Payment logos — mobile only: larger tap targets, sharper scaled PNGs, centered */
+  /* Payment logos — mobile only: modest size, centered, balanced tap area */
   .cart-pay-btn__row {
-    gap: 0.55rem;
-    min-height: 3.35rem;
+    gap: 0.45rem;
+    min-height: 3rem;
     justify-content: center;
     align-items: center;
   }
@@ -1832,23 +1832,23 @@ p { color: var(--clr-text-mid); }
   .cart-pay-btn__logo-img--split-brand {
     display: block;
     width: auto;
-    max-width: min(100%, 18rem);
+    max-width: min(100%, 14rem);
     height: auto;
     margin: 0 auto;
     object-fit: contain;
     object-position: center center;
-    border-radius: 6px;
+    border-radius: 5px;
     image-rendering: auto;
     image-rendering: -webkit-optimize-contrast;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
   }
   .cart-pay-btn__logo-img--bog-full {
-    max-height: 2.85rem;
+    max-height: 2.35rem;
   }
   .cart-pay-btn__logo-img--tbc-full,
   .cart-pay-btn__logo-img--split-brand {
-    max-height: 2.95rem;
+    max-height: 2.42rem;
   }
   .cart-pay-btn__row--bog-brand .cart-pay-btn__icon,
   .cart-pay-btn__row--tbc-brand .cart-pay-btn__icon,
@@ -1856,8 +1856,8 @@ p { color: var(--clr-text-mid); }
     width: 100%;
     max-width: 100%;
     height: auto;
-    min-height: 3.05rem;
-    padding: 0.35rem 0.25rem;
+    min-height: 2.65rem;
+    padding: 0.22rem 0.35rem;
     box-sizing: border-box;
     align-self: center;
     display: flex;
@@ -1867,15 +1867,15 @@ p { color: var(--clr-text-mid); }
   .cart-pay-btn__row--bog-brand,
   .cart-pay-btn__row--tbc-brand,
   .cart-pay-btn__row--split-brand {
-    gap: 0.45rem;
-    min-height: 3.5rem;
+    gap: 0.38rem;
+    min-height: 3.05rem;
   }
   .btn-cart-pay,
   .btn-cart-flitt,
   .btn-cart-installment {
-    min-height: 3.45rem;
-    margin-bottom: 0.65rem;
-    padding: 0.72rem 1rem;
+    min-height: 3.1rem;
+    margin-bottom: 0.52rem;
+    padding: 0.62rem 0.85rem;
     font-size: 0.82rem;
   }
 }
