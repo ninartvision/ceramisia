@@ -78,26 +78,58 @@
 
   /** Heuristics on BOG error payloads / plain text */
   function analyzeCalculateFailure(status, url, json, rawText) {
-    var hints = [];
-    var flat =
-      (json && typeof json === 'object' && (JSON.stringify(json) + ' ' + (json.message || '') + (json.error || ''))) ||
-      String(rawText || '');
-    flat = flat.toLowerCase();
+    try {
+      var hints = [];
+      var flat = '';
+      try {
+        flat =
+          (json &&
+            typeof json === 'object' &&
+            (function () {
+              try {
+                return JSON.stringify(json) + ' ' + (json.message || '') + (json.error || '');
+              } catch (_circular) {
+                return String(json.message || json.error || '');
+              }
+            })()) ||
+          String(rawText || '');
+      } catch (_flatErr) {
+        flat = String(rawText || '');
+      }
+      flat = String(flat).toLowerCase();
 
-    if (/merchant/.test(flat) && (/not found|unknown|invalid/i.test(flat) || status === 400))
-      hints.push('merchant/client: BOG message mentions merchant — verify installment registration & correct OAuth client_id.');
-    if (/client/.test(flat) && /invalid|unauthorized|forbidden/.test(flat))
-      hints.push('client_id: Response suggests invalid client — compare script URL client_id, BOG.init arg, and bonline credentials.');
-    if (/amount|sum|minimum|maximum|limit/i.test(flat))
-      hints.push('amount: Validation failed on amount — ensure Calculator.open receives a finite Number > 0 (not string).');
-    if (/bnpl|standard|product|not allowed|inactive/i.test(flat))
-      hints.push('product: BNPL vs STANDARD / product activation — try bnpl:false or confirm merchant has BNPL if bnpl:true.');
-    if (/scope|token|auth/i.test(flat))
-      hints.push('auth: Calculator uses public client_id; if message is OAuth-related, escalate with BOG support with this response body.');
-    hints = hints.concat(inferEnvironmentHint(url));
-    if (hints.length === 0 && status === 400)
-      hints.push('HTTP 400: Read responseJson/responseRawText below — BOG validation rejected this calculate call.');
-    return hints;
+      var st = Number(status);
+      if (/merchant/.test(flat) && (/not found|unknown|invalid/i.test(flat) || st === 400))
+        hints.push(
+          'merchant/client: BOG message mentions merchant — verify installment registration & correct OAuth client_id.'
+        );
+      if (/client/.test(flat) && /invalid|unauthorized|forbidden/.test(flat))
+        hints.push(
+          'client_id: Response suggests invalid client — compare script URL client_id, BOG.init arg, and bonline credentials.'
+        );
+      if (/amount|sum|minimum|maximum|limit/i.test(flat))
+        hints.push(
+          'amount: Validation failed on amount — ensure Calculator.open receives a finite Number > 0 (not string).'
+        );
+      if (/bnpl|standard|product|not allowed|inactive/i.test(flat))
+        hints.push(
+          'product: BNPL vs STANDARD / product activation — try bnpl:false or confirm merchant has BNPL if bnpl:true.'
+        );
+      if (/scope|token|auth/i.test(flat))
+        hints.push(
+          'auth: Calculator uses public client_id; if message is OAuth-related, escalate with BOG support with this response body.'
+        );
+      try {
+        hints = hints.concat(inferEnvironmentHint(url));
+      } catch (_envErr) {}
+      if (hints.length === 0 && st === 400)
+        hints.push(
+          'HTTP 400: Read responseJson/responseRawText below — BOG validation rejected this calculate call.'
+        );
+      return hints;
+    } catch (_outer) {
+      return [];
+    }
   }
 
   /** Full capture: raw text + JSON parse attempt (works for application/json and text/plain) */
@@ -168,39 +200,89 @@
     }
   }
 
-  function buildCalculatePayload(method, url, status, statusText, parsed, reqBodyStr, transport, extra) {
-    var isErr = Number(status) >= 400;
-    var diagHints = analyzeCalculateFailure(Number(status), url, parsed.json, parsed.rawText);
-    var payload = {
-      transport: transport,
-      method: method,
-      url: url,
-      httpStatus: status,
-      statusText: statusText,
-      requestBodyPreview: reqBodyStr ? reqBodyStr.slice(0, Math.min(reqBodyStr.length, MAX_RAW_OK)) : '',
-      responseContentType: parsed.contentType,
-      responseRawLength: parsed.rawLength,
-      responseTruncated: parsed.truncated,
-      responseRawText: parsed.responseRawText,
-      responseJson: parsed.responseJson,
-      jsonParseError: parsed.jsonParseError,
-      client_id_window: window.BOG_CLIENT_ID,
-      client_id_loader: window.__CeramisiaBOG.state.loaderClientId,
-      client_id_matches:
-        String(window.BOG_CLIENT_ID || '') === String(window.__CeramisiaBOG.state.loaderClientId),
-      diagnose_hints: diagHints,
-    };
-    if (extra) Object.assign(payload, extra);
-    window.__CeramisiaBOG.lastCalculateCapture = payload;
-    window.__CeramisiaBOG.state.lastCalculateWatchUrl = url;
-    window.__CeramisiaBOG.state.lastCalculateHttpStatus = status;
-    if (Number(status) >= 400) {
-      try {
-        var ana = buildDiagnoseAnalysis();
-        console.error('[Ceramisia][BOG] calculate FAILED — analysis.conclusion:', ana.conclusion);
-      } catch (_err) {}
+  function fetchHeadersToPlain(headers) {
+    var lines = [];
+    try {
+      if (!headers || typeof headers.forEach !== 'function') return '';
+      headers.forEach(function (value, name) {
+        lines.push(String(name) + ': ' + String(value));
+      });
+      return lines.join('\r\n');
+    } catch (_e) {
+      return '';
     }
-    return payload;
+  }
+
+  function buildCalculatePayload(method, url, status, statusText, parsed, reqBodyStr, transport, extra) {
+    try {
+      var safeParsed =
+        parsed && typeof parsed === 'object'
+          ? parsed
+          : parseResponseBodyForLog('', '(missing)', Number(status) >= 400);
+      try {
+        if (safeParsed.responseRawText == null && safeParsed.rawText != null) {
+          safeParsed.responseRawText = safeParsed.rawText;
+        }
+        if (safeParsed.responseJson == null && safeParsed.json != null) {
+          safeParsed.responseJson = safeParsed.json;
+        }
+      } catch (_norm) {}
+
+      var diagHints = [];
+      try {
+        diagHints = analyzeCalculateFailure(
+          Number(status),
+          url,
+          safeParsed.json,
+          safeParsed.rawText
+        );
+      } catch (_diagErr) {
+        diagHints = [];
+      }
+      if (!Array.isArray(diagHints)) diagHints = [];
+      var payload = {
+        transport: transport,
+        method: method,
+        url: url,
+        httpStatus: status,
+        statusText: statusText,
+        requestBodyPreview: reqBodyStr
+          ? reqBodyStr.slice(0, Math.min(reqBodyStr.length, MAX_RAW_OK))
+          : '',
+        responseContentType: safeParsed.contentType,
+        responseRawLength: safeParsed.rawLength,
+        responseTruncated: safeParsed.truncated,
+        responseRawText: safeParsed.responseRawText,
+        responseJson: safeParsed.responseJson,
+        jsonParseError: safeParsed.jsonParseError,
+        client_id_window: window.BOG_CLIENT_ID,
+        client_id_loader: window.__CeramisiaBOG.state.loaderClientId,
+        client_id_matches:
+          String(window.BOG_CLIENT_ID || '') === String(window.__CeramisiaBOG.state.loaderClientId),
+        diagnose_hints: diagHints,
+      };
+      if (extra && typeof extra === 'object') Object.assign(payload, extra);
+      window.__CeramisiaBOG.lastCalculateCapture = payload;
+      window.__CeramisiaBOG.state.lastCalculateWatchUrl = url;
+      window.__CeramisiaBOG.state.lastCalculateHttpStatus = status;
+      if (Number(status) >= 400) {
+        try {
+          var ana = buildDiagnoseAnalysis();
+          console.error('[Ceramisia][BOG] calculate FAILED — analysis.conclusion:', ana.conclusion);
+        } catch (_err) {}
+      }
+      return payload;
+    } catch (buildErr) {
+      console.warn('[Ceramisia][BOG] buildCalculatePayload telemetry error', buildErr);
+      return {
+        telemetry_build_failed: true,
+        transport: transport,
+        method: method,
+        url: url,
+        httpStatus: status,
+        statusText: statusText,
+      };
+    }
   }
 
   function installCalculateTracing() {
@@ -208,152 +290,223 @@
     window.__bog_calc_trace_installed__ = true;
 
     try {
-      var XPO = XMLHttpRequest.prototype.open;
-      var XPS = XMLHttpRequest.prototype.send;
-      XMLHttpRequest.prototype.open = function (method, url) {
+      var xhrOpenOriginal = XMLHttpRequest.prototype.open;
+      var xhrSendOriginal = XMLHttpRequest.prototype.send;
+
+      XMLHttpRequest.prototype.open = function () {
         try {
-          this.__bog_xhr_method = String(method || 'GET').toUpperCase();
-          this.__bog_xhr_url = typeof url === 'string' ? url : String(url || '');
-        } catch (_e) {
-          this.__bog_xhr_method = 'GET';
-          this.__bog_xhr_url = '';
-        }
-        return XPO.apply(this, arguments);
-      };
-      XMLHttpRequest.prototype.send = function (body) {
-        var xhr = this;
-        var url = String(xhr.__bog_xhr_url || '');
-        var method = String(xhr.__bog_xhr_method || 'GET');
-        var bodyStr = summarizeRequestBody(body);
-        var watch = isLikelyBogCalculateTraffic(method, url, bodyStr);
-
-        if (watch) {
-          console.log('[Ceramisia][BOG] calculate XHR REQUEST', {
-            method: method,
-            url: url,
-            client_id_prop: window.BOG_CLIENT_ID,
-            client_id_matches_loader:
-              String(window.BOG_CLIENT_ID || '') === String(window.__CeramisiaBOG.state.loaderClientId),
-            environment_hints: inferEnvironmentHint(url),
-            body: bodyStr || '(empty)',
-          });
-        }
-
-        if (watch) {
-          xhr.addEventListener('error', function () {
-            console.error('[Ceramisia][BOG] calculate XHR NETWORK ERROR', {
-              method: method,
-              url: url,
-            });
-          });
-          xhr.addEventListener('load', function () {
-            var ct = '';
+          try {
+            var m = arguments.length > 0 ? arguments[0] : 'GET';
+            var u = arguments.length > 1 ? arguments[1] : '';
+            this.__bog_xhr_method = String(m || 'GET').toUpperCase();
+            this.__bog_xhr_url = typeof u === 'string' ? u : String(u || '');
+          } catch (_e) {
             try {
-              ct = xhr.getResponseHeader && xhr.getResponseHeader('Content-Type');
-            } catch (_h) {}
-            var rt = xhr.responseText || '';
-            var parsed = parseResponseBodyForLog(rt, ct, xhr.status >= 400);
-            var payload = buildCalculatePayload(
-              method,
-              url,
-              xhr.status,
-              xhr.statusText,
-              parsed,
-              bodyStr,
-              'xhr',
-              xhr.status >= 400 ? { responseHeaders: xhrAllResponseHeaders(xhr) } : {}
-            );
-            if (xhr.status >= 400) {
-              console.error('[Ceramisia][BOG] calculate XHR RESPONSE (error)', payload);
-              console.error('[Ceramisia][BOG] calculate DUPLICATE_KEYS_FOR_SEARCH', {
-                responseRawText: payload.responseRawText,
-                responseJson: payload.responseJson,
-              });
-            } else if (DEBUG || CAPTURE_ALL_BOG) {
-              console.log('[Ceramisia][BOG] calculate XHR RESPONSE (ok)', payload);
-            }
-          });
+              this.__bog_xhr_method = 'GET';
+              this.__bog_xhr_url = '';
+            } catch (_e2) {}
+          }
+          return xhrOpenOriginal.apply(this, arguments);
+        } catch (openOuterErr) {
+          console.warn('[Ceramisia][BOG] XHR open wrapper error — delegating to native open', openOuterErr);
+          return xhrOpenOriginal.apply(this, arguments);
         }
-        return XPS.apply(this, arguments);
+      };
+
+      XMLHttpRequest.prototype.send = function () {
+        var xhr = this;
+        try {
+          var url = '';
+          var method = 'GET';
+          var bodyStr = '';
+          try {
+            url = String(xhr.__bog_xhr_url || '');
+            method = String(xhr.__bog_xhr_method || 'GET');
+            bodyStr = summarizeRequestBody(arguments.length > 0 ? arguments[0] : undefined);
+          } catch (_e) {
+            bodyStr = '';
+          }
+
+          var watch = false;
+          try {
+            watch = isLikelyBogCalculateTraffic(method, url, bodyStr);
+          } catch (_e2) {
+            watch = false;
+          }
+
+          if (watch) {
+            try {
+              console.log('[Ceramisia][BOG] calculate XHR REQUEST', {
+                method: method,
+                url: url,
+                client_id_prop: window.BOG_CLIENT_ID,
+                client_id_matches_loader:
+                  String(window.BOG_CLIENT_ID || '') === String(window.__CeramisiaBOG.state.loaderClientId),
+                environment_hints: inferEnvironmentHint(url),
+                body: bodyStr || '(empty)',
+              });
+            } catch (_logErr) {}
+          }
+
+          if (watch) {
+            try {
+              xhr.addEventListener('error', function () {
+                try {
+                  console.error('[Ceramisia][BOG] calculate XHR NETWORK ERROR', {
+                    method: method,
+                    url: url,
+                  });
+                } catch (_e3) {}
+              });
+              xhr.addEventListener('load', function () {
+                try {
+                  var ct = '';
+                  try {
+                    ct = xhr.getResponseHeader && xhr.getResponseHeader('Content-Type');
+                  } catch (_h) {}
+                  var rt = xhr.responseText || '';
+                  var parsed = parseResponseBodyForLog(rt, ct, xhr.status >= 400);
+                  var payload = buildCalculatePayload(
+                    method,
+                    url,
+                    xhr.status,
+                    xhr.statusText,
+                    parsed,
+                    bodyStr,
+                    'xhr',
+                    xhr.status >= 400 ? { responseHeaders: xhrAllResponseHeaders(xhr) } : {}
+                  );
+                  if (xhr.status >= 400) {
+                    console.error('[Ceramisia][BOG] calculate XHR RESPONSE (error)', payload);
+                    console.error('[Ceramisia][BOG] calculate DUPLICATE_KEYS_FOR_SEARCH', {
+                      responseRawText: payload.responseRawText,
+                      responseJson: payload.responseJson,
+                    });
+                  } else if (DEBUG || CAPTURE_ALL_BOG) {
+                    console.log('[Ceramisia][BOG] calculate XHR RESPONSE (ok)', payload);
+                  }
+                } catch (wrapErr) {
+                  console.warn('[Ceramisia][BOG] XHR response telemetry error', wrapErr);
+                }
+              });
+            } catch (_listenerErr) {}
+          }
+
+          return xhrSendOriginal.apply(this, arguments);
+        } catch (sendOuterErr) {
+          console.warn('[Ceramisia][BOG] XHR send wrapper error — delegating to native send', sendOuterErr);
+          return xhrSendOriginal.apply(this, arguments);
+        }
       };
     } catch (xhrPatchErr) {
       console.warn('[Ceramisia][BOG] XHR trace not installed', xhrPatchErr);
     }
 
-    var origFetch = window.fetch.bind(window);
-    window.fetch = function (input, init) {
-      var reqUrl = '';
-      try {
-        var inp = input;
-        reqUrl =
-          typeof inp === 'string'
-            ? inp
-            : inp && typeof inp.url === 'string'
-              ? inp.url
-              : '';
-      } catch (_e) {
-        reqUrl = '';
-      }
-      var method = 'GET';
-      try {
-        if (init && init.method) method = String(init.method).toUpperCase();
-        else if (input && typeof input !== 'string' && input.method) method = String(input.method).toUpperCase();
-      } catch (_m) {}
-      var reqBodyStr = '';
-      try {
-        if (init && init.body != null) reqBodyStr = summarizeRequestBody(init.body);
-      } catch (_b) {}
+    var fetchOriginal = window.fetch;
+    if (typeof fetchOriginal !== 'function') {
+      console.warn('[Ceramisia][BOG] window.fetch is not a function — fetch telemetry skipped');
+    } else {
+      window.fetch = function () {
+        try {
+          var input = arguments.length > 0 ? arguments[0] : undefined;
+          var init = arguments.length > 1 ? arguments[1] : undefined;
 
-      var watch = isLikelyBogCalculateTraffic(method, reqUrl, reqBodyStr);
-      if (watch) {
-        console.log('[Ceramisia][BOG] calculate fetch REQUEST', {
-          method: method,
-          url: reqUrl,
-          client_id_prop: window.BOG_CLIENT_ID,
-          client_id_matches_loader:
-            String(window.BOG_CLIENT_ID || '') === String(window.__CeramisiaBOG.state.loaderClientId),
-          environment_hints: inferEnvironmentHint(reqUrl),
-          body: reqBodyStr || '(none)',
-        });
-      }
+          var reqUrl = '';
+          try {
+            reqUrl =
+              typeof input === 'string'
+                ? input
+                : input && typeof input.url === 'string'
+                  ? input.url
+                  : '';
+          } catch (_e) {
+            reqUrl = '';
+          }
 
-      return origFetch.apply(this, arguments).then(function (res) {
-        if (!watch) return res;
-        return res
-          .clone()
-          .text()
-          .then(function (text) {
-            var ct = '';
+          var method = 'GET';
+          try {
+            if (init && init.method) method = String(init.method).toUpperCase();
+            else if (input && typeof input !== 'string' && input.method)
+              method = String(input.method).toUpperCase();
+          } catch (_m) {}
+
+          var reqBodyStr = '';
+          try {
+            if (init && init.body != null) reqBodyStr = summarizeRequestBody(init.body);
+          } catch (_b) {}
+
+          var watch = false;
+          try {
+            watch = isLikelyBogCalculateTraffic(method, reqUrl, reqBodyStr);
+          } catch (_w) {
+            watch = false;
+          }
+
+          if (watch) {
             try {
-              ct = res.headers && res.headers.get ? res.headers.get('Content-Type') || '' : '';
-            } catch (_h) {}
-            var parsed = parseResponseBodyForLog(text, ct, !res.ok);
-            var payload = buildCalculatePayload(
-              method,
-              reqUrl,
-              res.status,
-              res.statusText,
-              parsed,
-              reqBodyStr,
-              'fetch',
-              {}
-            );
-            if (!res.ok) {
-              console.error('[Ceramisia][BOG] calculate fetch RESPONSE (error)', payload);
-              console.error('[Ceramisia][BOG] calculate DUPLICATE_KEYS_FOR_SEARCH', {
-                responseRawText: payload.responseRawText,
-                responseJson: payload.responseJson,
+              console.log('[Ceramisia][BOG] calculate fetch REQUEST', {
+                method: method,
+                url: reqUrl,
+                client_id_prop: window.BOG_CLIENT_ID,
+                client_id_matches_loader:
+                  String(window.BOG_CLIENT_ID || '') === String(window.__CeramisiaBOG.state.loaderClientId),
+                environment_hints: inferEnvironmentHint(reqUrl),
+                body: reqBodyStr || '(none)',
               });
-            } else if (DEBUG || CAPTURE_ALL_BOG) {
-              console.log('[Ceramisia][BOG] calculate fetch RESPONSE (ok)', payload);
+            } catch (_logF) {}
+          }
+
+          return fetchOriginal.apply(window, arguments).then(function (res) {
+            if (!watch) return res;
+            try {
+              return res
+                .clone()
+                .text()
+                .then(function (text) {
+                  try {
+                    var ct = '';
+                    try {
+                      ct = res.headers && res.headers.get ? res.headers.get('Content-Type') || '' : '';
+                    } catch (_h) {}
+                    var parsed = parseResponseBodyForLog(text, ct, !res.ok);
+                    var payload = buildCalculatePayload(
+                      method,
+                      reqUrl,
+                      res.status,
+                      res.statusText || '',
+                      parsed,
+                      reqBodyStr,
+                      'fetch',
+                      !res.ok ? { responseHeaders: fetchHeadersToPlain(res.headers) } : {}
+                    );
+                    if (!res.ok) {
+                      console.error('[Ceramisia][BOG] calculate fetch RESPONSE (error)', payload);
+                      console.error('[Ceramisia][BOG] calculate DUPLICATE_KEYS_FOR_SEARCH', {
+                        responseRawText: payload.responseRawText,
+                        responseJson: payload.responseJson,
+                      });
+                    } else if (DEBUG || CAPTURE_ALL_BOG) {
+                      console.log('[Ceramisia][BOG] calculate fetch RESPONSE (ok)', payload);
+                    }
+                  } catch (fetchWrapErr) {
+                    console.warn('[Ceramisia][BOG] fetch response telemetry error', fetchWrapErr);
+                  }
+                  return res;
+                })
+                .catch(function () {
+                  return res;
+                });
+            } catch (fetchChainErr) {
+              console.warn('[Ceramisia][BOG] fetch telemetry chain error', fetchChainErr);
+              return res;
             }
-            return res;
-          })
-          .catch(function () {
-            return res;
           });
-      });
-    };
+        } catch (fetchOuterErr) {
+          console.warn('[Ceramisia][BOG] fetch wrapper error — delegating to native fetch', fetchOuterErr);
+          return fetchOriginal.apply(window, arguments);
+        }
+      };
+    }
   }
 
   installCalculateTracing();
