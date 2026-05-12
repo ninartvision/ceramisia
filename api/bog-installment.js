@@ -8,6 +8,7 @@ import {
   getInstallmentApiBase,
   getInstallmentCredentials,
   getInstallmentCredentialSourceLabel,
+  getInstallmentOAuthTokenUrl,
 } from "./_bogInstallmentApi.js";
 
 const INSTALL_ORDER_ID_RE = /^[a-zA-Z0-9._-]{8,128}$/;
@@ -41,7 +42,21 @@ export default async function handler(req, res) {
   try {
     let body = req.body;
     if (typeof body === "string") {
-      body = JSON.parse(body);
+      try {
+        body = body ? JSON.parse(body) : {};
+      } catch (parseErr) {
+        console.error("[bog-installment] invalid JSON body", {
+          message: parseErr?.message,
+        });
+        return res.status(400).json({
+          error: "Invalid JSON body",
+          details: parseErr?.message,
+        });
+      }
+    }
+
+    if (body == null || typeof body !== "object") {
+      return res.status(400).json({ error: "Request body required" });
     }
 
     const amount = Number(
@@ -91,9 +106,15 @@ export default async function handler(req, res) {
     }
 
     console.log("[bog-installment] credential profile", {
-      client_id_source: getInstallmentCredentialSourceLabel(),
+      client_id_masked:
+        String(clientId).length > 8
+          ? `${String(clientId).slice(0, 4)}…${String(clientId).slice(-4)}`
+          : "(short)",
       client_id_length: String(clientId).length,
+      secret_length: String(secret).length,
+      credential_sources: getInstallmentCredentialSourceLabel(),
       installment_api_base: getInstallmentApiBase(),
+      oauth_token_url: getInstallmentOAuthTokenUrl(),
       VERCEL_ENV: process.env.VERCEL_ENV ?? null,
     });
 
@@ -144,30 +165,73 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "items array required" });
     }
 
-    await trySanityCreateOrder(
-      client,
-      {
-        _type: "order",
-        customerName:
-          String(body.customerName || body.name || "Unknown").trim() ||
-          "Unknown",
-        email: body.email ? String(body.email) : "",
-        phone: body.phone ? String(body.phone) : "",
-        message: body.message ? String(body.message) : "BOG installment order",
-        selectedProducts: rawItems.map((i) => ({
-          _key: crypto.randomUUID().replace(/-/g, ""),
-          quantity: Math.max(1, Number(i.quantity) || 1),
-          variant:
-            i.name ||
-            i.title ||
-            i.product_name ||
-            `Product ${i.product_id}`,
-        })),
-        status: "new",
-        createdAt: new Date().toISOString(),
-      },
-      "bog-installment"
-    );
+    let accessToken;
+    try {
+      accessToken = await getInstallmentAccessToken();
+    } catch (tokErr) {
+      console.error("[bog-installment] OAuth token failed", {
+        message: tokErr?.message,
+        stage: tokErr?.stage,
+        status: tokErr?.status,
+        bog_body: tokErr?.body,
+        debug: tokErr?.debug,
+      });
+      return res.status(502).json({
+        failure_stage: tokErr?.stage || "bog_oauth_token",
+        error: "Installment token error",
+        details: tokErr?.body ?? tokErr?.message,
+        debug_public: tokErr?.debug
+          ? {
+              token_url: tokErr.debug.token_url,
+              http_status: tokErr.debug.http_status,
+              oauth_override: Boolean(
+                process.env.BOG_INSTALL_OAUTH_URL &&
+                  String(process.env.BOG_INSTALL_OAUTH_URL).trim()
+              ),
+              api_base: getInstallmentApiBase(),
+              credential_sources: getInstallmentCredentialSourceLabel(),
+              bog_error: tokErr.body?.error ?? tokErr.debug?.error_field ?? null,
+              bog_error_description:
+                tokErr.body?.error_description ??
+                tokErr.debug?.error_description ??
+                null,
+            }
+          : undefined,
+        hint:
+          "Set Vercel Production: BOG_INSTALL_CLIENT_ID + BOG_INSTALL_SECRET_KEY from bonline.bog.ge (Online Installment), not ecommerce Payments API. Match BOG_INSTALLMENT_BASE_URL to the bank environment. Optional BOG_INSTALL_OAUTH_URL if BOG gave a full token URL.",
+      });
+    }
+
+    try {
+      await trySanityCreateOrder(
+        client,
+        {
+          _type: "order",
+          customerName:
+            String(body.customerName || body.name || "Unknown").trim() ||
+            "Unknown",
+          email: body.email ? String(body.email) : "",
+          phone: body.phone ? String(body.phone) : "",
+          message: body.message ? String(body.message) : "BOG installment order",
+          selectedProducts: rawItems.map((i) => ({
+            _key: crypto.randomUUID().replace(/-/g, ""),
+            quantity: Math.max(1, Number(i.quantity) || 1),
+            variant:
+              i.name ||
+              i.title ||
+              i.product_name ||
+              `Product ${i.product_id}`,
+          })),
+          status: "new",
+          createdAt: new Date().toISOString(),
+        },
+        "bog-installment"
+      );
+    } catch (sanityErr) {
+      console.error("[bog-installment] trySanityCreateOrder failed (non-fatal)", {
+        message: sanityErr?.message,
+      });
+    }
 
     const shopOrderId = `shp_${crypto.randomUUID()}`;
 
@@ -192,21 +256,6 @@ export default async function handler(req, res) {
       cart_items: cartItems,
     };
 
-    let accessToken;
-    try {
-      accessToken = await getInstallmentAccessToken();
-    } catch (tokErr) {
-      console.error("[bog-installment] token error", {
-        message: tokErr?.message,
-        status: tokErr?.status,
-        body: tokErr?.body,
-      });
-      return res.status(502).json({
-        error: "Installment token error",
-        details: tokErr?.body ?? tokErr?.message,
-      });
-    }
-
     const base = getInstallmentApiBase();
     console.log("[bog-installment] creating installment checkout", {
       base,
@@ -227,13 +276,15 @@ export default async function handler(req, res) {
     let data;
     try {
       data = apiText ? JSON.parse(apiText) : {};
-    } catch {
-      console.error("[bog-installment] response not JSON", {
+    } catch (parseErr) {
+      console.error("[bog-installment] checkout JSON parse failed", {
         httpStatus: apiRes.status,
+        preview: apiText.slice(0, 1200),
       });
       return res.status(502).json({
+        failure_stage: "bog_install_checkout_not_json",
         error: "Installment API invalid response",
-        raw: apiText.slice(0, 400),
+        raw_preview: apiText.slice(0, 400),
       });
     }
 
@@ -250,8 +301,9 @@ export default async function handler(req, res) {
         /merchant.*not found|client_id.*not found/i.test(apiText);
       console.error("[bog-installment] create checkout rejected", {
         httpStatus: apiRes.status,
-        client_id_source: getInstallmentCredentialSourceLabel(),
+        credential_sources: getInstallmentCredentialSourceLabel(),
         message_sample: flatMsg.slice(0, 400),
+        response_body_full: data,
       });
       return res.status(502).json({
         failure_stage: merchantUnknown

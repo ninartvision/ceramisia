@@ -135,9 +135,9 @@ export function openInstallment(btn) {
   const productId = btn.dataset.id || '';
   const slug = btn.dataset.slug || productId || '';
   const name = btn.dataset.name || productId;
-  const amount = parseFloat((price * qty).toFixed(2));
+  const loanAmount = Number(Number(price * qty).toFixed(2));
 
-  if (!productId || amount <= 0) {
+  if (!productId || !Number.isFinite(loanAmount) || loanAmount <= 0) {
     console.error('[Ceramisia] openInstallment: missing data-id or invalid amount', btn);
     return;
   }
@@ -177,16 +177,25 @@ export function openInstallment(btn) {
     _setBtnState(btn, false, originalText);
   }
 
+  const bnplFlag =
+    typeof window.__BOG_INSTALLMENT_BNPL__ === 'boolean'
+      ? window.__BOG_INSTALLMENT_BNPL__
+      : false;
+
   console.log('[Ceramisia] BOG.Calculator.open', {
-    amount,
+    amount: loanAmount,
+    amountType: typeof loanAmount,
+    bnpl: bnplFlag,
     itemsLen: items.length,
     defaultInstallmentType: defaultType,
+    bog_client_id_length: String(window.BOG_CLIENT_ID || '').length,
   });
 
   _setBtnState(btn, true, '...');
 
   window.BOG.Calculator.open({
-    amount,
+    amount: loanAmount,
+    bnpl: bnplFlag,
     onClose() {
       console.log('[Ceramisia] BOG Calculator onClose');
       releaseBtn();
@@ -209,7 +218,7 @@ export function openInstallment(btn) {
       const installment_type = discountCode || defaultType || 'STANDARD';
 
       const payload = {
-        amount,
+        amount: loanAmount,
         items,
         installment_month: month,
         installment_type,
@@ -218,7 +227,7 @@ export function openInstallment(btn) {
       console.log('[Ceramisia] POST /api/bog-installment', {
         installment_month: month,
         installment_type,
-        orderAmount: amount,
+        orderAmount: loanAmount,
       });
 
       fetch(BOG_INSTALLMENT_ENDPOINT, {
@@ -247,7 +256,12 @@ export function openInstallment(btn) {
           if (!res.ok) {
             const msg =
               (data && (data.error || data.message)) || `HTTP ${res.status}`;
-            console.error('[Ceramisia] bog-installment rejected', msg);
+            console.error('[Ceramisia] bog-installment rejected', {
+              msg,
+              failure_stage: data.failure_stage,
+              debug_public: data.debug_public,
+              details: data.details,
+            });
             alert('Payment error: ' + String(msg));
             closeCb();
             return;

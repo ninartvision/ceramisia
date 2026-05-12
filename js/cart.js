@@ -585,8 +585,8 @@
       return;
     }
 
-    var totalAmount = parseFloat(getTotalPrice().toFixed(2));
-    if (!totalAmount || totalAmount <= 0) {
+    var loanAmount = Number(Number(getTotalPrice()).toFixed(2));
+    if (!Number.isFinite(loanAmount) || loanAmount <= 0) {
       alert(lang === 'ge' ? 'კალათა ცარიელია' : 'Cart is empty');
       return;
     }
@@ -638,16 +638,25 @@
       }
     }
 
+    var bnplFlag =
+      typeof window.__BOG_INSTALLMENT_BNPL__ === 'boolean'
+        ? window.__BOG_INSTALLMENT_BNPL__
+        : false;
+
     console.log('[Ceramisia] BOG.Calculator.open (cart)', {
-      amount: totalAmount,
+      amount: loanAmount,
+      amountType: typeof loanAmount,
+      bnpl: bnplFlag,
       itemCount: items.length,
-      defaultInstallmentType: defaultType
+      defaultInstallmentType: defaultType,
+      bog_client_id_length: String(window.BOG_CLIENT_ID || '').length
     });
 
     setCalcBusy(true);
 
     window.BOG.Calculator.open({
-      amount: totalAmount,
+      amount: loanAmount,
+      bnpl: bnplFlag,
       onClose: function () {
         console.log('[Ceramisia] BOG Calculator onClose');
         setCalcBusy(false);
@@ -673,7 +682,7 @@
         var installment_type = discountCode || defaultType || 'STANDARD';
 
         var payload = {
-          amount: totalAmount,
+          amount: loanAmount,
           items: items,
           installment_month: month,
           installment_type: installment_type
@@ -682,7 +691,7 @@
         console.log('[Ceramisia] POST /api/bog-installment', {
           installment_month: month,
           installment_type: installment_type,
-          orderAmount: totalAmount
+          orderAmount: loanAmount
         });
 
         fetch(BOG_INSTALLMENT_ENDPOINT, {
@@ -713,7 +722,12 @@
               var msg =
                 (data && (data.error || data.message)) ||
                 ('HTTP ' + res.status);
-              console.error('[Ceramisia] bog-installment failed', msg);
+              console.error('[Ceramisia] bog-installment failed', {
+                msg: msg,
+                failure_stage: data.failure_stage,
+                debug_public: data.debug_public,
+                details: data.details
+              });
               alert(
                 (lang === 'ge' ? 'გადახდის შეცდომა: ' : 'Payment error: ') +
                   String(msg)

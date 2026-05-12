@@ -400,10 +400,10 @@
   </div>
 
   <script src="js/main.js?v=2"></script>
-  <script src="js/cart.js?v=26"></script>
+  <script src="js/cart.js?v=27"></script>
   <script src="js/product-modal.js?v=2"></script>
   <script src="js/fab-social.js?v=2"></script>
-  <script type="module" src="js/payment.js?v=2"></script>
+  <script type="module" src="js/payment.js?v=3"></script>
   <script type="module" src="js/sanity-render.js?v=2"></script>
 
   <!-- --- BOG PAYMENT ------------------------------------------------------- -->
@@ -411,11 +411,12 @@
   <!-- For POST 3DS: payment.js injects hidden <input>s and submits this form. -->
   <form id="bog-3ds-form" method="GET" action="" style="display:none"></form>
 
-  <!-- BOG Installment SDK — replace BOTH YOUR_CLIENT_ID placeholders (see BOG docs). -->
+  <!-- BOG Installment SDK — set REAL client id once; loader syncs script URL + BOG.init + window.BOG_CLIENT_ID -->
   <script>
-    window.BOG_CLIENT_ID = 'YOUR_CLIENT_ID';
+    window.__BOG_MERCHANT_CLIENT_ID__ = 'YOUR_CLIENT_ID';
+    /** Optional BNPL-only UI: window.__BOG_INSTALLMENT_BNPL__ = true; */
   </script>
-  <script src="https://webstatic.bog.ge/bog-sdk/bog-sdk.js?client_id=YOUR_CLIENT_ID"></script>
+  <script src="js/bog-install-sdk.js?v=1"></script>
   <!-- ------------------------------------------------------------------------ -->
 </body>
 </html>
