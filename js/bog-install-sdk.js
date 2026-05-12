@@ -378,7 +378,7 @@
                   );
                   if (xhr.status >= 400) {
                     console.error('[Ceramisia][BOG] calculate XHR RESPONSE (error)', payload);
-                    console.error('[Ceramisia][BOG] calculate DUPLICATE_KEYS_FOR_SEARCH', {
+                    console.error('[Ceramisia][BOG] calculate response details', {
                       responseRawText: payload.responseRawText,
                       responseJson: payload.responseJson,
                     });
