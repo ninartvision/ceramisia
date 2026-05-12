@@ -4,6 +4,7 @@ import { client } from "../lib/sanity.js";
 import { trySanityCreateOrder } from "../lib/sanityOrderSync.js";
 import { savePendingOrder } from "./_db.js";
 import {
+  auditFlittSignaturePlaintext,
   describeFlittSignInputs,
   signFlittPayload,
 } from "./_flittSignature.js";
@@ -27,6 +28,37 @@ function firstEnvTrimmed(...names) {
     if (v) return v;
   }
   return "";
+}
+
+/** First pipe segment is masked secret (asterisks); return remainder Flitt used for signing hints. */
+function flittMaskedPipeTail(raw) {
+  if (!raw || typeof raw !== "string") return null;
+  const parts = raw.split("|");
+  if (parts.length > 1 && /^\*+$/.test(parts[0].trim())) {
+    return parts.slice(1).join("|");
+  }
+  return raw;
+}
+
+/** Pull signature diagnostics from Flitt text errors (format varies by locale/version). */
+function parseFlittInlineSignatureHints(message) {
+  const s = String(message || "");
+  const out = {
+    response_signature_string_raw: null,
+    /** Pipe segments after masked secret (**********) */
+    response_tail_after_secret: null,
+    server_signature_hex_from_message: null,
+  };
+  const rs = s.match(/response_signature_string:\s*[`'"]([^`'"]+)[`'"]/i);
+  if (rs) {
+    out.response_signature_string_raw = rs[1];
+    out.response_tail_after_secret = flittMaskedPipeTail(rs[1]);
+  }
+  const sg = s.match(
+    /(?:invalid\s+signature\s+)?signature:\s*[`'"]([a-f0-9]{40})[`'"]/i
+  );
+  if (sg) out.server_signature_hex_from_message = sg[1];
+  return out;
 }
 
 function safeUrlParts(label, url) {
@@ -163,6 +195,13 @@ export default async function handler(req, res) {
     const orderId = `flt_${crypto.randomUUID()}`;
     const amountMinor = toMinorUnits(amountRounded, currency);
 
+    console.log("[flitt-pay] inbound POST body (sanitized)", {
+      keys: body && typeof body === "object" ? Object.keys(body).sort() : [],
+      amount_major_input: body?.amount ?? body?.total_amount ?? body?.totalAmount ?? null,
+      currency_input: body?.currency ?? null,
+      item_count: Array.isArray(rawItems) ? rawItems.length : 0,
+    });
+
     console.log("[flitt-pay] POST /api/flitt-pay", {
       order_id: orderId,
       order_id_format_ok: /^flt_[0-9a-f-]{36}$/i.test(orderId),
@@ -254,37 +293,78 @@ export default async function handler(req, res) {
     const requestPayload = { ...requestCore, signature };
 
     const signDbg = describeFlittSignInputs(requestCore);
-    const redactedSha1Input =
-      `***SECRET(len=${secret.length})***|${signDbg.values_joined_after_secret}`;
+    const signAudit = auditFlittSignaturePlaintext(secret, requestCore);
+
+    let checkoutHost = null;
+    try {
+      checkoutHost = new URL(checkoutUrl).host;
+    } catch {
+      checkoutHost = null;
+    }
+    const hostLooksSandbox =
+      typeof checkoutHost === "string" && /sandbox/i.test(checkoutHost);
+    if (!checkoutUrlOverride && hostLooksSandbox !== sandbox) {
+      console.warn(
+        "[flitt-pay] FLITT_SANDBOX / FLITT_ENV flag does not match checkout URL host — wrong credentials or wrong endpoint commonly cause 1014",
+        {
+          sandbox_mode_flag: sandbox,
+          checkout_host: checkoutHost,
+          host_looks_sandbox: hostLooksSandbox,
+        }
+      );
+    }
+
+    console.log("[flitt-pay] env / endpoint", {
+      VERCEL_ENV: process.env.VERCEL_ENV ?? null,
+      NODE_ENV: process.env.NODE_ENV ?? null,
+      flitt_env_mode: sandbox ? "sandbox" : "production",
+      checkout_endpoint: checkoutUrl,
+      checkout_host: checkoutHost,
+      flitt_sandbox_env: normalizeEnvValue(process.env.FLITT_SANDBOX) || null,
+      flitt_env_raw: normalizeEnvValue(process.env.FLITT_ENV) || null,
+      checkout_url_override: Boolean(checkoutUrlOverride),
+    });
+
+    console.log("[flitt-pay] signature_audit", {
+      algorithm:
+        "SHA1( utf8(secret + '|' + sorted_values_pipe_joined) ) → hex lowercase",
+      docs_reference:
+        "https://docs.flitt.com/api/building-signature/ — omit empty/absent params; exclude signature keys",
+      sorted_keys: signAudit.sorted_keys,
+      segment_count: signAudit.segment_count,
+      sign_string_utf8_bytes: signAudit.sign_string_utf8_bytes,
+      generated_signature_hex_length: signature.length,
+      generated_signature_hex_prefix: signature.slice(0, 8),
+      /** Compare to tail of Flitt `response_signature_string` after masked secret */
+      signature_base_data_segment: signAudit.values_joined_after_secret,
+      signature_base_redacted_full: signAudit.redacted_sign_string,
+      request_fields_signed: Object.keys(requestCore).sort(),
+      timestamp_nonce_note:
+        "Flitt checkout/url does not require timestamp or nonce parameters.",
+      http_headers_outbound: {
+        "Content-Type": "application/json; charset=utf-8",
+        Accept: "application/json",
+        "User-Agent": "Ceramisia-flitt-pay/1.0",
+      },
+    });
+
     console.log("[flitt-pay] request summary (pre-Flitt)", {
       checkoutUrl,
       sandbox_mode: sandbox,
-      wrapper: "request object root per Flitt docs",
+      wrapper: '{ "request": { ... } }',
       response_url: safeUrlParts("response_url", responseUrl),
       server_callback_url: safeUrlParts("server_callback_url", serverCallbackUrl),
-      signature: {
-        length: signature.length,
-        prefix: signature.slice(0, 8),
-        algorithm:
-          "sha1 (node-js-sdk genSignature): secret|…values sorted by key; join maps null/undefined to empty segment",
-      },
-      sign_sorted_keys: signDbg.sorted_keys,
       sign_value_types: signDbg.types,
     });
-    console.log(
-      "[flitt-pay] OUTBOUND signature plaintext (redacted secret, full pipe string for SHA1):",
-      redactedSha1Input
-    );
-    console.log(
-      "[flitt-pay] signature debug: data segment only (pipe-joined values after secret — compare to Flitt error response_signature_string tail):",
-      signDbg.values_joined_after_secret
-    );
 
     const outboundJson = JSON.stringify({ request: requestPayload });
 
     console.log("[flitt-pay] calling Flitt checkout/url", {
       checkoutUrl,
       sandbox_mode: sandbox,
+      json_body_byte_length_utf8: Buffer.byteLength(outboundJson, "utf8"),
+      json_key_order_note:
+        "JSON key order is irrelevant; Flitt rebuilds signature from parsed fields",
       body_shape: { request: Object.keys(requestPayload).sort() },
       merchant_id_json_type: "number",
       amount_json_type: typeof requestPayload.amount,
@@ -337,9 +417,28 @@ export default async function handler(req, res) {
           : null,
     };
 
+    const inlineHints = parseFlittInlineSignatureHints(resp?.error_message);
+    const apiTail =
+      typeof resp?.response_signature_string === "string"
+        ? flittMaskedPipeTail(resp.response_signature_string)
+        : null;
+    const referenceTail =
+      apiTail ||
+      inlineHints.response_tail_after_secret ||
+      null;
+    const outboundMatchesFlittTail =
+      referenceTail == null || referenceTail === ""
+        ? null
+        : signDbg.values_joined_after_secret === referenceTail;
+
     console.log("[flitt-pay] Flitt raw response (parsed)", {
       ...flittError,
       full_response_object: resp,
+      parsed_error_hints: {
+        ...inlineHints,
+        response_signature_string_tail_from_api: apiTail,
+        outbound_data_segment_matches_flitt_tail: outboundMatchesFlittTail,
+      },
     });
     if (flittRes.status >= 400 || resp?.response_status !== "success") {
       console.error("[flitt-pay] Flitt declined or HTTP error", flittError);
@@ -397,13 +496,31 @@ export default async function handler(req, res) {
       };
 
       if (isSignatureError) {
+        const hints = parseFlittInlineSignatureHints(resp?.error_message);
+        const sigTailApi =
+          typeof resp?.response_signature_string === "string"
+            ? flittMaskedPipeTail(resp.response_signature_string)
+            : null;
+        const refTail =
+          sigTailApi ||
+          hints.response_tail_after_secret ||
+          null;
+        const outboundMatches =
+          refTail == null || refTail === ""
+            ? null
+            : refTail === signDbg.values_joined_after_secret;
+
         payloadBase.signature_debug = {
           algorithm:
             "SHA1( UTF-8 bytes of: secret + '|' + pipe_joined_values ) → lowercase hex",
           field_order:
-            "Alphabetical by parameter name (ASCII sort). Exclude signature & response_signature_string & empty-string values (official Node SDK rule).",
+            "Alphabetical by parameter name (ASCII sort). Omit absent/empty/null values; exclude signature & response_signature_string (Flitt documented Python reference).",
+          nonce_or_timestamp:
+            "Not used on Flitt /api/checkout/url — only listed request fields + payment secret.",
           deployment_context: {
             VERCEL_ENV: process.env.VERCEL_ENV ?? null,
+            NODE_ENV: process.env.NODE_ENV ?? null,
+            checkout_endpoint: checkoutUrl,
             flitt_checkout_host: (() => {
               try {
                 return new URL(checkoutUrl).host;
@@ -412,14 +529,21 @@ export default async function handler(req, res) {
               }
             })(),
             sandbox_mode: sandbox,
+            sandbox_flag_matches_checkout_host:
+              checkoutUrlOverride ? null : hostLooksSandbox === sandbox,
           },
           sorted_keys_in_signature: signDbg.sorted_keys,
+          sign_string_utf8_bytes: signAudit.sign_string_utf8_bytes,
+          segment_count: signAudit.segment_count,
           /** Must match the tail of Flitt `response_signature_string` after `**********|` */
           values_pipe_joined_after_secret: signDbg.values_joined_after_secret,
-          /** Hex we sent on this request (verify secret used at runtime) */
           outbound_signature_hex: signature,
+          outbound_signature_hex_length: signature.length,
+          flitt_error_inline_hints: hints,
+          response_signature_string_tail_from_api: sigTailApi,
+          outbound_matches_flitt_tail: outboundMatches,
           compare_hint:
-            "If values_pipe_joined_after_secret matches Flitt tail but 1014 persists → wrong FLITT_PRIVATE_KEY (sandbox vs prod). If tails differ → extra/missing params (version, lang, cancel_url, reservation_data), whitespace in URLs, or wrong amount/currency.",
+            "If values_pipe_joined_after_secret matches Flitt tail but 1014 persists → wrong FLITT_MERCHANT_ID / FLITT_PRIVATE_KEY pair (sandbox vs prod). If tails differ → extra/missing params (version, lang, cancel_url, reservation_data), encoding in order_desc, or JSON parsing differences.",
         };
       }
 
