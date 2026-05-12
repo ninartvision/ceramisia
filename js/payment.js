@@ -128,6 +128,9 @@ export async function buyProduct(btn) {
 }
 
 // ── Installment (BOG Calculator modal → /api/bog-installment) ────────────────
+// SDK internal `calculate` runs before onRequest; failures are BOG-side (see console [Ceramisia][BOG] calculate …).
+// Docs sometimes POST JSON.stringify(selected) alone — our API expects { amount, items, installment_month, installment_type }
+// built from the product/cart (selected.month etc. is merged in openInstallment / payWithInstallment below).
 
 export function openInstallment(btn) {
   const price = parseFloat(btn.dataset.price) || 0;
