@@ -142,6 +142,14 @@ export function openInstallment(btn) {
     return;
   }
 
+  console.log('[Ceramisia][BOG] openInstallment SDK check', {
+    BOG_loaded: !!window.BOG,
+    Calculator_loaded: !!(window.BOG && window.BOG.Calculator),
+    client_id_length: String(window.BOG_CLIENT_ID || '').length,
+    amount: loanAmount,
+    typeof_amount: typeof loanAmount,
+  });
+
   if (!window.BOG || !window.BOG.Calculator || typeof window.BOG.Calculator.open !== 'function') {
     console.error('[Ceramisia] BOG.Calculator missing — check webstatic SDK script + client_id', {
       hasBOG: !!window.BOG,
@@ -177,15 +185,10 @@ export function openInstallment(btn) {
     _setBtnState(btn, false, originalText);
   }
 
-  const bnplFlag =
-    typeof window.__BOG_INSTALLMENT_BNPL__ === 'boolean'
-      ? window.__BOG_INSTALLMENT_BNPL__
-      : false;
-
   console.log('[Ceramisia] BOG.Calculator.open', {
     amount: loanAmount,
     amountType: typeof loanAmount,
-    bnpl: bnplFlag,
+    bnpl: false,
     itemsLen: items.length,
     defaultInstallmentType: defaultType,
     bog_client_id_length: String(window.BOG_CLIENT_ID || '').length,
@@ -195,7 +198,7 @@ export function openInstallment(btn) {
 
   window.BOG.Calculator.open({
     amount: loanAmount,
-    bnpl: bnplFlag,
+    bnpl: false,
     onClose() {
       console.log('[Ceramisia] BOG Calculator onClose');
       releaseBtn();
@@ -230,28 +233,36 @@ export function openInstallment(btn) {
         orderAmount: loanAmount,
       });
 
-      fetch(BOG_INSTALLMENT_ENDPOINT, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify(payload),
-      })
-        .then((res) =>
-          res.text().then((txt) => {
-            let data = {};
-            try {
-              data = txt ? JSON.parse(txt) : {};
-            } catch {
-              data = { parse_error: true, raw: txt };
-            }
-            return { res, data };
-          })
-        )
-        .then(({ res, data }) => {
-          console.log('[Ceramisia] bog-installment HTTP', res.status, data);
+      (async () => {
+        try {
+          const res = await fetch(BOG_INSTALLMENT_ENDPOINT, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+
+          let data;
+          try {
+            data = await res.json();
+          } catch (jsonErr) {
+            console.error('[Ceramisia] bog-installment response.json() failed', jsonErr);
+            alert('Invalid server response (not JSON).');
+            closeCb();
+            return;
+          }
+
+          console.log('[Ceramisia] bog-installment backend response', {
+            httpStatus: res.status,
+            ok: res.ok,
+            order_id: data && data.order_id,
+            orderId: data && data.orderId,
+            payment_url: data && data.payment_url,
+            keys: data && typeof data === 'object' ? Object.keys(data) : [],
+          });
 
           if (!res.ok) {
             const msg =
@@ -267,22 +278,23 @@ export function openInstallment(btn) {
             return;
           }
 
-          const oid = String(data.order_id || data.orderId || '').trim();
+          const oidRaw = data.order_id ?? data.orderId;
+          const oid = oidRaw != null ? String(oidRaw).trim() : '';
           if (!oid) {
-            console.error('[Ceramisia] missing order_id for successCb', data);
+            console.error('[Ceramisia] missing order_id / orderId for successCb', data);
             alert('Incomplete server response (order_id).');
             closeCb();
             return;
           }
 
-          console.log('[Ceramisia] successCb(BOG order_id)', oid);
+          console.log('[Ceramisia] successCb(order_id)', oid);
           successCb(oid);
-        })
-        .catch((err) => {
-          console.error('[Ceramisia] bog-installment network', err);
+        } catch (err) {
+          console.error('[Ceramisia] bog-installment fetch error', err);
           alert('Network error. Please try again.');
           closeCb();
-        });
+        }
+      })();
     },
     onComplete(info) {
       console.log('[Ceramisia] BOG Calculator onComplete', info);
