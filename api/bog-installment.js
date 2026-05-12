@@ -320,6 +320,9 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       payment_url: redirectUrl,
+      /** Required by BOG.Calculator `successCb(orderId)` flow */
+      order_id: orderId,
+      orderId,
     });
   } catch (err) {
     console.error("[bog-installment] FATAL", {

@@ -284,18 +284,18 @@
   </div>
 
   <script src="/js/main.js?v=2"></script>
-  <script src="/js/cart.js?v=25"></script>
+  <script src="/js/cart.js?v=26"></script>
   <script src="/js/product-modal.js?v=2"></script>
   <script src="/js/fab-social.js?v=2"></script>
-  <script type="module" src="/js/payment.js?v=1"></script>
+  <script type="module" src="/js/payment.js?v=2"></script>
   <script type="module" src="/js/sanity-render.js?v=2"></script>
 
   <!-- ═══ BOG PAYMENT ═══════════════════════════════════════════════════════ -->
   <form id="bog-3ds-form" method="GET" action="" style="display:none"></form>
   <script>
-    window.BOG_CLIENT_ID = 'YOUR_CLIENT_ID'; // ← replace this
+    window.BOG_CLIENT_ID = 'YOUR_CLIENT_ID';
   </script>
-  <script src="https://api.bog.ge/docs/payments/script?client_id=YOUR_CLIENT_ID" defer></script>
+  <script src="https://webstatic.bog.ge/bog-sdk/bog-sdk.js?client_id=YOUR_CLIENT_ID"></script>
   <!-- ════════════════════════════════════════════════════════════════════════ -->
 </body>
 </html>

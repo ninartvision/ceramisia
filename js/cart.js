@@ -571,28 +571,187 @@
     );
   }
 
-  async function payWithInstallment(btnId) {
+  /**
+   * BOG ნაწილ-ნაწილი: ოფიციალური Calculator მოდალი → onRequest → POST /api/bog-installment → successCb(order_id).
+   * @see https://api.bog.ge/docs/en/installment/modal
+   */
+  function payWithInstallment(btnId) {
     var id = btnId || 'cartInstallmentBtn';
-    var b = document.getElementById(id);
-    var month = b && b.dataset.installmentMonth
-      ? Number(b.dataset.installmentMonth)
-      : NaN;
-    var typ = b && b.dataset.installmentType
-      ? String(b.dataset.installmentType).trim()
-      : '';
-    var extra = {};
-    if (Number.isFinite(month) && month > 0) {
-      extra.installment_month = month;
+    var lang = getLang();
+    var btn = document.getElementById(id);
+
+    if (_isPaying) {
+      console.warn('[Ceramisia] payWithInstallment: blocked (_isPaying)');
+      return;
     }
-    if (typ) {
-      extra.installment_type = typ;
+
+    var totalAmount = parseFloat(getTotalPrice().toFixed(2));
+    if (!totalAmount || totalAmount <= 0) {
+      alert(lang === 'ge' ? 'კალათა ცარიელია' : 'Cart is empty');
+      return;
     }
-    return submitPayment(
-      BOG_INSTALLMENT_ENDPOINT,
-      id,
-      '/api/bog-installment',
-      extra
-    );
+
+    var cart = getCart();
+    if (!cart.length) {
+      alert(lang === 'ge' ? 'კალათა ცარიელია' : 'Cart is empty');
+      return;
+    }
+
+    if (!window.BOG || !window.BOG.Calculator || typeof window.BOG.Calculator.open !== 'function') {
+      console.error('[Ceramisia] BOG.Calculator unavailable', { BOG: !!window.BOG });
+      alert(
+        lang === 'ge'
+          ? 'განვადების კალკულატორი ვერ იტვირთა. შეამოწმეთ BOG_CLIENT_ID და bog-sdk script.'
+          : 'Installment calculator failed to load. Check BOG_CLIENT_ID and bog-sdk script URL.'
+      );
+      return;
+    }
+
+    var cid = window.BOG_CLIENT_ID;
+    if (!cid || cid === 'YOUR_CLIENT_ID') {
+      console.warn('[Ceramisia] BOG_CLIENT_ID placeholder — replace in HTML');
+    }
+
+    var items = cart.map(function (item) {
+      var row = {
+        product_id: item.id,
+        slug: item.slug || undefined,
+        quantity: Number(item.qty) || 1,
+        unit_price: Number(item.price) || 0
+      };
+      if (item.name) row.name = item.name;
+      if (item.nameEn) row.nameEn = item.nameEn;
+      if (item.image) row.image = item.image;
+      return row;
+    });
+
+    var defaultType =
+      btn && btn.dataset.installmentType
+        ? String(btn.dataset.installmentType).trim()
+        : 'STANDARD';
+
+    function setCalcBusy(busy) {
+      _isPaying = busy;
+      if (btn) {
+        btn.disabled = busy;
+        btn.classList.toggle('cart-pay-btn--waiting', busy);
+      }
+    }
+
+    console.log('[Ceramisia] BOG.Calculator.open (cart)', {
+      amount: totalAmount,
+      itemCount: items.length,
+      defaultInstallmentType: defaultType
+    });
+
+    setCalcBusy(true);
+
+    window.BOG.Calculator.open({
+      amount: totalAmount,
+      onClose: function () {
+        console.log('[Ceramisia] BOG Calculator onClose');
+        setCalcBusy(false);
+      },
+      onRequest: function (selected, successCb, closeCb) {
+        console.log('[Ceramisia] BOG Calculator onRequest selected=', selected);
+
+        var month =
+          selected && selected.month != null ? Number(selected.month) : NaN;
+        if (!Number.isFinite(month) || month <= 0) {
+          console.error('[Ceramisia] invalid selected.month', selected);
+          closeCb();
+          alert(lang === 'ge' ? 'გთხოვთ აირჩიოთ ვადა.' : 'Please select installment term.');
+          return;
+        }
+
+        var discountCode =
+          selected &&
+          selected.discount_code != null &&
+          String(selected.discount_code).trim() !== ''
+            ? String(selected.discount_code).trim()
+            : '';
+        var installment_type = discountCode || defaultType || 'STANDARD';
+
+        var payload = {
+          amount: totalAmount,
+          items: items,
+          installment_month: month,
+          installment_type: installment_type
+        };
+
+        console.log('[Ceramisia] POST /api/bog-installment', {
+          installment_month: month,
+          installment_type: installment_type,
+          orderAmount: totalAmount
+        });
+
+        fetch(BOG_INSTALLMENT_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json'
+          },
+          body: JSON.stringify(payload)
+        })
+          .then(function (res) {
+            return res.text().then(function (txt) {
+              var data = {};
+              try {
+                data = txt ? JSON.parse(txt) : {};
+              } catch (_e) {
+                data = { raw: txt };
+              }
+              return { res: res, data: data };
+            });
+          })
+          .then(function (_ref) {
+            var res = _ref.res;
+            var data = _ref.data;
+            console.log('[Ceramisia] bog-installment response', res.status, data);
+
+            if (!res.ok) {
+              var msg =
+                (data && (data.error || data.message)) ||
+                ('HTTP ' + res.status);
+              console.error('[Ceramisia] bog-installment failed', msg);
+              alert(
+                (lang === 'ge' ? 'გადახდის შეცდომა: ' : 'Payment error: ') +
+                  String(msg)
+              );
+              closeCb();
+              return;
+            }
+
+            var oid = String(data.order_id || data.orderId || '').trim();
+            if (!oid) {
+              console.error('[Ceramisia] missing order_id', data);
+              alert(
+                lang === 'ge'
+                  ? 'სერვერის პასუხი არასრულია (order_id).'
+                  : 'Incomplete server response (order_id).'
+              );
+              closeCb();
+              return;
+            }
+
+            console.log('[Ceramisia] successCb(order_id)', oid);
+            successCb(oid);
+          })
+          .catch(function (err) {
+            console.error('[Ceramisia] bog-installment fetch error', err);
+            alert(
+              lang === 'ge'
+                ? 'ქსელის შეცდომა. სცადეთ თავიდან.'
+                : 'Network error. Please try again.'
+            );
+            closeCb();
+          });
+      },
+      onComplete: function (info) {
+        console.log('[Ceramisia] BOG Calculator onComplete', info);
+        setCalcBusy(false);
+      }
+    });
   }
   /* ── WhatsApp Checkout ─────────────────────────── */
   var WHATSAPP_NUMBER = '995597224407';

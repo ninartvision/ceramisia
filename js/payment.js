@@ -1,24 +1,21 @@
 /**
  * Ceramisia – BOG Payment Handler (ES Module)
  *
- *   • 💳 Buy         → buyProduct(btn)      → POST /api/pay → window.location = redirect
- *   • 💸 Installment → openInstallment(btn) → BOG.Calculator.open() → POST /api/pay
+ *   • 💳 Buy         → buyProduct(btn)      → POST /api/pay → redirect
+ *   • 💸 Installment → openInstallment(btn) → BOG.Calculator (official SDK)
+ *       → onRequest → POST /api/bog-installment → successCb(order_id)
  *
- * Button data-attributes:
- *   data-id    – product ID / slug
- *   data-price – unit price (number)
- *   data-qty   – quantity (number, default 1)
- *   data-name  – product display name
- *   data-slug  – Sanity slug (matches `products.slug` in Supabase catalog)
+ * BOG modal docs: https://api.bog.ge/docs/en/installment/modal
  */
 
 const PAYMENT_ENDPOINT = '/api/pay';
+const BOG_INSTALLMENT_ENDPOINT = '/api/bog-installment';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function _setBtnState(btn, loading, text) {
   btn.disabled = loading;
-  btn.classList.toggle('btn-buy--loading',         loading);
+  btn.classList.toggle('btn-buy--loading', loading);
   btn.classList.toggle('btn-installment--loading', loading);
   if (text !== undefined) btn.textContent = text;
 }
@@ -28,10 +25,10 @@ function extractRedirectUrl(data) {
   if (!data || typeof data !== 'object') return null;
   return (
     (data._links && data._links.redirect && data._links.redirect.href) ||
-    (data.links  && data.links.redirect  && data.links.redirect.href)  ||
-    data.payment_url  ||
+    (data.links && data.links.redirect && data.links.redirect.href) ||
+    data.payment_url ||
     data.redirect_url ||
-    data.url          ||
+    data.url ||
     (data.data && data.data._links && data.data._links.redirect && data.data._links.redirect.href) ||
     (data.data && data.data.payment_url) ||
     (data.data && data.data.url) ||
@@ -39,23 +36,19 @@ function extractRedirectUrl(data) {
   );
 }
 
-// Single source of truth for /api/pay calls — full debug logs, raw-text
-// fallback, multi-shape redirect URL extraction, and proper async error
-// surfacing (no Promise <pending> issues).
 async function callPayApi(payload) {
   console.log('[Ceramisia] DEBUG /api/pay request payload:', payload);
 
   const res = await fetch(PAYMENT_ENDPOINT, {
-    method:      'POST',
+    method: 'POST',
     credentials: 'same-origin',
     headers: {
       'Content-Type': 'application/json',
-      'Accept':       'application/json',
+      Accept: 'application/json',
     },
     body: JSON.stringify(payload),
   });
 
-  // Read raw text first so non-JSON responses can still be logged.
   const rawText = await res.text();
   let data = null;
   let parseError = null;
@@ -66,8 +59,8 @@ async function callPayApi(payload) {
   }
 
   console.log('[Ceramisia] DEBUG /api/pay response:', {
-    status:      res.status,
-    ok:          res.ok,
+    status: res.status,
+    ok: res.ok,
     contentType: res.headers.get('content-type'),
     parseError,
     rawText,
@@ -77,7 +70,7 @@ async function callPayApi(payload) {
   if (!res.ok) {
     const serverErr =
       (data && (data.error || (data.details && data.details.message))) ||
-      ('HTTP ' + res.status);
+      `HTTP ${res.status}`;
     throw new Error(String(serverErr));
   }
 
@@ -106,10 +99,10 @@ function _showError(err) {
 // ── Buy / Pay ───────────────────────────────────────────────────────────────
 
 export async function buyProduct(btn) {
-  const productId = btn.dataset.id    || '';
-  const slug        = btn.dataset.slug || productId || '';
-  const price     = parseFloat(btn.dataset.price) || 0;
-  const qty       = parseInt(btn.dataset.qty, 10) || 1;
+  const productId = btn.dataset.id || '';
+  const slug = btn.dataset.slug || productId || '';
+  const price = parseFloat(btn.dataset.price) || 0;
+  const qty = parseInt(btn.dataset.qty, 10) || 1;
 
   if (!productId || price <= 0) {
     console.error('[Ceramisia] buyProduct: missing data-id or data-price on', btn);
@@ -122,9 +115,7 @@ export async function buyProduct(btn) {
   try {
     const payload = {
       amount: parseFloat((price * qty).toFixed(2)),
-      items: [
-        { product_id: productId, slug: slug || undefined, quantity: qty, unit_price: price },
-      ],
+      items: [{ product_id: productId, slug: slug || undefined, quantity: qty, unit_price: price }],
     };
     const redirectUrl = await callPayApi(payload);
     console.log('[Ceramisia] Redirecting to bank page →', redirectUrl);
@@ -136,42 +127,152 @@ export async function buyProduct(btn) {
   }
 }
 
-// ── Installment ─────────────────────────────────────────────────────────────
+// ── Installment (BOG Calculator modal → /api/bog-installment) ────────────────
 
 export function openInstallment(btn) {
-  const price       = parseFloat(btn.dataset.price) || 0;
-  const productId   = btn.dataset.id    || '';
-  const slug        = btn.dataset.slug || productId || '';
-  const name        = btn.dataset.name || productId;
+  const price = parseFloat(btn.dataset.price) || 0;
+  const qty = parseInt(btn.dataset.qty, 10) || 1;
+  const productId = btn.dataset.id || '';
+  const slug = btn.dataset.slug || productId || '';
+  const name = btn.dataset.name || productId;
+  const amount = parseFloat((price * qty).toFixed(2));
 
-  if (!window.BOG || !window.BOG.Calculator) {
-    console.warn('[Ceramisia] BOG SDK not loaded.');
+  if (!productId || amount <= 0) {
+    console.error('[Ceramisia] openInstallment: missing data-id or invalid amount', btn);
     return;
   }
 
+  if (!window.BOG || !window.BOG.Calculator || typeof window.BOG.Calculator.open !== 'function') {
+    console.error('[Ceramisia] BOG.Calculator missing — check webstatic SDK script + client_id', {
+      hasBOG: !!window.BOG,
+    });
+    alert(
+      'Installment calculator failed to load. Ensure BOG_CLIENT_ID is set and the bog-sdk script URL matches.'
+    );
+    return;
+  }
+
+  const cid = window.BOG_CLIENT_ID;
+  if (!cid || cid === 'YOUR_CLIENT_ID') {
+    console.warn('[Ceramisia] BOG_CLIENT_ID placeholder — replace in HTML');
+  }
+
+  /** Cart total for loan; NOT selected.amount from modal (that is monthly payment per BOG docs). */
+  const items = [
+    {
+      product_id: productId,
+      slug: slug || undefined,
+      quantity: qty,
+      unit_price: price,
+      ...(name ? { name } : {}),
+    },
+  ];
+
+  const defaultType =
+    (btn.dataset.installmentType && String(btn.dataset.installmentType).trim()) || 'STANDARD';
+
+  const originalText = btn.textContent;
+
+  function releaseBtn() {
+    _setBtnState(btn, false, originalText);
+  }
+
+  console.log('[Ceramisia] BOG.Calculator.open', {
+    amount,
+    itemsLen: items.length,
+    defaultInstallmentType: defaultType,
+  });
+
+  _setBtnState(btn, true, '...');
+
   window.BOG.Calculator.open({
-    productPrice: price,
-    productName:  name,
-    merchantId:   window.BOG_CLIENT_ID || '',
-    onConfirm: async function (installmentData) {
-      const originalText = btn.textContent;
-      _setBtnState(btn, true, '...');
-      try {
-        const payload = {
-          amount: parseFloat(price.toFixed(2)),
-          items: [
-            { product_id: productId, slug: slug || undefined, quantity: 1, unit_price: price },
-          ],
-          installment: installmentData,
-        };
-        const redirectUrl = await callPayApi(payload);
-        console.log('[Ceramisia] Redirecting to bank page →', redirectUrl);
-        window.location.href = redirectUrl;
-      } catch (err) {
-        console.error('[Ceramisia] installment error:', err);
-        _setBtnState(btn, false, originalText);
-        _showError(err);
+    amount,
+    onClose() {
+      console.log('[Ceramisia] BOG Calculator onClose');
+      releaseBtn();
+    },
+    onRequest(selected, successCb, closeCb) {
+      console.log('[Ceramisia] BOG Calculator onRequest raw selected=', selected);
+
+      const month = selected && selected.month != null ? Number(selected.month) : NaN;
+      if (!Number.isFinite(month) || month <= 0) {
+        console.error('[Ceramisia] invalid selected.month', selected);
+        closeCb();
+        alert('Please select an installment term.');
+        return;
       }
+
+      const discountCode =
+        selected && selected.discount_code != null && String(selected.discount_code).trim() !== ''
+          ? String(selected.discount_code).trim()
+          : '';
+      const installment_type = discountCode || defaultType || 'STANDARD';
+
+      const payload = {
+        amount,
+        items,
+        installment_month: month,
+        installment_type,
+      };
+
+      console.log('[Ceramisia] POST /api/bog-installment', {
+        installment_month: month,
+        installment_type,
+        orderAmount: amount,
+      });
+
+      fetch(BOG_INSTALLMENT_ENDPOINT, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(payload),
+      })
+        .then((res) =>
+          res.text().then((txt) => {
+            let data = {};
+            try {
+              data = txt ? JSON.parse(txt) : {};
+            } catch {
+              data = { parse_error: true, raw: txt };
+            }
+            return { res, data };
+          })
+        )
+        .then(({ res, data }) => {
+          console.log('[Ceramisia] bog-installment HTTP', res.status, data);
+
+          if (!res.ok) {
+            const msg =
+              (data && (data.error || data.message)) || `HTTP ${res.status}`;
+            console.error('[Ceramisia] bog-installment rejected', msg);
+            alert('Payment error: ' + String(msg));
+            closeCb();
+            return;
+          }
+
+          const oid = String(data.order_id || data.orderId || '').trim();
+          if (!oid) {
+            console.error('[Ceramisia] missing order_id for successCb', data);
+            alert('Incomplete server response (order_id).');
+            closeCb();
+            return;
+          }
+
+          console.log('[Ceramisia] successCb(BOG order_id)', oid);
+          successCb(oid);
+        })
+        .catch((err) => {
+          console.error('[Ceramisia] bog-installment network', err);
+          alert('Network error. Please try again.');
+          closeCb();
+        });
+    },
+    onComplete(info) {
+      console.log('[Ceramisia] BOG Calculator onComplete', info);
+      releaseBtn();
     },
   });
 }
@@ -180,13 +281,23 @@ export function openInstallment(btn) {
 
 export function initPaymentButtons(container) {
   (container || document.body).addEventListener('click', function (e) {
-    const buyBtn  = e.target.closest('.btn-buy');
+    const buyBtn = e.target.closest('.btn-buy');
     const instBtn = e.target.closest('.btn-installment');
-    if (buyBtn)  { e.stopPropagation(); buyProduct(buyBtn);       return; }
-    if (instBtn) { e.stopPropagation(); openInstallment(instBtn); }
+    if (buyBtn) {
+      e.stopPropagation();
+      buyProduct(buyBtn);
+      return;
+    }
+    if (instBtn) {
+      e.stopPropagation();
+      openInstallment(instBtn);
+    }
   });
 }
 
-// ── Globals (for inline onclick= and non-module scripts) ────────────────────
-window.pay             = function (btn) { buyProduct(btn); };
-window.openInstallment = function (btn) { openInstallment(btn); };
+window.pay = function (btn) {
+  buyProduct(btn);
+};
+window.openInstallment = function (btn) {
+  openInstallment(btn);
+};
