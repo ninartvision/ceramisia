@@ -12,6 +12,7 @@
  *
  * @see https://webstatic.bog.ge/bog-sdk/
  */
+/* eslint-disable no-console -- BOG installment SDK browser telemetry / diagnostics */
 (function () {
   if (window.__BOG_INSTALL_SDK_SINGLETON__) {
     console.warn(
@@ -293,11 +294,11 @@
       var xhrOpenOriginal = XMLHttpRequest.prototype.open;
       var xhrSendOriginal = XMLHttpRequest.prototype.send;
 
-      XMLHttpRequest.prototype.open = function () {
+      XMLHttpRequest.prototype.open = function (...openArgs) {
         try {
           try {
-            var m = arguments.length > 0 ? arguments[0] : 'GET';
-            var u = arguments.length > 1 ? arguments[1] : '';
+            var m = openArgs.length > 0 ? openArgs[0] : 'GET';
+            var u = openArgs.length > 1 ? openArgs[1] : '';
             this.__bog_xhr_method = String(m || 'GET').toUpperCase();
             this.__bog_xhr_url = typeof u === 'string' ? u : String(u || '');
           } catch (_e) {
@@ -306,14 +307,14 @@
               this.__bog_xhr_url = '';
             } catch (_e2) {}
           }
-          return xhrOpenOriginal.apply(this, arguments);
+          return xhrOpenOriginal.apply(this, openArgs);
         } catch (openOuterErr) {
           console.warn('[Ceramisia][BOG] XHR open wrapper error — delegating to native open', openOuterErr);
-          return xhrOpenOriginal.apply(this, arguments);
+          return xhrOpenOriginal.apply(this, openArgs);
         }
       };
 
-      XMLHttpRequest.prototype.send = function () {
+      XMLHttpRequest.prototype.send = function (...sendArgs) {
         var xhr = this;
         try {
           var url = '';
@@ -322,7 +323,7 @@
           try {
             url = String(xhr.__bog_xhr_url || '');
             method = String(xhr.__bog_xhr_method || 'GET');
-            bodyStr = summarizeRequestBody(arguments.length > 0 ? arguments[0] : undefined);
+            bodyStr = summarizeRequestBody(sendArgs.length > 0 ? sendArgs[0] : undefined);
           } catch (_e) {
             bodyStr = '';
           }
@@ -392,10 +393,10 @@
             } catch (_listenerErr) {}
           }
 
-          return xhrSendOriginal.apply(this, arguments);
+          return xhrSendOriginal.apply(this, sendArgs);
         } catch (sendOuterErr) {
           console.warn('[Ceramisia][BOG] XHR send wrapper error — delegating to native send', sendOuterErr);
-          return xhrSendOriginal.apply(this, arguments);
+          return xhrSendOriginal.apply(this, sendArgs);
         }
       };
     } catch (xhrPatchErr) {
@@ -406,10 +407,10 @@
     if (typeof fetchOriginal !== 'function') {
       console.warn('[Ceramisia][BOG] window.fetch is not a function — fetch telemetry skipped');
     } else {
-      window.fetch = function () {
+      window.fetch = function (...fetchArgs) {
         try {
-          var input = arguments.length > 0 ? arguments[0] : undefined;
-          var init = arguments.length > 1 ? arguments[1] : undefined;
+          var input = fetchArgs.length > 0 ? fetchArgs[0] : undefined;
+          var init = fetchArgs.length > 1 ? fetchArgs[1] : undefined;
 
           var reqUrl = '';
           try {
@@ -456,7 +457,7 @@
             } catch (_logF) {}
           }
 
-          return fetchOriginal.apply(window, arguments).then(function (res) {
+          return fetchOriginal.apply(window, fetchArgs).then(function (res) {
             if (!watch) return res;
             try {
               return res
@@ -503,7 +504,7 @@
           });
         } catch (fetchOuterErr) {
           console.warn('[Ceramisia][BOG] fetch wrapper error — delegating to native fetch', fetchOuterErr);
-          return fetchOriginal.apply(window, arguments);
+          return fetchOriginal.apply(window, fetchArgs);
         }
       };
     }
@@ -748,7 +749,8 @@
     if (!window.BOG || typeof BOG.init !== 'function') return false;
     window.__bog_init_wrap_done__ = true;
     var orig = BOG.init;
-    BOG.init = function (clientId) {
+    BOG.init = function (...initArgs) {
+      var clientId = initArgs.length > 0 ? initArgs[0] : undefined;
       window.__CeramisiaBOG.state.bogInitCalls += 1;
       window.__CeramisiaBOG.state.lastBOGInitClientIdArg = clientId != null ? String(clientId) : '';
       var matches = String(clientId) === String(CID);
@@ -766,7 +768,7 @@
       if (window.__CeramisiaBOG.state.bogInitCalls > 1) {
         console.warn('[Ceramisia][BOG] BOG.init called multiple times — duplicate SDK injection?');
       }
-      return orig.apply(this, arguments);
+      return orig.apply(this, initArgs);
     };
     return true;
   }
@@ -777,7 +779,8 @@
       return false;
     window.__bog_calc_open_wrap_done__ = true;
     var orig = window.BOG.Calculator.open.bind(window.BOG.Calculator);
-    window.BOG.Calculator.open = function (opts) {
+    window.BOG.Calculator.open = function (...calcArgs) {
+      var opts = calcArgs.length > 0 ? calcArgs[0] : undefined;
       window.__CeramisiaBOG.state.calculatorOpenCalls += 1;
       var o = opts || {};
       var rawAmt = o.amount;
@@ -806,7 +809,7 @@
           { rawAmt: rawAmt, coerced: numAmt }
         );
       }
-      return orig.apply(this, arguments);
+      return orig.apply(this, calcArgs);
     };
     return true;
   }
