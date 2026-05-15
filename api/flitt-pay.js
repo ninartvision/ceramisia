@@ -61,6 +61,27 @@ function parseFlittInlineSignatureHints(message) {
   return out;
 }
 
+/** Static success.html rejects POST on Vercel; browser return must hit /api/flitt-return. */
+function normalizeFlittResponseUrl(url) {
+  if (!url) return url;
+  try {
+    const u = new URL(url);
+    const path = u.pathname.replace(/\/$/, "") || "/";
+    if (path === "/success.html" || path.endsWith("/success.html")) {
+      u.pathname = "/api/flitt-return";
+      u.search = "";
+      u.hash = "";
+      console.warn(
+        "[flitt-pay] FLITT_RESPONSE_URL must not be success.html; using /api/flitt-return"
+      );
+      return u.href;
+    }
+  } catch {
+    /* ignore */
+  }
+  return url;
+}
+
 function safeUrlParts(label, url) {
   try {
     const u = new URL(url);
@@ -158,23 +179,36 @@ export default async function handler(req, res) {
       FLITT_public_key_configured: Boolean(publicKey),
     });
 
-    const responseUrl = firstEnvTrimmed(
-      "FLITT_RESPONSE_URL",
-      "TBC_SUCCESS_URL",
-      "SUCCESS_URL"
-    );
+    const responseUrl =
+      firstEnvTrimmed("FLITT_RESPONSE_URL", "TBC_SUCCESS_URL") ||
+      (() => {
+        const origin = normalizeEnvValue(process.env.ALLOWED_ORIGIN);
+        if (origin) {
+          return `${origin.replace(/\/$/, "")}/api/flitt-return`;
+        }
+        const success = firstEnvTrimmed("SUCCESS_URL");
+        if (success) {
+          try {
+            return `${new URL(success).origin}/api/flitt-return`;
+          } catch {
+            return "";
+          }
+        }
+        return "";
+      })();
+    const responseUrlNormalized = normalizeFlittResponseUrl(responseUrl);
     const serverCallbackUrl = normalizeEnvValue(
       process.env.FLITT_SERVER_CALLBACK_URL
     );
 
-    if (!responseUrl || !serverCallbackUrl?.startsWith("https://")) {
+    if (!responseUrlNormalized || !serverCallbackUrl?.startsWith("https://")) {
       console.error(
         "[flitt-pay] set FLITT_RESPONSE_URL and FLITT_SERVER_CALLBACK_URL (callback must be HTTPS)",
         {
-          response_url_ok: Boolean(responseUrl),
+          response_url_ok: Boolean(responseUrlNormalized),
           response_url_https:
-            typeof responseUrl === "string" &&
-            responseUrl.startsWith("https://"),
+            typeof responseUrlNormalized === "string" &&
+            responseUrlNormalized.startsWith("https://"),
           server_callback_https:
             typeof serverCallbackUrl === "string" &&
             serverCallbackUrl.startsWith("https://"),
@@ -188,8 +222,8 @@ export default async function handler(req, res) {
     }
 
     // Flitt only requires HTTPS for server_callback_url; response_url can be http in docs examples.
-    if (!String(responseUrl).startsWith("http://") &&
-        !String(responseUrl).startsWith("https://")) {
+    if (!String(responseUrlNormalized).startsWith("http://") &&
+        !String(responseUrlNormalized).startsWith("https://")) {
       console.error("[flitt-pay] FLITT_RESPONSE_URL must start with http:// or https://");
       return res.status(500).json({
         error: "Invalid FLITT_RESPONSE_URL",
@@ -262,7 +296,7 @@ export default async function handler(req, res) {
       order_desc: orderDesc || "Ceramisia",
       amount: amountMinor,
       currency,
-      response_url: responseUrl,
+      response_url: responseUrlNormalized,
       server_callback_url: serverCallbackUrl,
     };
 
@@ -371,7 +405,7 @@ export default async function handler(req, res) {
       checkoutUrl,
       sandbox_mode: sandbox,
       wrapper: '{ "request": { ... } }',
-      response_url: safeUrlParts("response_url", responseUrl),
+      response_url: safeUrlParts("response_url", responseUrlNormalized),
       server_callback_url: safeUrlParts("server_callback_url", serverCallbackUrl),
       sign_value_types: signDbg.types,
     });
@@ -506,7 +540,7 @@ export default async function handler(req, res) {
           order_id: orderId,
           amount_minor: amountMinor,
           currency,
-          response_url: responseUrl,
+          response_url: responseUrlNormalized,
           server_callback_url: serverCallbackUrl,
           sorted_request_keys: Object.keys(requestCore).sort(),
           hint:
