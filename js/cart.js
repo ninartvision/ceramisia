@@ -525,6 +525,21 @@
         throw new Error('NO_REDIRECT_URL');
       }
 
+      if (paymentEndpoint === FLITT_PAYMENT_ENDPOINT) {
+        var flittOid = data && (data.order_id || data.orderId);
+        if (flittOid) {
+          var flittOidStr = String(flittOid).trim();
+          try {
+            sessionStorage.setItem('ceramisia_flitt_order_id', flittOidStr);
+            sessionStorage.setItem('ceramisia_flitt_checkout', '1');
+          } catch (_ssErr) { /* ignore */ }
+          try {
+            localStorage.setItem('ceramisia_flitt_order_id', flittOidStr);
+            localStorage.setItem('ceramisia_flitt_checkout', '1');
+          } catch (_lsErr) { /* ignore */ }
+        }
+      }
+
       window.location.href = redirectUrl;
     } catch (err) {
       console.error('[Ceramisia] submitPayment error:', err);

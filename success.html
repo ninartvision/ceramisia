@@ -119,9 +119,78 @@
   </div>
 
   <script>
-    // Clear cart immediately on arrival
-    localStorage.removeItem('ceramisia_cart_items');
-    localStorage.setItem('ceramisia_cart', '0');
+    var FLITT_ORDER_ID_RE = /^flt_[0-9a-f-]{36}$/i;
+
+    function getFlittOrderId() {
+      var params = new URLSearchParams(window.location.search);
+      var id = params.get('order_id') || params.get('orderId') || '';
+      if (FLITT_ORDER_ID_RE.test(id)) return id;
+      var fromQuery = null;
+      params.forEach(function (v) {
+        if (!fromQuery && FLITT_ORDER_ID_RE.test(v)) fromQuery = v;
+      });
+      if (fromQuery) return fromQuery;
+      try {
+        id = sessionStorage.getItem('ceramisia_flitt_order_id') || '';
+        if (FLITT_ORDER_ID_RE.test(id)) return id;
+      } catch (e) { /* ignore */ }
+      try {
+        id = localStorage.getItem('ceramisia_flitt_order_id') || '';
+        if (FLITT_ORDER_ID_RE.test(id)) return id;
+      } catch (e) { /* ignore */ }
+      return null;
+    }
+
+    function clearCart() {
+      localStorage.removeItem('ceramisia_cart_items');
+      localStorage.setItem('ceramisia_cart', '0');
+    }
+
+    function clearFlittSession() {
+      try {
+        sessionStorage.removeItem('ceramisia_flitt_order_id');
+        sessionStorage.removeItem('ceramisia_flitt_checkout');
+      } catch (e) { /* ignore */ }
+      try {
+        localStorage.removeItem('ceramisia_flitt_order_id');
+        localStorage.removeItem('ceramisia_flitt_checkout');
+      } catch (e) { /* ignore */ }
+    }
+
+    function hasFlittCheckoutFlag() {
+      try {
+        if (sessionStorage.getItem('ceramisia_flitt_checkout') === '1') return true;
+      } catch (e) { /* ignore */ }
+      try {
+        if (localStorage.getItem('ceramisia_flitt_checkout') === '1') return true;
+      } catch (e) { /* ignore */ }
+      return false;
+    }
+
+    function isFlittReturnVisit() {
+      if (getFlittOrderId()) return true;
+      return hasFlittCheckoutFlag();
+    }
+
+    function verifyFlittPayment(orderId) {
+      var url = '/api/flitt-payment-status?order_id=' + encodeURIComponent(orderId);
+      var attempts = 8;
+      var delayMs = 1500;
+
+      function poll(left) {
+        return fetch(url)
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            if (data && data.paid) return true;
+            if (left <= 1) return false;
+            return new Promise(function (resolve) {
+              setTimeout(resolve, delayMs);
+            }).then(function () { return poll(left - 1); });
+          });
+      }
+
+      return poll(attempts);
+    }
 
     // Bilingual labels
     var LABELS = {
@@ -146,11 +215,41 @@
       try { localStorage.setItem('ceramisia_lang', lang); } catch(e) {}
     }
 
-    // Apply saved language
+    // Apply saved language after payment verification (Flitt) or immediately (other flows)
     (function () {
       var lang = 'ge';
       try { lang = localStorage.getItem('ceramisia_lang') || 'ge'; } catch(e) {}
-      setLang(lang);
+      var card = document.querySelector('.card');
+
+      if (!isFlittReturnVisit()) {
+        clearCart();
+        setLang(lang);
+        return;
+      }
+
+      if (card) card.hidden = true;
+
+      var orderId = getFlittOrderId();
+      if (!orderId) {
+        clearFlittSession();
+        window.location.replace('/fail.html');
+        return;
+      }
+
+      verifyFlittPayment(orderId).then(function (paid) {
+        if (!paid) {
+          clearFlittSession();
+          window.location.replace('/fail.html');
+          return;
+        }
+        clearFlittSession();
+        clearCart();
+        setLang(lang);
+        if (card) card.hidden = false;
+      }).catch(function () {
+        clearFlittSession();
+        window.location.replace('/fail.html');
+      });
     })();
   </script>
 
