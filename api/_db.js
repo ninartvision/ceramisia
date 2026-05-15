@@ -248,7 +248,7 @@ export async function getCompletedOrder(orderId) {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("completed_orders")
-    .select("order_id, amount, status, refunded_amount")
+    .select("order_id, amount, status")
     .eq("order_id", orderId)
     .single();
 
