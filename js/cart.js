@@ -385,6 +385,50 @@
   var FLITT_PAYMENT_ENDPOINT = '/api/flitt-pay';
   var BOG_INSTALLMENT_ENDPOINT = '/api/bog-installment';
 
+  function clearFlittCheckoutMarkers() {
+    ['ceramisia_flitt_order_id', 'ceramisia_flitt_checkout', 'ceramisia_flitt_checkout_at'].forEach(function (k) {
+      try { sessionStorage.removeItem(k); } catch (_e) { /* ignore */ }
+      try { localStorage.removeItem(k); } catch (_e) { /* ignore */ }
+    });
+  }
+
+  function markBogCheckoutStart() {
+    var ts = String(Date.now());
+    clearFlittCheckoutMarkers();
+    try {
+      sessionStorage.setItem('ceramisia_bog_checkout', '1');
+      sessionStorage.setItem('ceramisia_bog_checkout_at', ts);
+    } catch (_e) { /* ignore */ }
+    try {
+      localStorage.setItem('ceramisia_bog_checkout', '1');
+      localStorage.setItem('ceramisia_bog_checkout_at', ts);
+    } catch (_e) { /* ignore */ }
+  }
+
+  function markFlittCheckoutStart(orderId) {
+    var ts = String(Date.now());
+    try {
+      sessionStorage.removeItem('ceramisia_bog_checkout');
+      sessionStorage.removeItem('ceramisia_bog_checkout_at');
+    } catch (_e) { /* ignore */ }
+    try {
+      localStorage.removeItem('ceramisia_bog_checkout');
+      localStorage.removeItem('ceramisia_bog_checkout_at');
+    } catch (_e) { /* ignore */ }
+    if (!orderId) return;
+    var oid = String(orderId).trim();
+    try {
+      sessionStorage.setItem('ceramisia_flitt_order_id', oid);
+      sessionStorage.setItem('ceramisia_flitt_checkout', '1');
+      sessionStorage.setItem('ceramisia_flitt_checkout_at', ts);
+    } catch (_e) { /* ignore */ }
+    try {
+      localStorage.setItem('ceramisia_flitt_order_id', oid);
+      localStorage.setItem('ceramisia_flitt_checkout', '1');
+      localStorage.setItem('ceramisia_flitt_checkout_at', ts);
+    } catch (_e) { /* ignore */ }
+  }
+
   // Extract the redirect URL from any shape BOG / our backend may return.
   function extractRedirectUrl(data) {
     if (!data || typeof data !== 'object') return null;
@@ -527,17 +571,9 @@
 
       if (paymentEndpoint === FLITT_PAYMENT_ENDPOINT) {
         var flittOid = data && (data.order_id || data.orderId);
-        if (flittOid) {
-          var flittOidStr = String(flittOid).trim();
-          try {
-            sessionStorage.setItem('ceramisia_flitt_order_id', flittOidStr);
-            sessionStorage.setItem('ceramisia_flitt_checkout', '1');
-          } catch (_ssErr) { /* ignore */ }
-          try {
-            localStorage.setItem('ceramisia_flitt_order_id', flittOidStr);
-            localStorage.setItem('ceramisia_flitt_checkout', '1');
-          } catch (_lsErr) { /* ignore */ }
-        }
+        if (flittOid) markFlittCheckoutStart(flittOid);
+      } else if (paymentEndpoint === PAYMENT_ENDPOINT) {
+        markBogCheckoutStart();
       }
 
       window.location.href = redirectUrl;
@@ -757,6 +793,7 @@
             }
 
             console.log('[Ceramisia] successCb(order_id)', oid);
+            markBogCheckoutStart();
             successCb(oid);
           })
           .catch(function (err) {

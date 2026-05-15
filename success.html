@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>გადახდა წარმატებულია — Ceramisia</title>
+  <title>გადახდის შემოწმება... — Ceramisia</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" href="/images/logo.webp">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,6 +32,11 @@
       max-width: 460px;
       width: 100%;
       text-align: center;
+      display: none;
+    }
+
+    .card.is-visible {
+      display: block;
     }
 
     .icon {
@@ -100,7 +105,7 @@
 </head>
 <body>
 
-  <div class="card">
+  <div class="card" id="payment-card" hidden>
     <div class="icon">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -120,8 +125,30 @@
 
   <script>
     var FLITT_ORDER_ID_RE = /^flt_[0-9a-f-]{36}$/i;
+    var CHECKOUT_MAX_AGE_MS = 45 * 60 * 1000;
 
-    function getFlittOrderId() {
+    function readStorageItem(key) {
+      var v = '';
+      try {
+        v = sessionStorage.getItem(key) || '';
+      } catch (e) { /* ignore */ }
+      if (v) return v;
+      try {
+        v = localStorage.getItem(key) || '';
+      } catch (e) { /* ignore */ }
+      return v;
+    }
+
+    function removeStorageItem(key) {
+      try {
+        sessionStorage.removeItem(key);
+      } catch (e) { /* ignore */ }
+      try {
+        localStorage.removeItem(key);
+      } catch (e) { /* ignore */ }
+    }
+
+    function getFlittOrderIdFromQuery() {
       var params = new URLSearchParams(window.location.search);
       var id = params.get('order_id') || params.get('orderId') || '';
       if (FLITT_ORDER_ID_RE.test(id)) return id;
@@ -129,53 +156,71 @@
       params.forEach(function (v) {
         if (!fromQuery && FLITT_ORDER_ID_RE.test(v)) fromQuery = v;
       });
-      if (fromQuery) return fromQuery;
-      try {
-        id = sessionStorage.getItem('ceramisia_flitt_order_id') || '';
-        if (FLITT_ORDER_ID_RE.test(id)) return id;
-      } catch (e) { /* ignore */ }
-      try {
-        id = localStorage.getItem('ceramisia_flitt_order_id') || '';
-        if (FLITT_ORDER_ID_RE.test(id)) return id;
-      } catch (e) { /* ignore */ }
-      return null;
+      return fromQuery;
     }
 
-    function clearCart() {
-      localStorage.removeItem('ceramisia_cart_items');
-      localStorage.setItem('ceramisia_cart', '0');
+    function getFlittOrderIdFromStorage() {
+      var id = readStorageItem('ceramisia_flitt_order_id');
+      return FLITT_ORDER_ID_RE.test(id) ? id : null;
+    }
+
+    function getFlittOrderId() {
+      return getFlittOrderIdFromQuery() || getFlittOrderIdFromStorage();
+    }
+
+    function getCheckoutAgeMs(atKey) {
+      var raw = readStorageItem(atKey);
+      var ts = Number(raw);
+      if (!Number.isFinite(ts) || ts <= 0) return Infinity;
+      return Date.now() - ts;
+    }
+
+    function isCheckoutFresh(flagKey, atKey) {
+      if (readStorageItem(flagKey) !== '1') return false;
+      return getCheckoutAgeMs(atKey) <= CHECKOUT_MAX_AGE_MS;
     }
 
     function clearFlittSession() {
-      try {
-        sessionStorage.removeItem('ceramisia_flitt_order_id');
-        sessionStorage.removeItem('ceramisia_flitt_checkout');
-      } catch (e) { /* ignore */ }
-      try {
-        localStorage.removeItem('ceramisia_flitt_order_id');
-        localStorage.removeItem('ceramisia_flitt_checkout');
-      } catch (e) { /* ignore */ }
+      removeStorageItem('ceramisia_flitt_order_id');
+      removeStorageItem('ceramisia_flitt_checkout');
+      removeStorageItem('ceramisia_flitt_checkout_at');
     }
 
-    function hasFlittCheckoutFlag() {
-      try {
-        if (sessionStorage.getItem('ceramisia_flitt_checkout') === '1') return true;
-      } catch (e) { /* ignore */ }
-      try {
-        if (localStorage.getItem('ceramisia_flitt_checkout') === '1') return true;
-      } catch (e) { /* ignore */ }
-      return false;
+    function clearBogSession() {
+      removeStorageItem('ceramisia_bog_checkout');
+      removeStorageItem('ceramisia_bog_checkout_at');
+    }
+
+    function purgeStaleFlittSession() {
+      if (readStorageItem('ceramisia_flitt_checkout') === '1' &&
+          !isCheckoutFresh('ceramisia_flitt_checkout', 'ceramisia_flitt_checkout_at')) {
+        clearFlittSession();
+      }
+    }
+
+    function purgeStaleBogSession() {
+      if (readStorageItem('ceramisia_bog_checkout') === '1' &&
+          !isCheckoutFresh('ceramisia_bog_checkout', 'ceramisia_bog_checkout_at')) {
+        clearBogSession();
+      }
     }
 
     function isFlittReturnVisit() {
-      if (getFlittOrderId()) return true;
-      return hasFlittCheckoutFlag();
+      if (getFlittOrderIdFromQuery()) return true;
+      return (
+        isCheckoutFresh('ceramisia_flitt_checkout', 'ceramisia_flitt_checkout_at') &&
+        !!getFlittOrderIdFromStorage()
+      );
+    }
+
+    function isBogReturnVisit() {
+      return isCheckoutFresh('ceramisia_bog_checkout', 'ceramisia_bog_checkout_at');
     }
 
     function verifyFlittPayment(orderId) {
       var url = '/api/flitt-payment-status?order_id=' + encodeURIComponent(orderId);
-      var attempts = 8;
-      var delayMs = 1500;
+      var attempts = 12;
+      var delayMs = 2000;
 
       function poll(left) {
         return fetch(url)
@@ -192,7 +237,6 @@
       return poll(attempts);
     }
 
-    // Bilingual labels
     var LABELS = {
       ge: {
         title: 'გადახდა წარმატებულია',
@@ -206,50 +250,96 @@
       }
     };
 
-    function setLang(lang) {
+    var TITLE_LABELS = {
+      ge: { verifying: 'გადახდის შემოწმება...', success: 'გადახდა წარმატებულია' },
+      en: { verifying: 'Verifying payment...', success: 'Payment Successful' },
+    };
+
+    function setPageTitle(lang, mode) {
+      var t = TITLE_LABELS[lang] || TITLE_LABELS.ge;
+      document.title = (mode === 'success' ? t.success : t.verifying) + ' — Ceramisia';
+    }
+
+    function showCard(card) {
+      if (!card) return;
+      card.hidden = false;
+      card.classList.add('is-visible');
+    }
+
+    function setLang(lang, titleMode) {
       var l = LABELS[lang] || LABELS.ge;
       document.getElementById('title').textContent = l.title;
       document.getElementById('desc').innerHTML   = l.desc;
       document.getElementById('btn').textContent  = l.btn;
       document.documentElement.lang = lang === 'ge' ? 'ka' : 'en';
-      try { localStorage.setItem('ceramisia_lang', lang); } catch(e) {}
+      setPageTitle(lang, titleMode || 'success');
+      try { localStorage.setItem('ceramisia_lang', lang); } catch (e) {}
     }
 
-    // Apply saved language after payment verification (Flitt) or immediately (other flows)
+    function clearCart() {
+      localStorage.removeItem('ceramisia_cart_items');
+      localStorage.setItem('ceramisia_cart', '0');
+    }
+
     (function () {
       var lang = 'ge';
-      try { lang = localStorage.getItem('ceramisia_lang') || 'ge'; } catch(e) {}
-      var card = document.querySelector('.card');
+      try { lang = localStorage.getItem('ceramisia_lang') || 'ge'; } catch (e) {}
+      var card = document.getElementById('payment-card');
 
-      if (!isFlittReturnVisit()) {
-        clearCart();
-        setLang(lang);
-        return;
-      }
+      purgeStaleFlittSession();
+      purgeStaleBogSession();
 
-      if (card) card.hidden = true;
+      if (isFlittReturnVisit()) {
+        setPageTitle(lang, 'verifying');
 
-      var orderId = getFlittOrderId();
-      if (!orderId) {
-        clearFlittSession();
-        window.location.replace('/fail.html');
-        return;
-      }
-
-      verifyFlittPayment(orderId).then(function (paid) {
-        if (!paid) {
+        var orderId = getFlittOrderId();
+        if (!orderId) {
           clearFlittSession();
           window.location.replace('/fail.html');
           return;
         }
-        clearFlittSession();
+
+        var queryId = getFlittOrderIdFromQuery();
+        var storageId = getFlittOrderIdFromStorage();
+        if (
+          queryId &&
+          storageId &&
+          queryId !== storageId &&
+          isCheckoutFresh('ceramisia_flitt_checkout', 'ceramisia_flitt_checkout_at')
+        ) {
+          clearFlittSession();
+          window.location.replace('/fail.html');
+          return;
+        }
+
+        verifyFlittPayment(orderId).then(function (paid) {
+          if (!paid) {
+            clearFlittSession();
+            window.location.replace('/fail.html');
+            return;
+          }
+          clearFlittSession();
+          clearCart();
+          setLang(lang, 'success');
+          showCard(card);
+        }).catch(function () {
+          clearFlittSession();
+          window.location.replace('/fail.html');
+        });
+        return;
+      }
+
+      if (isBogReturnVisit()) {
+        clearBogSession();
         clearCart();
-        setLang(lang);
-        if (card) card.hidden = false;
-      }).catch(function () {
-        clearFlittSession();
-        window.location.replace('/fail.html');
-      });
+        setLang(lang, 'success');
+        showCard(card);
+        return;
+      }
+
+      clearFlittSession();
+      clearBogSession();
+      window.location.replace('/fail.html');
     })();
   </script>
 

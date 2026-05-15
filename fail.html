@@ -167,7 +167,21 @@
       try { localStorage.setItem('ceramisia_lang', lang); } catch(e) {}
     }
 
+    function clearPaymentSessionKeys() {
+      [
+        'ceramisia_flitt_order_id',
+        'ceramisia_flitt_checkout',
+        'ceramisia_flitt_checkout_at',
+        'ceramisia_bog_checkout',
+        'ceramisia_bog_checkout_at'
+      ].forEach(function (k) {
+        try { sessionStorage.removeItem(k); } catch (e) { /* ignore */ }
+        try { localStorage.removeItem(k); } catch (e) { /* ignore */ }
+      });
+    }
+
     (function () {
+      clearPaymentSessionKeys();
       var lang = 'ge';
       try { lang = localStorage.getItem('ceramisia_lang') || 'ge'; } catch(e) {}
       setLang(lang);

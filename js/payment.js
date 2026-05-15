@@ -11,6 +11,26 @@
 const PAYMENT_ENDPOINT = '/api/pay';
 const BOG_INSTALLMENT_ENDPOINT = '/api/bog-installment';
 
+function clearFlittCheckoutMarkers() {
+  ['ceramisia_flitt_order_id', 'ceramisia_flitt_checkout', 'ceramisia_flitt_checkout_at'].forEach((k) => {
+    try { sessionStorage.removeItem(k); } catch (_e) { /* ignore */ }
+    try { localStorage.removeItem(k); } catch (_e) { /* ignore */ }
+  });
+}
+
+function markBogCheckoutStart() {
+  const ts = String(Date.now());
+  clearFlittCheckoutMarkers();
+  try {
+    sessionStorage.setItem('ceramisia_bog_checkout', '1');
+    sessionStorage.setItem('ceramisia_bog_checkout_at', ts);
+  } catch (_e) { /* ignore */ }
+  try {
+    localStorage.setItem('ceramisia_bog_checkout', '1');
+    localStorage.setItem('ceramisia_bog_checkout_at', ts);
+  } catch (_e) { /* ignore */ }
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function _setBtnState(btn, loading, text) {
@@ -119,6 +139,7 @@ export async function buyProduct(btn) {
     };
     const redirectUrl = await callPayApi(payload);
     console.log('[Ceramisia] Redirecting to bank page →', redirectUrl);
+    markBogCheckoutStart();
     window.location.href = redirectUrl;
   } catch (err) {
     console.error('[Ceramisia] buyProduct error:', err);
@@ -288,6 +309,7 @@ export function openInstallment(btn) {
           }
 
           console.log('[Ceramisia] successCb(order_id)', oid);
+          markBogCheckoutStart();
           successCb(oid);
         } catch (err) {
           console.error('[Ceramisia] bog-installment fetch error', err);
