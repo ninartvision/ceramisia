@@ -223,7 +223,7 @@
       var delayMs = 2000;
 
       function poll(left) {
-        return fetch(url)
+        return fetch(url, { cache: 'no-store' })
           .then(function (res) { return res.json(); })
           .then(function (data) {
             if (data && data.paid) return true;
