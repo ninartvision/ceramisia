@@ -202,37 +202,6 @@ export default async function handler(req, res) {
       });
     }
 
-    try {
-      await trySanityCreateOrder(
-        client,
-        {
-          _type: "order",
-          customerName:
-            String(body.customerName || body.name || "Unknown").trim() ||
-            "Unknown",
-          email: body.email ? String(body.email) : "",
-          phone: body.phone ? String(body.phone) : "",
-          message: body.message ? String(body.message) : "BOG installment order",
-          selectedProducts: rawItems.map((i) => ({
-            _key: crypto.randomUUID().replace(/-/g, ""),
-            quantity: Math.max(1, Number(i.quantity) || 1),
-            variant:
-              i.name ||
-              i.title ||
-              i.product_name ||
-              `Product ${i.product_id}`,
-          })),
-          status: "new",
-          createdAt: new Date().toISOString(),
-        },
-        "bog-installment"
-      );
-    } catch (sanityErr) {
-      console.error("[bog-installment] trySanityCreateOrder failed (non-fatal)", {
-        message: sanityErr?.message,
-      });
-    }
-
     const shopOrderId = `shp_${crypto.randomUUID()}`;
 
     const payload = {
@@ -352,6 +321,32 @@ export default async function handler(req, res) {
         payment_type: "installment",
         shop_order_id: shopOrderId,
       });
+
+      await trySanityCreateOrder(
+        client,
+        {
+          _type: "order",
+          orderId,
+          customerName:
+            String(body.customerName || body.name || "Unknown").trim() ||
+            "Unknown",
+          email: body.email ? String(body.email) : "",
+          phone: body.phone ? String(body.phone) : "",
+          message: body.message ? String(body.message) : "BOG installment order",
+          selectedProducts: rawItems.map((i) => ({
+            _key: crypto.randomUUID().replace(/-/g, ""),
+            quantity: Math.max(1, Number(i.quantity) || 1),
+            variant:
+              i.name ||
+              i.title ||
+              i.product_name ||
+              `Product ${i.product_id}`,
+          })),
+          status: "new",
+          createdAt: new Date().toISOString(),
+        },
+        "bog-installment"
+      );
     } catch (dbErr) {
       console.error("[bog-installment] savePendingOrder failed", {
         order_id: orderId,

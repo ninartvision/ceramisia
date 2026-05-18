@@ -8,6 +8,12 @@ export default {
   type: 'document',
   fields: [
     {
+      name: 'orderId',
+      title: 'Order ID',
+      type: 'string',
+      description: 'Payment order_id (Flitt flt_… or BOG bank id)',
+    },
+    {
       name: 'customerName',
       title: 'Customer Name',
       type: 'string',
@@ -67,8 +73,24 @@ export default {
       ],
     },
     {
+      name: 'amount',
+      title: 'Amount (GEL)',
+      type: 'number',
+    },
+    {
+      name: 'paymentProvider',
+      title: 'Payment Provider',
+      type: 'string',
+    },
+    {
+      name: 'paymentStatus',
+      title: 'Payment Status',
+      type: 'string',
+      description: 'e.g. approved, completed',
+    },
+    {
       name: 'status',
-      title: 'Status',
+      title: 'Workflow Status',
       type: 'string',
       options: {
         list: [
@@ -93,12 +115,21 @@ export default {
     { title: 'Newest First', name: 'createdDesc', by: [{ field: 'createdAt', direction: 'desc' }] },
   ],
   preview: {
-    select: { title: 'customerName', subtitle: 'status', date: 'createdAt' },
-    prepare({ title, subtitle, date }) {
+    select: {
+      title: 'customerName',
+      orderId: 'orderId',
+      provider: 'paymentProvider',
+      subtitle: 'status',
+      amount: 'amount',
+      date: 'createdAt',
+    },
+    prepare({ title, orderId, provider, subtitle, amount, date }) {
       const d = date ? new Date(date).toLocaleDateString() : ''
+      const amt = amount != null ? `${amount} GEL` : ''
+      const oid = orderId ? ` · ${orderId}` : ''
       return {
-        title: title || 'Unknown',
-        subtitle: `${subtitle || 'new'} — ${d}`,
+        title: title || orderId || 'Unknown',
+        subtitle: [provider, amt, subtitle || 'new', d].filter(Boolean).join(' · '),
       }
     },
   },

@@ -4,6 +4,8 @@ import {
   updatePendingOrderStatus,
 } from "./_db.js";
 import { verifyFlittPayload } from "./_flittSignature.js";
+import { client } from "../lib/sanity.js";
+import { fireSanityOrderOnPaymentSuccess } from "../lib/sanityOrderSync.js";
 
 /** Match flitt-pay.js env handling — avoids verify failures from BOM/quotes. */
 function normalizeEnvValue(v) {
@@ -37,6 +39,30 @@ function parseCallbackAmountMinor(raw) {
   if (v === null || v === undefined || v === "") return NaN;
   const n = Number(String(v).replace(/,/g, ""));
   return Number.isFinite(n) ? Math.round(n) : NaN;
+}
+
+function syncFlittSuccessToSanity(orderId, pending, payload) {
+  const email =
+    payload.sender_email != null ? String(payload.sender_email).trim() : "";
+  const phone =
+    payload.sender_cell_phone != null &&
+    String(payload.sender_cell_phone).trim() !== ""
+      ? String(payload.sender_cell_phone).trim()
+      : "";
+  fireSanityOrderOnPaymentSuccess(
+    client,
+    {
+      orderId,
+      amount: pending.amount,
+      customerName: email || undefined,
+      email: email || undefined,
+      phone: phone || undefined,
+      provider: "flitt",
+      paymentType: pending.payment_type || "card",
+      paymentStatus: "approved",
+    },
+    "flitt-callback"
+  );
 }
 
 export default async function handler(req, res) {
@@ -180,11 +206,13 @@ export default async function handler(req, res) {
         console.log("[flitt-callback] completed_orders insert ok", {
           order_id: orderId,
         });
+        syncFlittSuccessToSanity(orderId, pending, payload);
       } catch (dbErr) {
         if (dbErr.code === "23505" || dbErr.code === "DUPLICATE") {
           console.log("[flitt-callback] duplicate completed order ignored", {
             order_id: orderId,
           });
+          syncFlittSuccessToSanity(orderId, pending, payload);
         } else {
           console.error("[flitt-callback] DB error", {
             order_id: orderId,

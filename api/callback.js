@@ -7,6 +7,8 @@ import {
   updatePendingOrderStatus,
 } from "./_db.js";
 import { fetchInstallmentCheckoutDetails } from "./_bogInstallmentApi.js";
+import { client } from "../lib/sanity.js";
+import { fireSanityOrderOnPaymentSuccess } from "../lib/sanityOrderSync.js";
 
 // Regex for BOG order IDs — used to sanitize before DB queries and API calls
 const BOG_ORDER_ID_RE = /^[a-zA-Z0-9_-]{1,64}$/;
@@ -229,11 +231,33 @@ async function processBogInstallmentCallback({ status, order_id, shop_order_id }
       console.error("[bog-installment] pending success update:", err?.message)
     );
     console.log("[bog-installment] completed_orders insert ok", { order_id });
+    fireSanityOrderOnPaymentSuccess(
+      client,
+      {
+        orderId: order_id,
+        amount: expectedAmount,
+        provider: "bog",
+        paymentType: "installment",
+        paymentStatus: details.status || "success",
+      },
+      "bog-installment-callback"
+    );
   } catch (dbErr) {
     if (dbErr.code === "23505" || dbErr.code === "DUPLICATE") {
       console.log("[bog-installment] duplicate completed order ignored", {
         order_id,
       });
+      fireSanityOrderOnPaymentSuccess(
+        client,
+        {
+          orderId: order_id,
+          amount: expectedAmount,
+          provider: "bog",
+          paymentType: "installment",
+          paymentStatus: details.status || "success",
+        },
+        "bog-installment-callback"
+      );
     } else {
       console.error("[bog-installment] DB error", dbErr?.message);
       throw dbErr;
@@ -453,10 +477,36 @@ export default async function handler(req, res) {
           console.error("BOG callback: failed to update pending status:", err)
         );
         console.log("BOG callback: payment saved for order:", order_id);
+        fireSanityOrderOnPaymentSuccess(
+          client,
+          {
+            orderId: order_id,
+            amount: expectedAmount,
+            customerName,
+            phone,
+            provider: "bog",
+            paymentType: "card",
+            paymentStatus: statusKey,
+          },
+          "callback"
+        );
       } catch (dbErr) {
         // Duplicate insert → this order was already processed; safe to ignore.
         if (dbErr.code === "23505" || dbErr.code === "DUPLICATE") {
           console.log("BOG callback: duplicate order ignored:", order_id);
+          fireSanityOrderOnPaymentSuccess(
+            client,
+            {
+              orderId: order_id,
+              amount: expectedAmount,
+              customerName,
+              phone,
+              provider: "bog",
+              paymentType: "card",
+              paymentStatus: statusKey,
+            },
+            "callback"
+          );
         } else {
           throw dbErr; // Unexpected DB error — bubble up to outer catch.
         }

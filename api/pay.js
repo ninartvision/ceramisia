@@ -96,31 +96,6 @@ export default async function handler(req, res) {
       },
     };
 
-    await trySanityCreateOrder(
-      client,
-      {
-        _type: "order",
-        customerName:
-          String(body.customerName || body.name || "Unknown").trim() ||
-          "Unknown",
-        email: body.email ? String(body.email) : "",
-        phone: body.phone ? String(body.phone) : "",
-        message: body.message ? String(body.message) : "BOG order",
-        selectedProducts: rawItems.map((i) => ({
-          _key: crypto.randomUUID().replace(/-/g, ""),
-          quantity: Math.max(1, Number(i.quantity) || 1),
-          variant:
-            i.name ||
-            i.title ||
-            i.product_name ||
-            `Product ${i.product_id}`,
-        })),
-        status: "new",
-        createdAt: new Date().toISOString(),
-      },
-      "pay"
-    );
-
     console.log("[pay] creating BOG ecommerce order", {
       external_order_id: requestBody.external_order_id,
       total_amount: requestBody.purchase_units.total_amount,
@@ -205,6 +180,32 @@ export default async function handler(req, res) {
         amount: amountRounded,
         external_order_id: requestBody.external_order_id,
       });
+
+      await trySanityCreateOrder(
+        client,
+        {
+          _type: "order",
+          orderId: bogOrderId,
+          customerName:
+            String(body.customerName || body.name || "Unknown").trim() ||
+            "Unknown",
+          email: body.email ? String(body.email) : "",
+          phone: body.phone ? String(body.phone) : "",
+          message: body.message ? String(body.message) : "BOG order",
+          selectedProducts: rawItems.map((i) => ({
+            _key: crypto.randomUUID().replace(/-/g, ""),
+            quantity: Math.max(1, Number(i.quantity) || 1),
+            variant:
+              i.name ||
+              i.title ||
+              i.product_name ||
+              `Product ${i.product_id}`,
+          })),
+          status: "new",
+          createdAt: new Date().toISOString(),
+        },
+        "pay"
+      );
     } catch (dbErr) {
       console.error("[pay] savePendingOrder failed — aborting (no redirect)", {
         order_id: bogOrderId,
