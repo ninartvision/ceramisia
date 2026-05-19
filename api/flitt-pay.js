@@ -9,10 +9,26 @@ import {
   signFlittPayload,
 } from "./_flittSignature.js";
 
-const DEFAULT_CHECKOUT_URL = "https://pay.flitt.com/api/checkout/url";
-/** Test / sandbox host per Flitt integration docs (override with FLITT_CHECKOUT_URL). */
-const DEFAULT_SANDBOX_CHECKOUT_URL =
-  "https://sandbox.pay.flitt.dev/api/checkout/url";
+/** Resolve Flitt checkout API URL (`/url` hosted page or `/token` for wallet SDK). */
+function resolveFlittCheckoutApiUrl(sandbox, checkoutUrlOverride, mode) {
+  const apiPath =
+    String(mode).toLowerCase() === "token"
+      ? "/api/checkout/token"
+      : "/api/checkout/url";
+  if (checkoutUrlOverride) {
+    try {
+      const u = new URL(checkoutUrlOverride);
+      u.pathname = apiPath;
+      return u.href;
+    } catch {
+      return checkoutUrlOverride;
+    }
+  }
+  const host = sandbox
+    ? "https://sandbox.pay.flitt.dev"
+    : "https://pay.flitt.com";
+  return `${host}${apiPath}`;
+}
 
 function normalizeEnvValue(val) {
   if (val == null) return "";
@@ -337,11 +353,17 @@ export default async function handler(req, res) {
       normalizeEnvValue(process.env.FLITT_SANDBOX) === "1" ||
       normalizeEnvValue(process.env.FLITT_ENV).toLowerCase() === "sandbox";
     const checkoutUrlOverride = normalizeEnvValue(process.env.FLITT_CHECKOUT_URL);
-    const checkoutUrl = checkoutUrlOverride
-      ? checkoutUrlOverride
-      : sandbox
-        ? DEFAULT_SANDBOX_CHECKOUT_URL
-        : DEFAULT_CHECKOUT_URL;
+    const checkoutModeRaw =
+      normalizeEnvValue(body.checkout_mode) ||
+      normalizeEnvValue(process.env.FLITT_CHECKOUT_MODE) ||
+      "url";
+    const checkoutMode =
+      String(checkoutModeRaw).toLowerCase() === "token" ? "token" : "url";
+    const checkoutUrl = resolveFlittCheckoutApiUrl(
+      sandbox,
+      checkoutUrlOverride,
+      checkoutMode
+    );
 
     const signature = signFlittPayload(secret, requestCore);
     const requestPayload = { ...requestCore, signature };
@@ -372,6 +394,7 @@ export default async function handler(req, res) {
       VERCEL_ENV: process.env.VERCEL_ENV ?? null,
       NODE_ENV: process.env.NODE_ENV ?? null,
       flitt_env_mode: sandbox ? "sandbox" : "production",
+      checkout_mode: checkoutMode,
       checkout_endpoint: checkoutUrl,
       checkout_host: checkoutHost,
       flitt_sandbox_env: normalizeEnvValue(process.env.FLITT_SANDBOX) || null,
@@ -606,8 +629,19 @@ export default async function handler(req, res) {
 
     const checkoutHref =
       typeof resp.checkout_url === "string" ? resp.checkout_url.trim() : "";
+    const paymentToken =
+      typeof resp.token === "string" ? resp.token.trim() : "";
 
-    if (!checkoutHref) {
+    if (checkoutMode === "token") {
+      if (!paymentToken) {
+        console.error("[flitt-pay] missing token", resp);
+        return res.status(502).json({
+          failure_stage: "flitt_missing_checkout_token",
+          error: "No checkout token",
+          details: resp,
+        });
+      }
+    } else if (!checkoutHref) {
       console.error("[flitt-pay] missing checkout_url", resp);
       return res.status(502).json({
         failure_stage: "flitt_missing_checkout_url",
@@ -645,6 +679,18 @@ export default async function handler(req, res) {
               hint: dbErr?.hint,
               dbOperation: dbErr?.dbOperation,
             },
+      });
+    }
+
+    if (checkoutMode === "token") {
+      console.log("[flitt-pay] returning checkout token to client", {
+        order_id: orderId,
+      });
+      return res.status(200).json({
+        token: paymentToken,
+        order_id: orderId,
+        merchant_id: merchantId,
+        sandbox_mode: sandbox,
       });
     }
 

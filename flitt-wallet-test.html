@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flitt/TBC wallet test — Ceramisia</title>
+  <meta name="robots" content="noindex, nofollow">
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 520px; margin: 2rem auto; padding: 0 1rem; }
+    label { display: block; margin: 1rem 0 0.25rem; font-size: 0.9rem; }
+    input { width: 100%; padding: 0.5rem; box-sizing: border-box; }
+    button { margin-top: 1rem; padding: 0.65rem 1rem; cursor: pointer; }
+    .wallet-slot { min-height: 48px; margin: 1rem 0; }
+    .note { font-size: 0.85rem; color: #555; margin-top: 1.5rem; line-height: 1.5; }
+    .err { color: #b00020; font-size: 0.9rem; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Flitt/TBC sandbox test</h1>
+  <p>Internal page only — shop checkout unchanged. Requires <code>FLITT_SANDBOX=1</code> and merchant <code>4056481</code> on server.</p>
+
+  <label for="amount">Amount (GEL)</label>
+  <input id="amount" type="number" min="0.01" step="0.01" value="1.00">
+
+  <button type="button" id="btnCardHosted">Test card (Flitt hosted page)</button>
+  <div id="errCard" class="err" hidden></div>
+
+  <h2>Wallets (embedded SDK)</h2>
+  <p class="note">Apple Pay needs <code>FLITT_APPLE_PAY_DOMAIN_ASSOCIATION</code> at <code>/.well-known/apple-developer-merchantid-domain-association</code> plus Flitt domain activation.</p>
+  <div id="googlePay" class="wallet-slot"></div>
+  <div id="applePay" class="wallet-slot"></div>
+  <div id="errWallet" class="err" hidden></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@flittpayments/js-sdk"></script>
+  <script>
+    (function () {
+      var amountEl = document.getElementById('amount');
+      var errCard = document.getElementById('errCard');
+      var errWallet = document.getElementById('errWallet');
+
+      function showErr(el, msg) {
+        el.textContent = msg || '';
+        el.hidden = !msg;
+      }
+
+      function markFlittSession(orderId) {
+        if (!orderId) return;
+        var ts = String(Date.now());
+        try {
+          sessionStorage.setItem('ceramisia_flitt_order_id', orderId);
+          sessionStorage.setItem('ceramisia_flitt_checkout', '1');
+          sessionStorage.setItem('ceramisia_flitt_checkout_at', ts);
+          localStorage.setItem('ceramisia_flitt_order_id', orderId);
+          localStorage.setItem('ceramisia_flitt_checkout', '1');
+          localStorage.setItem('ceramisia_flitt_checkout_at', ts);
+        } catch (e) { /* ignore */ }
+      }
+
+      function onPaySuccess(orderId) {
+        markFlittSession(orderId);
+        window.location.href = '/success.html?order_id=' + encodeURIComponent(orderId);
+      }
+
+      document.getElementById('btnCardHosted').addEventListener('click', function () {
+        showErr(errCard, '');
+        var amount = parseFloat(Number(amountEl.value).toFixed(2));
+        if (!amount || amount <= 0) {
+          showErr(errCard, 'Invalid amount');
+          return;
+        }
+        fetch('/api/flitt-pay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: amount,
+            items: [{ product_id: 'wallet_test', quantity: 1, unit_price: amount, name: 'Wallet test' }]
+          })
+        })
+          .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+          .then(function (res) {
+            if (!res.ok || !res.data.payment_url) {
+              throw new Error((res.data && res.data.error) || 'Checkout failed');
+            }
+            markFlittSession(res.data.order_id);
+            window.location.href = res.data.payment_url;
+          })
+          .catch(function (e) {
+            showErr(errCard, e.message || String(e));
+          });
+      });
+
+      function initWallet(containerId, methods) {
+        var el = document.getElementById(containerId);
+        var amount = parseFloat(Number(amountEl.value).toFixed(2));
+        if (!amount || amount <= 0) {
+          showErr(errWallet, 'Invalid amount');
+          return;
+        }
+        showErr(errWallet, '');
+        fetch('/api/flitt-pay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: amount,
+            checkout_mode: 'token',
+            items: [{ product_id: 'wallet_test', quantity: 1, unit_price: amount, name: 'Wallet test' }]
+          })
+        })
+          .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+          .then(function (res) {
+            if (!res.ok || !res.data.token) {
+              throw new Error((res.data && res.data.error) || 'Token failed');
+            }
+            var orderId = res.data.order_id;
+            var merchantId = res.data.merchant_id;
+            if (typeof $checkout !== 'function') {
+              throw new Error('Flitt JS SDK not loaded');
+            }
+            el.innerHTML = '';
+            $checkout
+              .get('PaymentButton', {
+                element: el,
+                style: { type: 'long', color: 'black', height: 48 },
+                data: {
+                  merchant_id: merchantId,
+                  token: res.data.token,
+                  methods: methods
+                }
+              })
+              .on('success', function () {
+                onPaySuccess(orderId);
+              })
+              .on('error', function (model) {
+                var msg = model && model.attr && model.attr('error.message');
+                showErr(errWallet, msg || 'Wallet payment failed');
+              });
+          })
+          .catch(function (e) {
+            showErr(errWallet, e.message || String(e));
+          });
+      }
+
+      initWallet('googlePay', ['google']);
+      initWallet('applePay', ['apple']);
+    })();
+  </script>
+</body>
+</html>
