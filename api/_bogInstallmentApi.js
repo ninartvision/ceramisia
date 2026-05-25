@@ -194,6 +194,11 @@ export async function getInstallmentAccessToken() {
     throw err;
   }
 
+  // Cache the freshly minted token. Without this assignment the module-level
+  // `_installToken` stays null forever, and every installment request is sent
+  // to BOG with `Authorization: Bearer null` → 401 → checkout never opens.
+  _installToken = tokenData.access_token;
+
   const sec = Number(tokenData.expires_in);
   if (Number.isFinite(sec) && sec > 0 && sec <= 604800) {
     _installTokenExpiresAt = now + sec * 1000;

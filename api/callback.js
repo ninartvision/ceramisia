@@ -323,9 +323,18 @@ export default async function handler(req, res) {
       return res.status(200).send("OK");
     }
 
-    // 2. E-commerce card: RSA-SHA256 signature on raw JSON body
+    // 2. E-commerce card: RSA-SHA256 signature on raw JSON body.
+    //
+    // BOG's official documented header is `Callback-Signature` (per
+    // https://api.bog.ge/docs/en/payments/standard-process/callback).
+    // Older / third-party SDK conventions also surface the same value under
+    // `X-Bog-Signature` or `X-Signature`. Accept all three so the signature
+    // check succeeds regardless of which header naming BOG sends in a given
+    // environment — Node lowercases header names, hence the lowercase keys.
     const signatureHeader =
-      req.headers["x-bog-signature"] || req.headers["x-signature"];
+      req.headers["callback-signature"] ||
+      req.headers["x-bog-signature"] ||
+      req.headers["x-signature"];
 
     if (!isValidSignature(rawBody, signatureHeader)) {
       console.error("BOG callback: invalid signature — request rejected");
