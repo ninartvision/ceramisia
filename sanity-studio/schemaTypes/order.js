@@ -60,13 +60,42 @@ export default {
               name: 'variant',
               title: 'Variant Note',
               type: 'string',
-              description: 'e.g. "Large, Blue"',
+              description: 'e.g. "Large, Blue", or the product name at the time of purchase',
+            },
+            {
+              name: 'unitPrice',
+              title: 'Unit Price (₾) at purchase',
+              type: 'number',
+              description:
+                'Price per unit at the moment the customer checked out — preserved even if the product price changes later.',
+              readOnly: true,
+            },
+            {
+              name: 'lineTotal',
+              title: 'Line Total (₾)',
+              type: 'number',
+              description: 'unitPrice × quantity at the moment of purchase.',
+              readOnly: true,
             },
           ],
           preview: {
-            select: { title: 'product.name', qty: 'quantity' },
-            prepare({ title, qty }) {
-              return { title: `${title || 'Product'} × ${qty || 1}` }
+            select: {
+              title: 'product.name',
+              fallbackTitle: 'variant',
+              qty: 'quantity',
+              unit: 'unitPrice',
+              line: 'lineTotal',
+            },
+            prepare({ title, fallbackTitle, qty, unit, line }) {
+              const name = title || fallbackTitle || 'Product'
+              const q = qty || 1
+              const lineTxt =
+                line != null
+                  ? ` — ₾${line}`
+                  : unit != null
+                    ? ` — ₾${unit} × ${q}`
+                    : ''
+              return { title: `${name} × ${q}${lineTxt}` }
             },
           },
         },

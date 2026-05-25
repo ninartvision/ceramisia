@@ -1,7 +1,10 @@
 import crypto from "crypto";
 import fetch from "node-fetch";
 import { client } from "../lib/sanity.js";
-import { trySanityCreateOrder } from "../lib/sanityOrderSync.js";
+import {
+  buildOrderSelectedProducts,
+  trySanityCreateOrder,
+} from "../lib/sanityOrderSync.js";
 import { savePendingOrder } from "./_db.js";
 import {
   getInstallmentAccessToken,
@@ -322,6 +325,10 @@ export default async function handler(req, res) {
         shop_order_id: shopOrderId,
       });
 
+      const sanitySelectedProducts = await buildOrderSelectedProducts(
+        client,
+        rawItems
+      );
       await trySanityCreateOrder(
         client,
         {
@@ -333,15 +340,9 @@ export default async function handler(req, res) {
           email: body.email ? String(body.email) : "",
           phone: body.phone ? String(body.phone) : "",
           message: body.message ? String(body.message) : "BOG installment order",
-          selectedProducts: rawItems.map((i) => ({
-            _key: crypto.randomUUID().replace(/-/g, ""),
-            quantity: Math.max(1, Number(i.quantity) || 1),
-            variant:
-              i.name ||
-              i.title ||
-              i.product_name ||
-              `Product ${i.product_id}`,
-          })),
+          selectedProducts: sanitySelectedProducts,
+          amount: amountRounded,
+          paymentProvider: "BOG (installment)",
           status: "new",
           createdAt: new Date().toISOString(),
         },
