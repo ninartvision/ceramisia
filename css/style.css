@@ -1441,10 +1441,20 @@ p { color: var(--clr-text-mid); }
 
 .footer-card-badge img {
   display: block;
-  width: 30px;
   height: 18px;
+  width: auto;
   object-fit: contain;
   object-position: center;
+}
+
+.footer-card-badge--visa img {
+  width: 44px;
+  max-width: 44px;
+}
+
+.footer-card-badge--mc img {
+  width: 30px;
+  max-width: 30px;
 }
 
 .footer-bottom p {
