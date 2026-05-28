@@ -475,7 +475,35 @@ export async function renderFooter() {
     }
 
     // ── Footer quick links (from navigation.footerLinks) ──────
-    if (nav && nav.footerLinks && nav.footerLinks.length) {
+    var footerLinks = (nav && nav.footerLinks && nav.footerLinks.length) ? nav.footerLinks.slice() : [];
+    function footerLinkId(url) {
+      var link = url || '';
+      if (link.indexOf('slug=privacy') !== -1) return 'privacy';
+      if (link.indexOf('slug=refund') !== -1) return 'refund';
+      if (link.indexOf('slug=terms') !== -1) return 'terms';
+      return link.replace(/\/$/, '');
+    }
+    footerLinks.forEach(function (item) {
+      if ((item.link || '').indexOf('slug=privacy') !== -1) {
+        item.link = '/privacy/';
+        item.title = item.title || 'კონფიდენციალურობის პოლიტიკა';
+        item.titleEn = item.titleEn || 'Privacy Policy';
+      }
+      if ((item.link || '').indexOf('slug=refund') !== -1) item.link = '/refund/';
+    });
+    var requiredFooterLinks = [
+      { title: 'მომსახურების პირობები', titleEn: 'Terms & Conditions', link: '/terms/' },
+      { title: 'კონფიდენციალურობის პოლიტიკა', titleEn: 'Privacy Policy', link: '/privacy/' },
+      { title: 'თანხის დაბრუნების პოლიტიკა', titleEn: 'Refund Policy', link: '/refund/' },
+      { title: 'კონტაქტი', titleEn: 'Contact', link: '/contact/' },
+    ];
+    requiredFooterLinks.forEach(function (req) {
+      var reqId = footerLinkId(req.link);
+      if (!footerLinks.some(function (item) { return footerLinkId(item.link) === reqId; })) {
+        footerLinks.push(req);
+      }
+    });
+    if (footerLinks.length) {
       var quickUl = null;
       document.querySelectorAll('.footer-col').forEach(function (col) {
         var h4 = col.querySelector('h4');
@@ -485,7 +513,7 @@ export async function renderFooter() {
       });
       if (quickUl) {
         quickUl.innerHTML = '';
-        nav.footerLinks.forEach(function (item) {
+        footerLinks.forEach(function (item) {
           var label = lang === 'ge' ? (item.title || '') : (item.titleEn || item.title || '');
           var li = document.createElement('li');
           var a  = document.createElement('a');

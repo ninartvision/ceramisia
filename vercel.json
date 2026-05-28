@@ -17,11 +17,11 @@
     },
     {
       "source": "/privacy",
-      "destination": "/page/?slug=privacy"
+      "destination": "/privacy/"
     },
     {
-      "source": "/privacy/",
-      "destination": "/page/?slug=privacy"
+      "source": "/refund",
+      "destination": "/refund/"
     }
   ]
 }

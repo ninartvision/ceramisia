@@ -1413,10 +1413,50 @@ p { color: var(--clr-text-mid); }
   margin-top: var(--sp-sm);
 }
 
+.footer-bottom__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.footer-cards {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+}
+
+.footer-card-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  height: 28px;
+  padding: 0 0.55rem;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.footer-card-badge img {
+  display: block;
+  height: 14px;
+  width: auto;
+  max-width: 44px;
+  object-fit: contain;
+}
+
+.footer-card-badge--mc img {
+  height: 18px;
+  max-width: 30px;
+}
+
 .footer-bottom p {
   font-size: 0.78rem;
   color: var(--footer-text-muted);
   text-align: center;
+  margin: 0;
 }
 
 /* ── 17. PAGE BODY OFFSET ─────────────────────── */
