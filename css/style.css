@@ -1441,15 +1441,10 @@ p { color: var(--clr-text-mid); }
 
 .footer-card-badge img {
   display: block;
-  height: 14px;
-  width: auto;
-  max-width: 44px;
-  object-fit: contain;
-}
-
-.footer-card-badge--mc img {
+  width: 30px;
   height: 18px;
-  max-width: 30px;
+  object-fit: contain;
+  object-position: center;
 }
 
 .footer-bottom p {
