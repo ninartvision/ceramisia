@@ -96,9 +96,9 @@ export async function renderDynamicPage() {
   var container = document.getElementById('dynamicPageContent');
   if (!container) return;
 
-  // Read slug from URL query param
+  // Read slug from URL query param, or data-default-page-slug on <html> (e.g. /terms/)
   var params = new URLSearchParams(window.location.search);
-  var slug   = params.get('slug');
+  var slug   = params.get('slug') || document.documentElement.getAttribute('data-default-page-slug');
   if (!slug) { showNotFound(container); return; }
 
   // Show loading
@@ -116,9 +116,16 @@ export async function renderDynamicPage() {
     // Update document title
     document.title = esc(title) + ' – Ceramisia';
 
-    // Update canonical URL
+    // Update canonical URL (keep clean /terms/ URL when served from terms/index.html)
     var canonical = document.querySelector('link[rel="canonical"]');
-    if (canonical) canonical.href = 'https://ceramisia.com/page/?slug=' + encodeURIComponent(slug);
+    if (canonical) {
+      var defaultSlug = document.documentElement.getAttribute('data-default-page-slug');
+      if (defaultSlug && defaultSlug === slug) {
+        canonical.href = 'https://ceramisia.com/' + encodeURIComponent(slug) + '/';
+      } else {
+        canonical.href = 'https://ceramisia.com/page/?slug=' + encodeURIComponent(slug);
+      }
+    }
 
     // Build page HTML
     var html = '';

@@ -10,6 +10,18 @@
     {
       "source": "/.well-known/apple-developer-merchantid-domain-association",
       "destination": "/api/apple-pay-domain"
+    },
+    {
+      "source": "/terms",
+      "destination": "/terms/"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/page/?slug=privacy"
+    },
+    {
+      "source": "/privacy/",
+      "destination": "/page/?slug=privacy"
     }
   ]
 }
