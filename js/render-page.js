@@ -96,17 +96,28 @@ export async function renderDynamicPage() {
   var container = document.getElementById('dynamicPageContent');
   if (!container) return;
 
+  // Preserve static HTML fallback (required for legal pages when CMS has no document)
+  var staticFallback = container.innerHTML.trim();
+
   // Read slug from URL query param, or data-default-page-slug on <html> (e.g. /terms/)
   var params = new URLSearchParams(window.location.search);
   var slug   = params.get('slug') || document.documentElement.getAttribute('data-default-page-slug');
-  if (!slug) { showNotFound(container); return; }
+  if (!slug) {
+    if (staticFallback) return;
+    showNotFound(container);
+    return;
+  }
 
   // Show loading
   container.innerHTML = '<div class="page-loading" style="text-align:center;padding:4rem 1rem"><p>იტვირთება...</p></div>';
 
   try {
     var page = await getPage(slug);
-    if (!page) { showNotFound(container); return; }
+    if (!page) {
+      if (staticFallback) { container.innerHTML = staticFallback; return; }
+      showNotFound(container);
+      return;
+    }
 
     var lang = getLang();
     var title   = lang === 'en' && page.titleEn   ? page.titleEn   : page.title   || '';
@@ -163,12 +174,16 @@ export async function renderDynamicPage() {
         html += '</div></section>';
       }
       html += '</div>';
+    } else if (staticFallback) {
+      container.innerHTML = staticFallback;
+      return;
     }
 
     container.innerHTML = html;
 
   } catch (err) {
     console.error('Ceramisia: page render error', err);
+    if (staticFallback) { container.innerHTML = staticFallback; return; }
     showNotFound(container);
   }
 }

@@ -1642,6 +1642,21 @@ p { color: var(--clr-text-mid); }
   border-top: 1px solid var(--clr-border);
   padding: 1.25rem 1.5rem;
 }
+.cart-drawer__cards {
+  margin-top: 1rem;
+  justify-content: flex-start;
+}
+.cart-drawer__legal {
+  margin: 0.75rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: var(--clr-text-muted);
+}
+.cart-drawer__legal a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 .cart-drawer__total {
   display: flex;
   justify-content: space-between;
