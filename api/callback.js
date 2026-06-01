@@ -22,6 +22,38 @@ let _receiptTokenExpiresAt = 0;
 // Prevents replaying a legitimately signed request captured earlier.
 const MAX_CALLBACK_AGE_MS = 5 * 60 * 1000;
 
+/** Same OAuth endpoint as /api/pay — https://api.bog.ge/docs/en/payments/authentication */
+const BOG_OAUTH_TOKEN_URL =
+  process.env.BOG_TOKEN_ENDPOINT ||
+  "https://oauth2.bog.ge/auth/realms/bog/protocol/openid-connect/token";
+
+/** BOG response codes that mean successful card payment (100 = official success code). */
+const BOG_SUCCESS_PAYMENT_CODES = new Set(["100", "000"]);
+
+/** Receipt not final yet — BOG should retry the callback. */
+const BOG_RECEIPT_RETRY_STATUSES = new Set(["created", "processing"]);
+
+function bogRetryError(message) {
+  const err = new Error(message);
+  err.retryBogCallback = true;
+  return err;
+}
+
+function parseBogAmount(raw) {
+  if (raw === null || raw === undefined || raw === "") return NaN;
+  const n = Number(String(raw).replace(/,/g, "").trim());
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function receiptAmountFromPurchaseUnits(units) {
+  if (!units || typeof units !== "object") return NaN;
+  for (const key of ["request_amount", "transfer_amount", "total_amount"]) {
+    const n = parseBogAmount(units[key]);
+    if (Number.isFinite(n)) return n;
+  }
+  return NaN;
+}
+
 // ---------------------------------------------------------------------------
 // verifyReceiptWithBOG
 // ---------------------------------------------------------------------------
@@ -30,65 +62,116 @@ const MAX_CALLBACK_AGE_MS = 5 * 60 * 1000;
 // payment — this second call closes the window where a compromised/forged
 // payload with a valid signature could trigger order fulfilment.
 //
-// Returns true only when BOG confirms:
-//   order_status.key === "completed"  AND  payment_detail.code === "000"
-//   AND receipt total_amount matches the amount stored at order creation.
+// Returns { confirmed, retry?, reason? }:
+//   confirmed — save completed_orders when true
+//   retry     — return HTTP 503 so BOG resends (transient / not final yet)
 // ---------------------------------------------------------------------------
 async function verifyReceiptWithBOG(orderId, expectedAmount) {
+  const bogSecret = process.env.BOG_CLIENT_SECRET || process.env.BOG_SECRET_KEY;
+  if (!process.env.BOG_CLIENT_ID || !bogSecret) {
+    console.error("BOG callback: missing BOG_CLIENT_ID or BOG_CLIENT_SECRET");
+    return { confirmed: false, retry: false, reason: "bog_credentials_missing" };
+  }
+
   // Reuse cached token when still valid (60s buffer)
   const now = Date.now();
   if (!_receiptToken || _receiptTokenExpiresAt - now < 60_000) {
     const credentials = Buffer.from(
-      `${process.env.BOG_CLIENT_ID}:${process.env.BOG_CLIENT_SECRET || process.env.BOG_SECRET_KEY}`
+      `${process.env.BOG_CLIENT_ID}:${bogSecret}`
     ).toString("base64");
 
-    const tokenRes = await fetch("https://api.bog.ge/oauth2/token", {
+    const tokenRes = await fetch(BOG_OAUTH_TOKEN_URL, {
       method: "POST",
       headers: {
         Authorization: `Basic ${credentials}`,
         "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
       },
       body: "grant_type=client_credentials",
     });
-    if (!tokenRes.ok) throw new Error(`BOG token failed: ${tokenRes.status}`);
+    if (!tokenRes.ok) {
+      throw bogRetryError(`BOG token failed: ${tokenRes.status}`);
+    }
     const tokenData = await tokenRes.json();
-    if (!tokenData.access_token) throw new Error("No access_token from BOG");
+    if (!tokenData.access_token) {
+      throw bogRetryError("No access_token from BOG");
+    }
     _receiptToken = tokenData.access_token;
-    _receiptTokenExpiresAt = now + tokenData.expires_in * 1000;
+    const expiresSec = Number(tokenData.expires_in);
+    _receiptTokenExpiresAt =
+      now + (Number.isFinite(expiresSec) && expiresSec > 0 ? expiresSec : 3600) * 1000;
   }
 
   const receiptRes = await fetch(
     `https://api.bog.ge/payments/v1/receipt/${orderId}`,
-    { headers: { Authorization: `Bearer ${_receiptToken}` } }
+    { headers: { Authorization: `Bearer ${_receiptToken}`, Accept: "application/json" } }
   );
-  if (!receiptRes.ok) throw new Error(`BOG receipt fetch failed: ${receiptRes.status}`);
+  if (receiptRes.status === 429 || receiptRes.status >= 500) {
+    throw bogRetryError(`BOG receipt fetch failed: ${receiptRes.status}`);
+  }
+  if (!receiptRes.ok) {
+    return {
+      confirmed: false,
+      retry: false,
+      reason: `receipt_http_${receiptRes.status}`,
+    };
+  }
 
   const receipt = await receiptRes.json();
-  const statusKey = receipt?.order_status?.key;
-  const paymentCode = receipt?.payment_detail?.code;
-  const receiptAmount = receipt?.purchase_units?.total_amount;
+  const statusKey = String(receipt?.order_status?.key || "");
+  const paymentCode = String(receipt?.payment_detail?.code ?? "");
+  const receiptAmount = receiptAmountFromPurchaseUnits(receipt?.purchase_units);
 
-  console.log("BOG callback: receipt check", { orderId, statusKey, paymentCode, receiptAmount });
+  console.log("BOG callback: receipt check", {
+    orderId,
+    statusKey,
+    paymentCode,
+    receiptAmount,
+  });
 
-  if (statusKey !== "completed" || paymentCode !== "000") return false;
+  if (BOG_RECEIPT_RETRY_STATUSES.has(statusKey)) {
+    return {
+      confirmed: false,
+      retry: true,
+      reason: `receipt_status_${statusKey}`,
+    };
+  }
 
-  // Guard against NaN: if BOG omits total_amount from the receipt,
-  // Number(undefined) = NaN and NaN > 0.01 = false — bypassing the check.
-  // A receipt without an amount is not a safe confirmation.
-  const numReceiptAmount = Number(receiptAmount);
+  if (statusKey !== "completed") {
+    return {
+      confirmed: false,
+      retry: false,
+      reason: `receipt_status_${statusKey || "unknown"}`,
+    };
+  }
+
+  if (!BOG_SUCCESS_PAYMENT_CODES.has(paymentCode)) {
+    return {
+      confirmed: false,
+      retry: false,
+      reason: `payment_code_${paymentCode || "missing"}`,
+    };
+  }
+
+  const numReceiptAmount = receiptAmount;
   if (!Number.isFinite(numReceiptAmount)) {
-    console.error("BOG callback: receipt missing total_amount", { orderId });
-    return false;
+    console.error("BOG callback: receipt missing purchase_units amount", {
+      orderId,
+      purchase_units: receipt?.purchase_units ?? null,
+    });
+    return { confirmed: false, retry: true, reason: "receipt_amount_missing" };
   }
 
-  // Cross-check receipt amount against what we stored at order creation time.
-  // Closes the gap where callback payload and independent receipt could diverge.
   if (Math.abs(numReceiptAmount - Number(expectedAmount)) > 0.01) {
-    console.error("BOG callback: receipt amount mismatch", { receiptAmount, expectedAmount, orderId });
-    return false;
+    console.error("BOG callback: receipt amount mismatch", {
+      receiptAmount: numReceiptAmount,
+      expectedAmount,
+      orderId,
+    });
+    return { confirmed: false, retry: false, reason: "amount_mismatch" };
   }
 
-  return true;
+  return { confirmed: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -446,20 +529,22 @@ export default async function handler(req, res) {
     if (statusKey === "completed") {
       // Independent receipt verification — never trust the callback payload alone.
       // Confirm directly with BOG API before writing to the database.
-      let receiptConfirmed = false;
+      let receiptResult;
       try {
-        receiptConfirmed = await verifyReceiptWithBOG(order_id, expectedAmount);
+        receiptResult = await verifyReceiptWithBOG(order_id, expectedAmount);
       } catch (receiptErr) {
         console.error("BOG callback: receipt verification error:", receiptErr.message);
-        // Throw so the outer catch handles it and BOG will retry the callback
         throw receiptErr;
       }
 
-      if (!receiptConfirmed) {
+      if (!receiptResult.confirmed) {
         console.error(
           "[callback] receipt not confirmed by BOG API — skipping completed_orders",
-          { order_id }
+          { order_id, reason: receiptResult.reason, retry: receiptResult.retry }
         );
+        if (receiptResult.retry) {
+          return res.status(503).send("Receipt not ready");
+        }
         return res.status(200).send("OK");
       }
 
@@ -529,6 +614,9 @@ export default async function handler(req, res) {
     }
   } catch (err) {
     console.error("BOG callback: unhandled error:", err);
+    if (err?.retryBogCallback) {
+      return res.status(503).send("Temporary error");
+    }
   }
 
   return res.status(200).send("OK");
