@@ -13,6 +13,10 @@
         "/^Push-Location \"N:\\\\site\\\\ceramisia\\\\sanity-studio\"; node -e \"import\\('\\./sanity\\.cli\\.js'\\)\\.then\\(m => console\\.log\\(JSON\\.stringify\\(m\\.default\\)\\)\\)\\.catch\\(e => console\\.error\\(e\\.message\\)\\)\"$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^cmd /c \"vercel api /v1/projects/prj_iMo5IQ68RdjsRGItYbSpYxExSVe3/env/byA2UzUNjUuCkZTu --silent\"$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     }
 }

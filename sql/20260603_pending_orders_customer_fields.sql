@@ -1,6 +1,6 @@
--- Customer fields on pending_orders + completed_orders
--- Fixes production /api/pay 502 from missing customer_first_name / customer columns
--- Run in Supabase SQL Editor or via db migration tooling.
+-- 2026-06-03: add missing customer fields used by savePendingOrder()
+-- Applies to both pending_orders and completed_orders.
+
 begin;
 
 alter table public.pending_orders
