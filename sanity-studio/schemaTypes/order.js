@@ -1,44 +1,112 @@
 // sanity-studio/schemaTypes/order.js
-// Order / Contact form submissions
+// Orders created by the storefront API — read-only in Studio.
+
+const readOnly = { readOnly: true }
 
 export default {
   icon: () => '🛒',
   name: 'order',
   title: 'Order / Inquiry',
   type: 'document',
+  groups: [
+    { name: 'customer', title: 'Customer', default: true },
+    { name: 'order', title: 'Order & payment' },
+    { name: 'products', title: 'Products' },
+  ],
   fields: [
     {
       name: 'orderId',
       title: 'Order ID',
       type: 'string',
-      description: 'Payment order_id (Flitt flt_… or BOG bank id)',
+      group: 'order',
+      description: 'Payment order_id (BOG uuid or Flitt flt_…)',
+      ...readOnly,
     },
     {
       name: 'customerName',
-      title: 'Customer Name',
+      title: 'First name',
       type: 'string',
-      validation: (Rule) => Rule.required(),
+      group: 'customer',
+      validation: (Rule) => Rule.required().min(2),
+      ...readOnly,
     },
     {
-      name: 'phone',
-      title: 'Phone Number',
+      name: 'customerSurname',
+      title: 'Last name',
       type: 'string',
+      group: 'customer',
+      validation: (Rule) => Rule.required().min(2),
+      ...readOnly,
+    },
+    {
+      name: 'phoneNumber',
+      title: 'Phone number',
+      type: 'string',
+      group: 'customer',
+      validation: (Rule) => Rule.required().min(9),
+      ...readOnly,
     },
     {
       name: 'email',
       title: 'Email',
       type: 'string',
+      group: 'customer',
+      validation: (Rule) => Rule.required().email(),
+      ...readOnly,
     },
     {
       name: 'message',
-      title: 'Message',
+      title: 'Customer message',
       type: 'text',
-      rows: 5,
+      rows: 4,
+      group: 'customer',
+      ...readOnly,
+    },
+    {
+      name: 'amount',
+      title: 'Amount (GEL)',
+      type: 'number',
+      group: 'order',
+      validation: (Rule) => Rule.required().min(0),
+      ...readOnly,
+    },
+    {
+      name: 'paymentProvider',
+      title: 'Payment provider',
+      type: 'string',
+      group: 'order',
+      ...readOnly,
+    },
+    {
+      name: 'paymentStatus',
+      title: 'Payment status',
+      type: 'string',
+      description: 'e.g. approved, completed',
+      group: 'order',
+      ...readOnly,
+    },
+    {
+      name: 'status',
+      title: 'Workflow status',
+      type: 'string',
+      group: 'order',
+      options: {
+        list: [
+          { title: 'New', value: 'new' },
+          { title: 'In Progress', value: 'in-progress' },
+          { title: 'Completed', value: 'completed' },
+          { title: 'Cancelled', value: 'cancelled' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'new',
+      ...readOnly,
     },
     {
       name: 'selectedProducts',
-      title: 'Selected Products',
+      title: 'Selected products',
       type: 'array',
+      group: 'products',
       of: [
         {
           type: 'object',
@@ -48,6 +116,7 @@ export default {
               title: 'Product',
               type: 'reference',
               to: [{ type: 'product' }],
+              ...readOnly,
             },
             {
               name: 'quantity',
@@ -55,27 +124,25 @@ export default {
               type: 'number',
               initialValue: 1,
               validation: (Rule) => Rule.min(1),
+              ...readOnly,
             },
             {
               name: 'variant',
-              title: 'Variant Note',
+              title: 'Product label at purchase',
               type: 'string',
-              description: 'e.g. "Large, Blue", or the product name at the time of purchase',
+              ...readOnly,
             },
             {
               name: 'unitPrice',
-              title: 'Unit Price (₾) at purchase',
+              title: 'Unit price (₾)',
               type: 'number',
-              description:
-                'Price per unit at the moment the customer checked out — preserved even if the product price changes later.',
-              readOnly: true,
+              ...readOnly,
             },
             {
               name: 'lineTotal',
-              title: 'Line Total (₾)',
+              title: 'Line total (₾)',
               type: 'number',
-              description: 'unitPrice × quantity at the moment of purchase.',
-              readOnly: true,
+              ...readOnly,
             },
           ],
           preview: {
@@ -102,62 +169,38 @@ export default {
       ],
     },
     {
-      name: 'amount',
-      title: 'Amount (GEL)',
-      type: 'number',
-    },
-    {
-      name: 'paymentProvider',
-      title: 'Payment Provider',
-      type: 'string',
-    },
-    {
-      name: 'paymentStatus',
-      title: 'Payment Status',
-      type: 'string',
-      description: 'e.g. approved, completed',
-    },
-    {
-      name: 'status',
-      title: 'Workflow Status',
-      type: 'string',
-      options: {
-        list: [
-          { title: 'New', value: 'new' },
-          { title: 'In Progress', value: 'in-progress' },
-          { title: 'Completed', value: 'completed' },
-          { title: 'Cancelled', value: 'cancelled' },
-        ],
-        layout: 'radio',
-      },
-      initialValue: 'new',
-    },
-    {
       name: 'createdAt',
-      title: 'Created At',
+      title: 'Created at',
       type: 'datetime',
+      group: 'order',
       initialValue: () => new Date().toISOString(),
-      readOnly: true,
+      ...readOnly,
     },
   ],
   orderings: [
-    { title: 'Newest First', name: 'createdDesc', by: [{ field: 'createdAt', direction: 'desc' }] },
+    {
+      title: 'Newest first',
+      name: 'createdDesc',
+      by: [{ field: 'createdAt', direction: 'desc' }],
+    },
   ],
   preview: {
     select: {
-      title: 'customerName',
+      firstName: 'customerName',
+      lastName: 'customerSurname',
       orderId: 'orderId',
       provider: 'paymentProvider',
       subtitle: 'status',
       amount: 'amount',
       date: 'createdAt',
     },
-    prepare({ title, orderId, provider, subtitle, amount, date }) {
+    prepare({ firstName, lastName, orderId, provider, subtitle, amount, date }) {
+      const name = [firstName, lastName].filter(Boolean).join(' ').trim()
       const d = date ? new Date(date).toLocaleDateString() : ''
       const amt = amount != null ? `${amount} GEL` : ''
       const oid = orderId ? ` · ${orderId}` : ''
       return {
-        title: title || orderId || 'Unknown',
+        title: name || orderId || 'Order',
         subtitle: [provider, amt, subtitle || 'new', d].filter(Boolean).join(' · '),
       }
     },

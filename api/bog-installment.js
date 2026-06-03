@@ -5,6 +5,10 @@ import {
   buildOrderSelectedProducts,
   trySanityCreateOrder,
 } from "../lib/sanityOrderSync.js";
+import {
+  buildSupabaseCustomerRow,
+  parseAndValidateCustomer,
+} from "../lib/orderCustomer.js";
 import { savePendingOrder } from "./_db.js";
 import {
   getInstallmentAccessToken,
@@ -71,6 +75,18 @@ export default async function handler(req, res) {
     }
 
     const amountRounded = parseFloat(Number(amount).toFixed(2));
+
+    const customerCheck = parseAndValidateCustomer(body);
+    if (!customerCheck.ok) {
+      return res.status(400).json({
+        error: "Customer details required",
+        fields: customerCheck.errors,
+        messages: customerCheck.details,
+      });
+    }
+    const customer = customerCheck.customer;
+    const supabaseCustomer = buildSupabaseCustomerRow(customer);
+
     const rawItems = body.items || [];
 
     const monthRaw =
@@ -316,7 +332,13 @@ export default async function handler(req, res) {
     }
 
     try {
-      await savePendingOrder(orderId, amountRounded, "bog", "installment");
+      await savePendingOrder(
+        orderId,
+        amountRounded,
+        "bog",
+        "installment",
+        supabaseCustomer
+      );
       console.log("[bog-installment] pending_orders saved", {
         order_id: orderId,
         amount: amountRounded,
@@ -332,14 +354,12 @@ export default async function handler(req, res) {
       await trySanityCreateOrder(
         client,
         {
-          _type: "order",
           orderId,
-          customerName:
-            String(body.customerName || body.name || "Unknown").trim() ||
-            "Unknown",
-          email: body.email ? String(body.email) : "",
-          phone: body.phone ? String(body.phone) : "",
-          message: body.message ? String(body.message) : "BOG installment order",
+          customerName: customer.customerName,
+          customerSurname: customer.customerSurname,
+          phoneNumber: customer.phoneNumber,
+          email: customer.email,
+          message: customer.message || "BOG installment order",
           selectedProducts: sanitySelectedProducts,
           amount: amountRounded,
           paymentProvider: "BOG (installment)",

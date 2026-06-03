@@ -5,6 +5,10 @@ import {
   buildOrderSelectedProducts,
   trySanityCreateOrder,
 } from "../lib/sanityOrderSync.js";
+import {
+  buildSupabaseCustomerRow,
+  parseAndValidateCustomer,
+} from "../lib/orderCustomer.js";
 import { savePendingOrder } from "./_db.js";
 import {
   auditFlittSignaturePlaintext,
@@ -148,6 +152,18 @@ export default async function handler(req, res) {
     }
 
     const amountRounded = parseFloat(Number(amountMajor).toFixed(2));
+
+    const customerCheck = parseAndValidateCustomer(body);
+    if (!customerCheck.ok) {
+      return res.status(400).json({
+        error: "Customer details required",
+        fields: customerCheck.errors,
+        messages: customerCheck.details,
+      });
+    }
+    const customer = customerCheck.customer;
+    const supabaseCustomer = buildSupabaseCustomerRow(customer);
+
     const rawItems = body.items || [];
     const currency = String(
       body.currency || process.env.FLITT_CURRENCY || "GEL"
@@ -279,14 +295,12 @@ export default async function handler(req, res) {
     await trySanityCreateOrder(
       client,
       {
-        _type: "order",
         orderId,
-        customerName:
-          String(body.customerName || body.name || "Unknown").trim() ||
-          "Unknown",
-        email: body.email ? String(body.email) : "",
-        phone: body.phone ? String(body.phone) : "",
-        message: body.message ? String(body.message) : "Flitt order",
+        customerName: customer.customerName,
+        customerSurname: customer.customerSurname,
+        phoneNumber: customer.phoneNumber,
+        email: customer.email,
+        message: customer.message || "Flitt order",
         selectedProducts: sanitySelectedProducts,
         amount: amountRounded,
         paymentProvider: "Flitt / TBC",
@@ -652,7 +666,13 @@ export default async function handler(req, res) {
     }
 
     try {
-      await savePendingOrder(orderId, amountRounded, "flitt", "card");
+      await savePendingOrder(
+        orderId,
+        amountRounded,
+        "flitt",
+        "card",
+        supabaseCustomer
+      );
       console.log("[flitt-pay] pending_orders saved", {
         order_id: orderId,
         amount: amountRounded,

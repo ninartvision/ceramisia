@@ -133,9 +133,17 @@ export async function buyProduct(btn) {
   _setBtnState(btn, true, '...');
 
   try {
+    let customerFields = {};
+    if (window.CeramisiaCheckoutCustomer) {
+      const cr = await window.CeramisiaCheckoutCustomer.ensureCustomerForPayment(false);
+      if (!cr.ok) return;
+      customerFields = window.CeramisiaCheckoutCustomer.customerPayload(cr.customer);
+    }
+
     const payload = {
       amount: parseFloat((price * qty).toFixed(2)),
       items: [{ product_id: productId, slug: slug || undefined, quantity: qty, unit_price: price }],
+      ...customerFields,
     };
     const redirectUrl = await callPayApi(payload);
     console.log('[Ceramisia] Redirecting to bank page →', redirectUrl);
@@ -241,20 +249,31 @@ export function openInstallment(btn) {
           : '';
       const installment_type = discountCode || defaultType || 'STANDARD';
 
-      const payload = {
-        amount: loanAmount,
-        items,
-        installment_month: month,
-        installment_type,
-      };
-
-      console.log('[Ceramisia] POST /api/bog-installment', {
+      console.log('[Ceramisia] POST /api/bog-installment (preparing)', {
         installment_month: month,
         installment_type,
         orderAmount: loanAmount,
       });
 
       (async () => {
+        let customerFields = {};
+        if (window.CeramisiaCheckoutCustomer) {
+          const cr = await window.CeramisiaCheckoutCustomer.ensureCustomerForPayment(false);
+          if (!cr.ok) {
+            closeCb();
+            return;
+          }
+          customerFields = window.CeramisiaCheckoutCustomer.customerPayload(cr.customer);
+        }
+
+        const payload = {
+          amount: loanAmount,
+          items,
+          installment_month: month,
+          installment_type,
+          ...customerFields,
+        };
+
         try {
           const res = await fetch(BOG_INSTALLMENT_ENDPOINT, {
             method: 'POST',

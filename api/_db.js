@@ -126,7 +126,8 @@ export async function savePendingOrder(
   orderId,
   amount,
   provider = "bog",
-  paymentType = "card"
+  paymentType = "card",
+  customer = null
 ) {
   const supabase = getSupabase();
   const amountNum = parseFloat(Number(amount).toFixed(2));
@@ -145,6 +146,15 @@ export async function savePendingOrder(
     provider: String(provider),
     payment_type: String(paymentType),
   };
+
+  if (customer && typeof customer === "object") {
+    if (customer.customer_name) payload.customer_name = customer.customer_name;
+    if (customer.customer_first_name) payload.customer_first_name = customer.customer_first_name;
+    if (customer.customer_surname) payload.customer_surname = customer.customer_surname;
+    if (customer.phone_number) payload.phone_number = customer.phone_number;
+    if (customer.email) payload.email = customer.email;
+    if (customer.message != null) payload.message = customer.message;
+  }
 
   console.log("[savePendingOrder] inserting pending_orders", {
     order_id: payload.order_id,
@@ -207,13 +217,14 @@ export async function saveOrderToDB({
   status,
   amount,
   customerName,
+  customer,
   phone,
   payload,
   provider = "bog",
   payment_type = "card",
 }) {
   const supabase = getSupabase();
-  const { error } = await supabase.from("completed_orders").insert({
+  const row = {
     order_id: orderId,
     status,
     amount,
@@ -222,7 +233,18 @@ export async function saveOrderToDB({
     payload,
     provider,
     payment_type,
-  });
+  };
+
+  if (customer && typeof customer === "object") {
+    if (customer.customer_name) row.customer_name = customer.customer_name;
+    if (customer.customer_first_name) row.customer_first_name = customer.customer_first_name;
+    if (customer.customer_surname) row.customer_surname = customer.customer_surname;
+    if (customer.phone_number) row.phone_number = customer.phone_number;
+    if (customer.email) row.email = customer.email;
+    if (customer.message != null) row.message = customer.message;
+  }
+
+  const { error } = await supabase.from("completed_orders").insert(row);
 
   if (error) {
     if (error.code === "23505") {

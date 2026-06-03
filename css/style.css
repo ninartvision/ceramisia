@@ -1669,6 +1669,97 @@ p { color: var(--clr-text-mid); }
   font-size: 1.2rem;
   color: var(--clr-text);
 }
+
+/* Guest checkout customer fields (cart + modal) */
+.cart-checkout-customer {
+  margin: 1rem 0 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e8e2da;
+}
+.cart-checkout-customer__title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0 0 0.65rem;
+  color: #444;
+}
+.cart-checkout-customer__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 0.65rem;
+}
+.cart-checkout-customer__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.72rem;
+  color: #666;
+}
+.cart-checkout-customer__field--full {
+  grid-column: 1 / -1;
+}
+.cart-checkout-customer__field input,
+.cart-checkout-customer__field textarea {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 2px;
+  background: #fff;
+  color: #222;
+}
+.cart-checkout-customer__field input:focus,
+.cart-checkout-customer__field textarea:focus {
+  outline: none;
+  border-color: #888;
+}
+.cart-checkout-customer__error {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  color: #b42318;
+}
+.checkout-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.checkout-modal {
+  position: relative;
+  background: #fff;
+  max-width: 420px;
+  width: 100%;
+  padding: 1.5rem 1.25rem 1.25rem;
+  border-radius: 4px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.checkout-modal h3 {
+  margin: 0 0 0.75rem;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 500;
+  font-size: 1.35rem;
+}
+.checkout-modal__close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  border: none;
+  background: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #666;
+}
+.checkout-modal__actions {
+  margin-top: 1rem;
+}
+
 .cart-drawer__checkout {
   width: 100%;
   text-align: center;

@@ -5,6 +5,11 @@ import {
 } from "./_db.js";
 import { verifyFlittPayload } from "./_flittSignature.js";
 import { client } from "../lib/sanity.js";
+import {
+  buildSupabaseCustomerRow,
+  formatCustomerDisplayName,
+  parseCustomerFromBody,
+} from "../lib/orderCustomer.js";
 import { fireSanityOrderOnPaymentSuccess } from "../lib/sanityOrderSync.js";
 
 /** Match flitt-pay.js env handling — avoids verify failures from BOM/quotes. */
@@ -54,9 +59,13 @@ function syncFlittSuccessToSanity(orderId, pending, payload) {
     {
       orderId,
       amount: pending.amount,
-      customerName: email || undefined,
       email: email || undefined,
-      phone: phone || undefined,
+      phoneNumber: phone || undefined,
+      bankBuyer: email
+        ? { email, phone_number: phone || undefined }
+        : phone
+          ? { phone_number: phone }
+          : undefined,
       provider: "flitt",
       paymentType: pending.payment_type || "card",
       paymentStatus: "approved",
@@ -183,19 +192,19 @@ export default async function handler(req, res) {
           amount: pending.amount,
           provider: "flitt",
         });
+        const flittCustomer = parseCustomerFromBody({
+          phoneNumber: payload.sender_cell_phone,
+          email: payload.sender_email,
+        });
+        const supabaseCustomer = buildSupabaseCustomerRow(flittCustomer);
+
         await saveOrderToDB({
           orderId,
           status: "approved",
           amount: pending.amount,
-          customerName:
-            payload.sender_email != null
-              ? String(payload.sender_email)
-              : undefined,
-          phone:
-            payload.sender_cell_phone != null &&
-            String(payload.sender_cell_phone).trim() !== ""
-              ? String(payload.sender_cell_phone)
-              : undefined,
+          customerName: formatCustomerDisplayName(flittCustomer) || undefined,
+          customer: supabaseCustomer,
+          phone: flittCustomer.phoneNumber || undefined,
           payload,
           provider: "flitt",
           payment_type: pending.payment_type || "card",

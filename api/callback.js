@@ -8,6 +8,13 @@ import {
 } from "./_db.js";
 import { fetchInstallmentCheckoutDetails } from "./_bogInstallmentApi.js";
 import { client } from "../lib/sanity.js";
+import {
+  buildSupabaseCustomerRow,
+  formatCustomerDisplayName,
+  mergeCustomerWithBank,
+  parseCustomerFromBody,
+  splitFullName,
+} from "../lib/orderCustomer.js";
 import { fireSanityOrderOnPaymentSuccess } from "../lib/sanityOrderSync.js";
 
 // Regex for BOG order IDs — used to sanitize before DB queries and API calls
@@ -556,12 +563,30 @@ export default async function handler(req, res) {
         // Store expectedAmount (our DB value, confirmed by receipt) rather than the
         // callback payload amount — it is the most authoritative figure and cannot
         // be undefined (we validated it above).
+        const bankParts = splitFullName(customerName);
+        const bankBuyer = {
+          full_name: customerName,
+          phone_number: phone,
+          email: bogBody.buyer?.email,
+        };
+        const mergedCustomer = mergeCustomerWithBank(
+          parseCustomerFromBody({
+            customerName: bankParts.customerName,
+            customerSurname: bankParts.customerSurname,
+            phoneNumber: phone,
+            email: bogBody.buyer?.email,
+          }),
+          bankBuyer
+        );
+        const supabaseCustomer = buildSupabaseCustomerRow(mergedCustomer);
+
         await saveOrderToDB({
           orderId: order_id,
           status: statusKey,
           amount: expectedAmount,
-          customerName,
-          phone,
+          customerName: formatCustomerDisplayName(mergedCustomer),
+          customer: supabaseCustomer,
+          phone: mergedCustomer.phoneNumber,
           payload: body,
           provider: "bog",
           payment_type: "card",
@@ -576,8 +601,11 @@ export default async function handler(req, res) {
           {
             orderId: order_id,
             amount: expectedAmount,
-            customerName,
-            phone,
+            customerName: mergedCustomer.customerName,
+            customerSurname: mergedCustomer.customerSurname,
+            phoneNumber: mergedCustomer.phoneNumber,
+            email: mergedCustomer.email,
+            bankBuyer,
             provider: "bog",
             paymentType: "card",
             paymentStatus: statusKey,
@@ -588,13 +616,21 @@ export default async function handler(req, res) {
         // Duplicate insert → this order was already processed; safe to ignore.
         if (dbErr.code === "23505" || dbErr.code === "DUPLICATE") {
           console.log("BOG callback: duplicate order ignored:", order_id);
+          const bankPartsDup = splitFullName(customerName);
           fireSanityOrderOnPaymentSuccess(
             client,
             {
               orderId: order_id,
               amount: expectedAmount,
-              customerName,
-              phone,
+              customerName: bankPartsDup.customerName,
+              customerSurname: bankPartsDup.customerSurname,
+              phoneNumber: phone,
+              email: bogBody.buyer?.email,
+              bankBuyer: {
+                full_name: customerName,
+                phone_number: phone,
+                email: bogBody.buyer?.email,
+              },
               provider: "bog",
               paymentType: "card",
               paymentStatus: statusKey,

@@ -5,6 +5,10 @@ import {
   buildOrderSelectedProducts,
   trySanityCreateOrder,
 } from "../lib/sanityOrderSync.js";
+import {
+  buildSupabaseCustomerRow,
+  parseAndValidateCustomer,
+} from "../lib/orderCustomer.js";
 import { savePendingOrder } from "./_db.js";
 
 // Same pattern as api/callback.js — BOG order id must match before DB / callback handling.
@@ -36,6 +40,17 @@ export default async function handler(req, res) {
       amount: amountRounded,
       itemCount: Array.isArray(body.items) ? body.items.length : 0,
     });
+
+    const customerCheck = parseAndValidateCustomer(body);
+    if (!customerCheck.ok) {
+      return res.status(400).json({
+        error: "Customer details required",
+        fields: customerCheck.errors,
+        messages: customerCheck.details,
+      });
+    }
+    const customer = customerCheck.customer;
+    const supabaseCustomer = buildSupabaseCustomerRow(customer);
 
     const rawItems = body.items || [];
 
@@ -177,7 +192,13 @@ export default async function handler(req, res) {
     }
 
     try {
-      await savePendingOrder(bogOrderId, amountRounded, "bog", "card");
+      await savePendingOrder(
+        bogOrderId,
+        amountRounded,
+        "bog",
+        "card",
+        supabaseCustomer
+      );
       console.log("[pay] pending_orders saved", {
         order_id: bogOrderId,
         amount: amountRounded,
@@ -191,14 +212,12 @@ export default async function handler(req, res) {
       await trySanityCreateOrder(
         client,
         {
-          _type: "order",
           orderId: bogOrderId,
-          customerName:
-            String(body.customerName || body.name || "Unknown").trim() ||
-            "Unknown",
-          email: body.email ? String(body.email) : "",
-          phone: body.phone ? String(body.phone) : "",
-          message: body.message ? String(body.message) : "BOG order",
+          customerName: customer.customerName,
+          customerSurname: customer.customerSurname,
+          phoneNumber: customer.phoneNumber,
+          email: customer.email,
+          message: customer.message || "BOG order",
           selectedProducts: sanitySelectedProducts,
           amount: amountRounded,
           paymentProvider: "BOG",

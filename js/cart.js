@@ -231,6 +231,9 @@
           '<span data-ge="ჯამი" data-en="Total">' + (lang === 'ge' ? 'ჯამი' : 'Total') + '</span>' +
           '<strong id="cartDrawerTotal">₾ 0</strong>' +
         '</div>' +
+        (window.CeramisiaCheckoutCustomer
+          ? window.CeramisiaCheckoutCustomer.formFieldsHtml(lang)
+          : '') +
         '<button type="button" class="btn-cart-pay cart-pay-btn--bog-brand" id="cartPayBtn" aria-label="' + escapeAttr(ariaPayBog) + '">' +
           '<span class="cart-pay-btn__row cart-pay-btn__row--bog-brand">' +
             '<span class="cart-pay-btn__icon" aria-hidden="true">' + imgBog + '</span>' +
@@ -260,6 +263,10 @@
 
     document.body.appendChild(drawerOverlay);
     document.body.appendChild(drawer);
+
+    if (window.CeramisiaCheckoutCustomer) {
+      window.CeramisiaCheckoutCustomer.bindDrawerForm();
+    }
 
     // Cache refs
     drawerBody  = document.getElementById('cartDrawerBody');
@@ -475,6 +482,14 @@
       return;
     }
 
+    var customerResult = { ok: true, customer: {} };
+    if (window.CeramisiaCheckoutCustomer) {
+      customerResult = await window.CeramisiaCheckoutCustomer.ensureCustomerForPayment(true);
+      if (!customerResult.ok) {
+        return;
+      }
+    }
+
     var btn = document.getElementById(btnId);
     if (btn) {
       btn.disabled = true;
@@ -506,6 +521,13 @@
         amount: totalAmount,
         items:  items
       };
+
+      if (customerResult.ok && window.CeramisiaCheckoutCustomer) {
+        Object.assign(
+          requestBody,
+          window.CeramisiaCheckoutCustomer.customerPayload(customerResult.customer)
+        );
+      }
 
       if (extraFields && typeof extraFields === 'object') {
         Object.keys(extraFields).forEach(function (k) {
@@ -741,6 +763,18 @@
           installment_month: month,
           installment_type: installment_type
         };
+
+        if (window.CeramisiaCheckoutCustomer) {
+          var crInst = window.CeramisiaCheckoutCustomer.getValidatedPayload();
+          if (!crInst.ok) {
+            closeCb();
+            return;
+          }
+          Object.assign(
+            payload,
+            window.CeramisiaCheckoutCustomer.customerPayload(crInst.customer)
+          );
+        }
 
         console.log('[Ceramisia] POST /api/bog-installment', {
           installment_month: month,
