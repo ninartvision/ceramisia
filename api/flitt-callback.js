@@ -20,7 +20,18 @@ function normalizeEnvValue(v) {
     .trim()
     .replace(/^['"]|['"]$/g, "");
 }
+function isRetryableDbError(err) {
+  if (!err || typeof err !== "object") return false;
+  if (err.code === "23505" || err.code === "DUPLICATE") return false;
+  return Boolean(err.dbOperation || err.name === "SupabasePostgrestError");
+}
 
+function sendRetryableResponse(res, err, message) {
+  if (!isRetryableDbError(err)) return false;
+  res.setHeader("Retry-After", "10");
+  res.status(503).send(message || "Temporary database error");
+  return true;
+}
 /** Match pending order ids created by /api/flitt-pay */
 const FLITT_ORDER_ID_RE = /^flt_[0-9a-f-]{36}$/i;
 
@@ -136,6 +147,7 @@ export default async function handler(req, res) {
         message: dbErr?.message,
         code: dbErr?.code ?? dbErr?.pgCode,
       });
+      if (sendRetryableResponse(res, dbErr, "Temporary database error")) return;
       return ok();
     }
 
@@ -209,9 +221,7 @@ export default async function handler(req, res) {
           provider: "flitt",
           payment_type: pending.payment_type || "card",
         });
-        await updatePendingOrderStatus(orderId, "success").catch((err) =>
-          console.error("[flitt-callback] update pending success:", err?.message)
-        );
+        await updatePendingOrderStatus(orderId, "success");
         console.log("[flitt-callback] completed_orders insert ok", {
           order_id: orderId,
         });
@@ -221,6 +231,7 @@ export default async function handler(req, res) {
           console.log("[flitt-callback] duplicate completed order ignored", {
             order_id: orderId,
           });
+          await updatePendingOrderStatus(orderId, "success");
           syncFlittSuccessToSanity(orderId, pending, payload);
         } else {
           console.error("[flitt-callback] DB error", {
@@ -228,6 +239,7 @@ export default async function handler(req, res) {
             message: dbErr?.message,
             code: dbErr?.code ?? dbErr?.pgCode,
           });
+          throw dbErr;
         }
       }
       return ok();
@@ -238,15 +250,16 @@ export default async function handler(req, res) {
       order_status: orderStatus || null,
       response_status: responseStatus || null,
     });
-    await updatePendingOrderStatus(orderId, "failed").catch((err) =>
-      console.error("[flitt-callback] update pending failed:", err?.message)
-    );
+    await updatePendingOrderStatus(orderId, "failed");
     return ok();
   } catch (err) {
     console.error("[flitt-callback] unhandled error", {
       message: err?.message,
       stack: err?.stack,
     });
+    if (sendRetryableResponse(res, err, "Temporary retryable error")) {
+      return;
+    }
     return ok();
   }
 }

@@ -46,6 +46,23 @@ function bogRetryError(message) {
   return err;
 }
 
+function isRetryableDbError(err) {
+  if (!err || typeof err !== "object") return false;
+  if (err.code === "23505" || err.code === "DUPLICATE") return false;
+  return Boolean(err.dbOperation || err.name === "SupabasePostgrestError");
+}
+
+function shouldReturn503(err) {
+  return Boolean(err?.retryBogCallback || isRetryableDbError(err));
+}
+
+function sendRetryableResponse(res, err, message) {
+  if (!shouldReturn503(err)) return false;
+  res.setHeader("Retry-After", "10");
+  res.status(503).send(message || "Temporary error");
+  return true;
+}
+
 function parseBogAmount(raw) {
   if (raw === null || raw === undefined || raw === "") return NaN;
   const n = Number(String(raw).replace(/,/g, "").trim());
@@ -262,16 +279,12 @@ async function processBogInstallmentCallback({ status, order_id, shop_order_id }
   }
 
   if (status === "reverse_success") {
-    await updatePendingOrderStatus(order_id, "failed").catch((err) =>
-      console.error("[bog-installment] pending update:", err?.message)
-    );
+    await updatePendingOrderStatus(order_id, "failed");
     return;
   }
 
   if (status === "error") {
-    await updatePendingOrderStatus(order_id, "failed").catch((err) =>
-      console.error("[bog-installment] pending update:", err?.message)
-    );
+    await updatePendingOrderStatus(order_id, "failed");
     return;
   }
 
@@ -337,6 +350,7 @@ async function processBogInstallmentCallback({ status, order_id, shop_order_id }
       console.log("[bog-installment] duplicate completed order ignored", {
         order_id,
       });
+      await updatePendingOrderStatus(order_id, "success");
       fireSanityOrderOnPaymentSuccess(
         client,
         {
@@ -591,10 +605,7 @@ export default async function handler(req, res) {
           provider: "bog",
           payment_type: "card",
         });
-        // Non-critical — update pending_orders status for record-keeping.
-        await updatePendingOrderStatus(order_id, "success").catch((err) =>
-          console.error("BOG callback: failed to update pending status:", err)
-        );
+        await updatePendingOrderStatus(order_id, "success");
         console.log("BOG callback: payment saved for order:", order_id);
         fireSanityOrderOnPaymentSuccess(
           client,
@@ -616,6 +627,7 @@ export default async function handler(req, res) {
         // Duplicate insert → this order was already processed; safe to ignore.
         if (dbErr.code === "23505" || dbErr.code === "DUPLICATE") {
           console.log("BOG callback: duplicate order ignored:", order_id);
+          await updatePendingOrderStatus(order_id, "success");
           const bankPartsDup = splitFullName(customerName);
           fireSanityOrderOnPaymentSuccess(
             client,
@@ -642,16 +654,13 @@ export default async function handler(req, res) {
         }
       }
     } else {
-      // Non-critical update — swallow errors so we still return 200.
-      await updatePendingOrderStatus(order_id, "failed").catch((err) =>
-        console.error("BOG callback: failed to update pending status:", err)
-      );
+      await updatePendingOrderStatus(order_id, "failed");
       console.log("BOG callback: non-completed status:", statusKey, "| order:", order_id);
     }
   } catch (err) {
     console.error("BOG callback: unhandled error:", err);
-    if (err?.retryBogCallback) {
-      return res.status(503).send("Temporary error");
+    if (sendRetryableResponse(res, err, "Temporary retryable error")) {
+      return;
     }
   }
 
