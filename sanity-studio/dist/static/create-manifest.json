@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "createdAt": "2026-04-16T10:22:11.235Z",
+  "createdAt": "2026-06-03T15:22:52.850Z",
   "workspaces": [
     {
       "name": "ceramisia",
@@ -12,7 +12,7 @@
       "mediaLibrary": {
         "enabled": false
       },
-      "schema": "1de41205.create-schema.json",
+      "schema": "5c4698a5.create-schema.json",
       "tools": "7f43705a.create-tools.json"
     }
   ]
